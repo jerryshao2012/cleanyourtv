@@ -2041,8 +2041,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 conn.disconnect();
             }
         } catch (Exception e) {
+            android.util.Log.e("TVHomeWeather", "Fetch failed", e);
             if (cachedWeather.isEmpty()) {
-                return "Toronto  天气加载中…";
+                return "Toronto 天气获取重试中: " + e.getClass().getSimpleName();
             }
         }
         return cachedWeather;
