@@ -180,6 +180,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean pillsShown;
     private TextView shamsiDate;
     private TextView stats;
+    private TextView weatherLine;
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
     private TextView raceKicker, raceHeadline, raceSessions;
@@ -437,6 +438,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnWifi = findViewById(R.id.btnWifi);
         shamsiDate = findViewById(R.id.shamsiDate);
         stats = findViewById(R.id.stats);
+        weatherLine = findViewById(R.id.weatherLine);
+        if (weatherLine != null) {
+            weatherLine.setOnClickListener(v -> {
+                try {
+                    Intent it = getPackageManager().getLeanbackLaunchIntentForPackage("io.github.sumyabazar1.weather");
+                    if (it == null) it = getPackageManager().getLaunchIntentForPackage("io.github.sumyabazar1.weather");
+                    if (it != null) startActivity(it);
+                } catch (Exception ignored) {
+                }
+            });
+        }
         raceCalendar = cfg.raceCalendar;
         racePanel = findViewById(R.id.racePanel);
         raceKicker = findViewById(R.id.raceKicker);
@@ -1908,6 +1920,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void startStats() {
         if (statsThread != null) return;
         stats.setVisibility(View.VISIBLE);
+        if (weatherLine != null && !cachedWeather.isEmpty()) {
+            weatherLine.setVisibility(View.VISIBLE);
+        }
         cpuTotalPrev = -1;
         idlePrev = -1;
         procStatDead = false;
@@ -1922,8 +1937,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void run() {
                 if (statsBg != bg) return;
                 String line = readStatsLine();
+                String weather = fetchWeatherLine();
                 handler.post(() -> {
                     if (showStats && stats != null && statsBg == bg) stats.setText(line);
+                    if (weatherLine != null && statsBg == bg && !weather.isEmpty()) {
+                        weatherLine.setText(weather);
+                        weatherLine.setVisibility(View.VISIBLE);
+                    }
                 });
                 if (statsBg == bg) bg.postDelayed(this, STATS_MS);
             }
@@ -1938,7 +1958,115 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         statsBg = null;
         // Paused (the quick panel or an app on top): keep the last line on screen. Taking it away moved the grid up
         // under a glass highlight that stayed put.
-        if (!showStats) stats.setVisibility(View.GONE);
+        if (!showStats) {
+            stats.setVisibility(View.GONE);
+            if (weatherLine != null) weatherLine.setVisibility(View.GONE);
+        }
+    }
+
+    private long lastWeatherMs;
+    private String cachedWeather = "";
+
+    private String fetchWeatherLine() {
+        long now = System.currentTimeMillis();
+        if (!cachedWeather.isEmpty() && now - lastWeatherMs <= 15 * 60_000L) {
+            return cachedWeather;
+        }
+        try {
+            java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName("api.open-meteo.com");
+            String host = "api.open-meteo.com";
+            for (java.net.InetAddress a : addrs) {
+                if (a instanceof java.net.Inet4Address) {
+                    host = a.getHostAddress();
+                    break;
+                }
+            }
+            javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) new java.net.URL(
+                    "https://api.open-meteo.com/v1/forecast?latitude=43.6532&longitude=-79.3832"
+                    + "&current=temperature_2m,apparent_temperature,weather_code,is_day"
+                    + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FToronto&forecast_days=3").openConnection();
+            final String targetIp = host;
+            if (!"api.open-meteo.com".equals(targetIp) || Build.VERSION.SDK_INT < 26) {
+                javax.net.ssl.SSLSocketFactory baseFactory = javax.net.ssl.HttpsURLConnection.getDefaultSSLSocketFactory();
+                if (Build.VERSION.SDK_INT < 26) {
+                    javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLSv1.2");
+                    sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
+                        @Override public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                        @Override public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                        @Override public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                    }}, null);
+                    baseFactory = sc.getSocketFactory();
+                }
+                final javax.net.ssl.SSLSocketFactory def = baseFactory;
+                conn.setSSLSocketFactory(new javax.net.ssl.SSLSocketFactory() {
+                    @Override public String[] getDefaultCipherSuites() { return def.getDefaultCipherSuites(); }
+                    @Override public String[] getSupportedCipherSuites() { return def.getSupportedCipherSuites(); }
+                    @Override public java.net.Socket createSocket(java.net.Socket s, String h, int p, boolean a) throws java.io.IOException { return def.createSocket(s, h, p, a); }
+                    @Override public java.net.Socket createSocket(String h, int p) throws java.io.IOException {
+                        java.net.Socket raw = new java.net.Socket();
+                        raw.connect(new java.net.InetSocketAddress(targetIp, p), 6000);
+                        return def.createSocket(raw, "api.open-meteo.com", p, true);
+                    }
+                    @Override public java.net.Socket createSocket(String h, int p, java.net.InetAddress l, int lp) throws java.io.IOException { return def.createSocket(h, p, l, lp); }
+                    @Override public java.net.Socket createSocket(java.net.InetAddress h, int p) throws java.io.IOException { return def.createSocket(h, p); }
+                    @Override public java.net.Socket createSocket(java.net.InetAddress a, int p, java.net.InetAddress l, int lp) throws java.io.IOException { return def.createSocket(a, p, l, lp); }
+                });
+            }
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            try (java.io.InputStream in = conn.getInputStream()) {
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                for (int n; (n = in.read(buf)) != -1; ) out.write(buf, 0, n);
+                org.json.JSONObject json = new org.json.JSONObject(new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+                org.json.JSONObject cur = json.getJSONObject("current");
+                int temp = (int) Math.round(cur.getDouble("temperature_2m"));
+                int feels = (int) Math.round(cur.getDouble("apparent_temperature"));
+                int code = cur.getInt("weather_code");
+                boolean day = cur.getInt("is_day") == 1;
+                org.json.JSONObject daily = json.getJSONObject("daily");
+                org.json.JSONArray maxs = daily.getJSONArray("temperature_2m_max");
+                org.json.JSONArray mins = daily.getJSONArray("temperature_2m_min");
+                org.json.JSONArray codes = daily.getJSONArray("weather_code");
+                int hi0 = (int) Math.round(maxs.getDouble(0)), lo0 = (int) Math.round(mins.getDouble(0));
+                int hi1 = (int) Math.round(maxs.getDouble(1)), lo1 = (int) Math.round(mins.getDouble(1));
+                int c1 = codes.getInt(1);
+                int hi2 = (int) Math.round(maxs.getDouble(2)), lo2 = (int) Math.round(mins.getDouble(2));
+                int c2 = codes.getInt(2);
+                cachedWeather = "Toronto " + weatherDesc(code, day) + " " + temp + "°C (体感 " + feels + "°C) · 今日 "
+                        + hi0 + "°/" + lo0 + "° · 明日 " + weatherDesc(c1, true) + " " + hi1 + "°/" + lo1 + "° · 后日 "
+                        + weatherDesc(c2, true) + " " + hi2 + "°/" + lo2 + "°";
+                lastWeatherMs = now;
+            } finally {
+                conn.disconnect();
+            }
+        } catch (Exception e) {
+            if (cachedWeather.isEmpty()) {
+                return "Toronto  天气加载中…";
+            }
+        }
+        return cachedWeather;
+    }
+
+    private static String weatherDesc(int code, boolean day) {
+        switch (code) {
+            case 0: return day ? "☀ 晴" : "🌙 晴";
+            case 1: return day ? "🌤 晴间多云" : "🌙 少云";
+            case 2: return "⛅ 多云";
+            case 3: return "☁ 阴";
+            case 45: case 48: return "🌫 雾";
+            case 51: case 53: case 55: case 56: case 57: return "🌦 毛毛雨";
+            case 61: return "🌧 小雨";
+            case 63: return "🌧 中雨";
+            case 65: return "🌧 大雨";
+            case 66: case 67: return "🌧 冻雨";
+            case 71: return "🌨 小雪";
+            case 73: return "❄ 中雪";
+            case 75: return "❄ 大雪";
+            case 77: case 85: case 86: return "🌨 阵雪";
+            case 80: case 81: case 82: return "🌦 阵雨";
+            default: return code >= 95 ? "⛈ 雷阵雨" : "☁ 多云";
+        }
     }
 
     /** One quiet line, e.g. "CPU 8%  ·  Memory 430 MB free  ·  Storage 3.1 GB free". Runs off the main thread. */

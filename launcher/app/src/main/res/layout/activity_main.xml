@@ -294,6 +294,29 @@
                 android:focusable="false"
                 android:visibility="gone" />
 
+            <TextView
+                android:id="@+id/weatherLine"
+                android:layout_width="wrap_content"
+                android:layout_below="@id/stats"
+                android:layout_alignStart="@id/leftBlock"
+                android:gravity="left"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="#D9FFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="@string/font_medium"
+                android:letterSpacing="0.04"
+                android:focusable="true"
+                android:clickable="true"
+                android:background="@drawable/pill_bg"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:visibility="gone" />
+
             <LinearLayout
                 android:id="@+id/topButtons"
                 android:layout_width="wrap_content"
