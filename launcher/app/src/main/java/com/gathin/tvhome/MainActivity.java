@@ -340,10 +340,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     };
 
+    private void showCrashScreen(Throwable t) {
+        try {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            final String stack = sw.toString();
+            android.util.Log.e("TvHome", "CRASH:\n" + stack);
+            runOnUiThread(() -> {
+                try {
+                    android.widget.ScrollView sv = new android.widget.ScrollView(this);
+                    android.widget.TextView tv = new android.widget.TextView(this);
+                    tv.setText("CleanYourTV 启动异常:\n\n" + stack);
+                    tv.setTextColor(0xFFFF4444);
+                    tv.setTextSize(14f);
+                    tv.setPadding(40, 40, 40, 40);
+                    sv.addView(tv);
+                    setContentView(sv);
+                } catch (Throwable ignored) {}
+            });
+        } catch (Throwable ignored) {}
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        Thread.setDefaultUncaughtExceptionHandler((thread, ex) -> showCrashScreen(ex));
+        try {
+            setContentView(R.layout.activity_main);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
@@ -689,20 +712,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             registerReceiver(packageReceiver, packageFilter);
         }
 
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (tim != null) tim.registerCallback(inputCallback, handler);
-        if (cm != null) {
-            if (android.os.Build.VERSION.SDK_INT >= 24) cm.registerDefaultNetworkCallback(networkCallback);
-            else cm.registerNetworkCallback(new NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), networkCallback);
-            cm.registerNetworkCallback(new NetworkRequest.Builder()
-                    .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
-                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                    .build(), vpnCallback);
-        }
+        try {
+            TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
+            if (tim != null) tim.registerCallback(inputCallback, handler);
+        } catch (Throwable ignored) {}
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                if (android.os.Build.VERSION.SDK_INT >= 24) cm.registerDefaultNetworkCallback(networkCallback);
+                else cm.registerNetworkCallback(new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), networkCallback);
+                cm.registerNetworkCallback(new NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+                        .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                        .build(), vpnCallback);
+            }
+        } catch (Throwable ignored) {}
         // Not after recreate(): the launch intent survives it and would open the settings again.
         if (savedInstanceState == null && !openLauncherSettingsIfAsked(getIntent())) openInputsIfAsked(getIntent());
+        } catch (Throwable t) {
+            showCrashScreen(t);
+        }
     }
 
     /**
@@ -795,7 +825,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
-        // A festival that started or ended while Home was in the background: rebuild with or without it.
+        try {
+            // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(todayYmd())) {
             recreate();
             return;
@@ -848,6 +879,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 lastPetalShower = today;
                 handler.postDelayed(this::playPetalShower, 450);
             }
+        }
+        } catch (Throwable t) {
+            showCrashScreen(t);
         }
     }
 
@@ -2589,16 +2623,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         boolean any = liveTvIntent() != null || !sourcePanelService.isEmpty()
                 || (coocaaSources && !CoocaaSources.list(this).isEmpty());
-        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (!any && tim != null) {
-            for (TvInputInfo info : tim.getTvInputList()) {
-                // Inputs hidden in Settings > Inputs are left out of the menu, so they don't count here either.
-                if (info.isPassthroughInput() && !(android.os.Build.VERSION.SDK_INT >= 24 && info.isHidden(this))) {
-                    any = true;
-                    break;
+        try {
+            TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
+            if (!any && tim != null) {
+                for (TvInputInfo info : tim.getTvInputList()) {
+                    // Inputs hidden in Settings > Inputs are left out of the menu, so they don't count here either.
+                    if (info.isPassthroughInput() && !(android.os.Build.VERSION.SDK_INT >= 24 && info.isHidden(this))) {
+                        any = true;
+                        break;
+                    }
                 }
             }
-        }
+        } catch (Throwable ignored) {}
         btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
     }
 
