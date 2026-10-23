@@ -492,8 +492,14 @@ final class Config {
                 if (s == null) continue;
                 String name = s.optString("name", "").trim();
                 try {
-                    if (!name.isEmpty()) parsed.add(new RaceWeekend.Session(name, java.time.Instant.parse(s.optString("start", ""))));
-                } catch (java.time.format.DateTimeParseException ignored) {
+                    if (!name.isEmpty()) {
+                        String st = s.optString("start", "");
+                        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US);
+                        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                        long startMs = sdf.parse(st).getTime();
+                        parsed.add(new RaceWeekend.Session(name, startMs));
+                    }
+                } catch (Exception ignored) {
                     // a session without a readable start time cannot be counted down
                 }
             }

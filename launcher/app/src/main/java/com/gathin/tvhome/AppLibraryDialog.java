@@ -46,7 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Predicate;
+import com.gathin.tvhome.Func.Predicate;
 
 /** On-demand installed-app picker. Uses the launcher's glass resources; no backdrop capture or blur. */
 final class AppLibraryDialog {

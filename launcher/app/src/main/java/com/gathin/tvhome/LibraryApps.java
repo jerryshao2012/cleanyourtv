@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.IntPredicate;
+import com.gathin.tvhome.Func.IntPredicate;
 
 /** Home shortcut choices made from the library, separate from theme defaults and tile ordering. */
 final class LibraryApps {

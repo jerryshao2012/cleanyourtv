@@ -2,8 +2,6 @@ package com.gathin.tvhome;
 
 import android.content.res.Resources;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.Locale;
 
 /**
@@ -21,14 +19,14 @@ final class Festival {
 
     /** Lower-case festival name, or "" for none. */
     final String name;
-    /** Last day the skin shows, inclusive; null for no end date. */
-    final LocalDate until;
+    /** Last day the skin shows, inclusive; null for no end date (format "yyyy-MM-dd"). */
+    final String until;
     /** Text that replaces the time-of-day greeting; "" uses the festival's own default. */
     final String greeting;
     /** Focus glow colour as 0xAARRGGBB, or 0 for {@link #DEFAULT_ACCENT}. */
     final int accent;
 
-    private Festival(String name, LocalDate until, String greeting, int accent) {
+    private Festival(String name, String until, String greeting, int accent) {
         this.name = name;
         this.until = until;
         this.greeting = greeting;
@@ -42,11 +40,12 @@ final class Festival {
     static Festival parse(String name, String until, String greeting, String accent) {
         String n = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
         if (n.isEmpty() || n.length() > 40) return NONE;
-        LocalDate end = null;
+        String end = null;
         if (until != null && !until.trim().isEmpty()) {
-            try {
-                end = LocalDate.parse(until.trim());
-            } catch (DateTimeParseException e) {
+            String u = until.trim();
+            if (u.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                end = u;
+            } else {
                 return NONE;
             }
         }
@@ -55,8 +54,8 @@ final class Festival {
     }
 
     /** Whether the skin shows today. */
-    boolean active(LocalDate today) {
-        return !name.isEmpty() && (until == null || !today.isAfter(until));
+    boolean active(String today) {
+        return !name.isEmpty() && (until == null || today.compareTo(until) <= 0);
     }
 
     /** The greeting to show while active, or "" to keep the normal time-of-day greeting. */

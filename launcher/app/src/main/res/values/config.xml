@@ -17,10 +17,10 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
-        <item>com.netflix.ninja</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
-        <item>com.google.android.youtube.tv</item>
-        <item>in.startv.hotstar</item>
+        <item>tv.ifvod.classic</item>
+        <item>com.jumi.tv</item>
+        <item>com.dmtv.yj</item>
+        <item>com.xpgtv.live.tv</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -29,12 +29,13 @@
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
+        <item>com.sony.dtv.tvx</item>
         <item>com.mediatek.wwtv.tvcenter</item>
         <item>com.mitv.gallery</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
-    <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
+    <string name="live_tv_package" translatable="false">com.sony.dtv.tvx</string>
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
@@ -193,7 +194,7 @@
     <bool name="top_menu">false</bool>
     <!-- A direct Launcher settings action instead of TV Settings in the header (or top_menu).
          Off by default; a theme can set "launcher_settings_button": true. -->
-    <bool name="launcher_settings_button">false</bool>
+    <bool name="launcher_settings_button">true</bool>
     <!-- The dock band as light frosted glass, like the Inputs, Wi-Fi and Settings pills, so a sky or wallpaper shows
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->
@@ -204,17 +205,17 @@
     <bool name="dock_even_padding">false</bool>
     <!-- A reorder button (two arrows) in the top bar. Off by default: reordering is also in the Settings
          button's long-press menu, so it needs no extra button on screen. -->
-    <bool name="reorder_button">false</bool>
+    <bool name="reorder_button">true</bool>
     <!-- Wi-Fi and Settings as round icon-only buttons (the network name moves to the talkback description);
          Inputs keeps its label. -->
-    <bool name="icon_only_buttons">false</bool>
+    <bool name="icon_only_buttons">true</bool>
     <!-- The Inputs pill as a round icon button too (the label moves to the talkback description). -->
     <bool name="icon_only_inputs">false</bool>
     <!-- The app library as a round button in the top bar, beside Settings (app_library must be on too). -->
-    <bool name="library_button">false</bool>
+    <bool name="library_button">true</bool>
     <!-- With icon_only_buttons: keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis.
          0 leaves the Wi-Fi pill as an icon. -->
-    <integer name="wifi_label_width">0</integer>
+    <integer name="wifi_label_width">120</integer>
 
     <!-- The Wi-Fi/Ethernet pill in the top bar. false hides it (on Android 14 with Location off it can
          only say "Wi-Fi", not the network name). Can also be set with "show_network_pill" in a theme. -->
@@ -235,7 +236,7 @@
     <!-- Hold OK on a tile opens a small menu: Move (picks the tile up for reordering), Remove from Home (only with
          app_library) and App info. false keeps the old behaviour: holding OK opens the app's App info page.
          Can also be set with "tile_menu": true in a theme's config.json. -->
-    <bool name="tile_menu">false</bool>
+    <bool name="tile_menu">true</bool>
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->
@@ -258,7 +259,7 @@
     <bool name="show_home_settings_shortcut">false</bool>
 
     <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
-    <bool name="app_library">false</bool>
+    <bool name="app_library">true</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay
@@ -266,6 +267,18 @@
          (many China-market TVs, e.g. Coocaa 8R145), a fresh Home with app_library on would otherwise be
          nearly empty. Empty (off) by default, so existing setups change nothing. -->
     <string-array name="library_apps" translatable="false">
+        <item>com.jumi.tv</item>
+        <item>com.kanke.tv</item>
+        <item>com.dmtv.yj</item>
+        <item>com.xpgtv.live.tv</item>
+        <item>com.hpplay.happyplay.aw</item>
+        <item>screnmirroring.com</item>
+        <item>com.dangbeimarket</item>
+        <item>com.shafa.market</item>
+        <item>com.supertws.dubokutv</item>
+        <item>tv.ifvod.classic</item>
+        <item>com.tv.qx</item>
+        <item>com.weisen.tvbox</item>
     </string-array>
 
     <!-- Module cards: an app that declares a card (docs/specs/card.md) can stand in for its tile with its own
@@ -287,7 +300,7 @@
 
     <!-- One line under the clock: CPU, free memory and free storage. Off by default; a theme can set
          "show_stats": true. Nothing is read, and the clock does not move, while this is false. -->
-    <bool name="show_stats">false</bool>
+    <bool name="show_stats">true</bool>
 
     <!-- Time-of-day backdrop behind everything: a dark gradient that follows the clock, with a warm
          horizon glow around sunrise and sunset. 0 keeps the plain background (the default); 1 to 100
@@ -297,8 +310,8 @@
     <!-- Where the TV is, in decimal degrees, so the sky's sunrise and sunset glows follow the real sun
          (computed on the TV, no network). Empty: a fixed temperate day, sunset glow around 19:00.
          Vilnius: 54.69 and 25.28. -->
-    <string name="latitude" translatable="false"></string>
-    <string name="longitude" translatable="false"></string>
+    <string name="latitude" translatable="false">43.6532</string>
+    <string name="longitude" translatable="false">-79.3832</string>
 
     <!-- Cinematic top shelf: the focused dock app's artwork, softened, fills the top of the screen in its
          colour; the shelf gets a larger name, a "Last opened" line (from the apps Home opened) and dock position

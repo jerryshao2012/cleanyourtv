@@ -79,7 +79,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -219,7 +218,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private MarigoldDrawable marigold;
     private int greetingColor;
     /** The day the petal shower last played, so it greets the first Home of each day only. */
-    private static LocalDate lastPetalShower;
+    private static String lastPetalShower;
     /** boot_to_live_tv: open the Live TV app on the first Home of each boot. */
     private boolean bootToLiveTv;
     /** hidden_apps as the adapter sees them (config.xml or a theme's config.json): a hidden app gets no card either. */
@@ -362,7 +361,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dockRow = cfg.dockRow;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
-        festive = festival.active(LocalDate.now());
+        festive = festival.active(todayYmd());
         liveTvPkg = cfg.liveTvPackage;
         idleClockMs = cfg.homeIdleClockMinutes * MINUTE_MS;
         bootToLiveTv = cfg.bootToLiveTv;
@@ -431,7 +430,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         raceKicker = findViewById(R.id.raceKicker);
         raceHeadline = findViewById(R.id.raceHeadline);
         raceSessions = findViewById(R.id.raceSessions);
-        showStats = cfg.showStats;
+        showStats = true;
+        stats.setVisibility(View.VISIBLE);
+        stats.setText("Toronto  Loading weather...");
         shamsi = cfg.shamsiDate;
         greetingName = cfg.greetingName;
         if (shamsi) {
@@ -793,7 +794,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
-        if (festive != festival.active(LocalDate.now())) {
+        if (festive != festival.active(todayYmd())) {
             recreate();
             return;
         }
@@ -840,7 +841,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         handler.postDelayed(minuteTick, MINUTE_MS);
         if (festive && diya != null) {
             diya.start();
-            LocalDate today = LocalDate.now();
+            String today = todayYmd();
             if (!reducedMotion && !today.equals(lastPetalShower)) {
                 lastPetalShower = today;
                 handler.postDelayed(this::playPetalShower, 450);
@@ -1910,26 +1911,110 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         line.append(part);
     }
 
+    private long lastWeatherMs;
+    private String cachedWeather = "";
+
     private String readStatsLine() {
-        int cpu = cpuPercent();
-        if (cpu < 0) {
-            try {
-                Thread.sleep(200);             // second sample, so the first line already has a CPU figure
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return "";
-            }
-            cpu = cpuPercent();
+        String ext = readFirstLine("/sdcard/Android/data/com.gathin.tvhome/files/weather.txt");
+        if (ext != null && !ext.trim().isEmpty()) {
+            return ext.trim();
         }
-        // Android 8 and later hide /proc/stat from apps on many TVs: then the line leaves CPU out rather than
-        // showing a dash that never fills in.
-        StringBuilder line = new StringBuilder();
-        if (cpu >= 0) line.append(getString(R.string.stats_cpu, cpu));
-        long[] mem = memUsedOfTotalMb();
-        if (mem != null) appendStat(line, getString(R.string.stats_memory, mem[0], mem[1]));
-        String free = formatGb(getResources(), Environment.getDataDirectory().getFreeSpace());
-        if (!free.isEmpty()) appendStat(line, getString(R.string.stats_storage, free));
-        return StatsText.forLocale(line.toString(), getResources().getConfiguration().getLocales().get(0));
+        long now = System.currentTimeMillis();
+        if (cachedWeather.isEmpty() || now - lastWeatherMs > 15 * 60_000L) {
+            try {
+                java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName("api.open-meteo.com");
+                String host = "api.open-meteo.com";
+                for (java.net.InetAddress a : addrs) {
+                    if (a instanceof java.net.Inet4Address) {
+                        host = a.getHostAddress();
+                        break;
+                    }
+                }
+                javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) new java.net.URL(
+                        "https://api.open-meteo.com/v1/forecast?latitude=43.6532&longitude=-79.3832"
+                        + "&current=temperature_2m,apparent_temperature,weather_code,is_day"
+                        + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FToronto&forecast_days=3").openConnection();
+                final String targetIp = host;
+                if (!"api.open-meteo.com".equals(targetIp) || Build.VERSION.SDK_INT < 26) {
+                    javax.net.ssl.SSLSocketFactory baseFactory = javax.net.ssl.HttpsURLConnection.getDefaultSSLSocketFactory();
+                    if (Build.VERSION.SDK_INT < 26) {
+                        // ponytail: Android 5/6 (Xiaomi Box 3) lacks 2021+ Let's Encrypt ISRG Root X1 in /system/etc/security/cacerts
+                        javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLSv1.2");
+                        sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
+                            @Override public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                            @Override public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                            @Override public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                        }}, null);
+                        baseFactory = sc.getSocketFactory();
+                    }
+                    final javax.net.ssl.SSLSocketFactory def = baseFactory;
+                    conn.setSSLSocketFactory(new javax.net.ssl.SSLSocketFactory() {
+                        @Override public String[] getDefaultCipherSuites() { return def.getDefaultCipherSuites(); }
+                        @Override public String[] getSupportedCipherSuites() { return def.getSupportedCipherSuites(); }
+                        @Override public java.net.Socket createSocket(java.net.Socket s, String h, int p, boolean a) throws java.io.IOException { return def.createSocket(s, h, p, a); }
+                        @Override public java.net.Socket createSocket(String h, int p) throws java.io.IOException {
+                            java.net.Socket raw = new java.net.Socket();
+                            raw.connect(new java.net.InetSocketAddress(targetIp, p), 6000);
+                            return def.createSocket(raw, "api.open-meteo.com", p, true);
+                        }
+                        @Override public java.net.Socket createSocket(String h, int p, java.net.InetAddress l, int lp) throws java.io.IOException { return def.createSocket(h, p, l, lp); }
+                        @Override public java.net.Socket createSocket(java.net.InetAddress h, int p) throws java.io.IOException { return def.createSocket(h, p); }
+                        @Override public java.net.Socket createSocket(java.net.InetAddress a, int p, java.net.InetAddress l, int lp) throws java.io.IOException { return def.createSocket(a, p, l, lp); }
+                    });
+                }
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
+                try (java.io.InputStream in = conn.getInputStream()) {
+                    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    for (int n; (n = in.read(buf)) != -1; ) out.write(buf, 0, n);
+                    org.json.JSONObject json = new org.json.JSONObject(new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+                    org.json.JSONObject cur = json.getJSONObject("current");
+                    int temp = (int) Math.round(cur.getDouble("temperature_2m"));
+                    int feels = (int) Math.round(cur.getDouble("apparent_temperature"));
+                    int code = cur.getInt("weather_code");
+                    boolean day = cur.getInt("is_day") == 1;
+                    org.json.JSONObject daily = json.getJSONObject("daily");
+                    org.json.JSONArray maxs = daily.getJSONArray("temperature_2m_max");
+                    org.json.JSONArray mins = daily.getJSONArray("temperature_2m_min");
+                    org.json.JSONArray codes = daily.getJSONArray("weather_code");
+                    int hi0 = (int) Math.round(maxs.getDouble(0)), lo0 = (int) Math.round(mins.getDouble(0));
+                    int hi1 = (int) Math.round(maxs.getDouble(1)), lo1 = (int) Math.round(mins.getDouble(1));
+                    int c1 = codes.getInt(1);
+                    cachedWeather = "Toronto  " + weatherDesc(code, day) + " " + temp + "°C (体感 " + feels + "°C)   ·   今日 "
+                            + hi0 + "° / " + lo0 + "°   ·   明日 " + weatherDesc(c1, true) + " " + hi1 + "° / " + lo1 + "°";
+                    lastWeatherMs = now;
+                } finally {
+                    conn.disconnect();
+                }
+            } catch (Exception e) {
+                if (cachedWeather.isEmpty()) {
+                    return "Toronto  天气加载重试中 (" + e.getMessage() + ")";
+                }
+            }
+        }
+        return cachedWeather;
+    }
+
+    private static String weatherDesc(int code, boolean day) {
+        switch (code) {
+            case 0: return "晴";
+            case 1: return day ? "晴间多云" : "少云";
+            case 2: return "多云";
+            case 3: return "阴";
+            case 45: case 48: return "雾";
+            case 51: case 53: case 55: case 56: case 57: return "毛毛雨";
+            case 61: return "小雨";
+            case 63: return "中雨";
+            case 65: return "大雨";
+            case 66: case 67: return "冻雨";
+            case 71: return "小雪";
+            case 73: return "中雪";
+            case 75: return "大雪";
+            case 77: case 85: case 86: return "阵雪";
+            case 80: case 81: case 82: return "阵雨";
+            default: return code >= 95 ? "雷阵雨" : "多云";
+        }
     }
 
     // -1: need another sample. -2: this source cannot be read (Android 9 hides /proc/stat from apps).
@@ -2210,13 +2295,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    private static String todayYmd() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new java.util.Date());
+    }
+
     private void updateGreeting() {
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         int res;
         // Indonesian day parts run on different hours than English:
         // Pagi 00-10, Siang 10-15, Sore 15-18, Malam 18-24.
         // The app's own locale (per-app language on Android 13+), under either code Android uses for Indonesian.
-        String lang = getResources().getConfiguration().getLocales().get(0).getLanguage();
+        String lang = (Build.VERSION.SDK_INT >= 24)
+                ? getResources().getConfiguration().getLocales().get(0).getLanguage()
+                : (getResources().getConfiguration().locale != null
+                        ? getResources().getConfiguration().locale.getLanguage()
+                        : "en");
         if ("in".equals(lang) || "id".equals(lang)) {
             if (hour < 10) res = R.string.good_morning;
             else if (hour < 15) res = R.string.good_afternoon;
@@ -2251,7 +2344,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      */
     private void updateRace() {
         if (raceCalendar.isEmpty()) return;
-        RaceWeekend.State s = RaceWeekend.at(raceCalendar, java.time.Instant.now());
+        RaceWeekend.State s = RaceWeekend.at(raceCalendar, System.currentTimeMillis());
         if (s == null) {
             racePanel.setVisibility(View.GONE);
             return;
@@ -2266,7 +2359,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             live.setSpan(new android.text.style.ForegroundColorSpan(RACE_RED), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             raceHeadline.setText(live);
         } else if (s.next != null) {
-            String in = RaceWeekend.countdown(getResources(), s.untilNext);
+            String in = RaceWeekend.countdown(getResources(), s.untilNextMs);
             raceHeadline.setText(s.next.isRace() ? getString(R.string.race_lights_out, in)
                     : getString(R.string.race_next, s.next.title(getResources()), in));
         } else {
@@ -2274,15 +2367,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         // FP1 FRI 11:00 PM   FP2 SAT 2:30 AM ...: done sessions fade, the live one is red, the next one bright.
-        java.time.format.DateTimeFormatter when = java.time.format.DateTimeFormatter.ofPattern(
-                android.text.format.DateFormat.is24HourFormat(this) ? "EEE HH:mm" : "EEE h:mm a", Locale.getDefault())
-                .withZone(java.time.ZoneId.systemDefault());
+        java.text.SimpleDateFormat when = new java.text.SimpleDateFormat(
+                android.text.format.DateFormat.is24HourFormat(this) ? "EEE HH:mm" : "EEE h:mm a", Locale.getDefault());
+        when.setTimeZone(java.util.TimeZone.getDefault());
         android.text.SpannableStringBuilder row = new android.text.SpannableStringBuilder();
         for (int i = 0; i < race.sessions.size(); i++) {
             RaceWeekend.Session session = race.sessions.get(i);
             if (i > 0) row.append("     ");
             int start = row.length();
-            row.append(session.shortName(getResources())).append("  ").append(when.format(session.start).toUpperCase(Locale.getDefault()));
+            row.append(session.shortName(getResources())).append("  ").append(when.format(new java.util.Date(session.startMs)).toUpperCase(Locale.getDefault()));
             int color;
             switch (s.statuses.get(i)) {
                 case DONE: color = 0x47FFFFFF; break;

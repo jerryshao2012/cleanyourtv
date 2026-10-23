@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.ToIntFunction;
+import com.gathin.tvhome.Func.ToIntFunction;
 
 /**
  * Remote buttons that only the stock launcher answered, for InputKeyService and HomeKeyService: app_keys

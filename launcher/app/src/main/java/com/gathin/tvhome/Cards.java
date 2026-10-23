@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Supplier;
+import com.gathin.tvhome.Func.Supplier;
 
 /**
  * Module cards (docs/specs/card.md): an installed app can declare a card for its tile, with its own
