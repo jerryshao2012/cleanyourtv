@@ -273,7 +273,7 @@ final class AppLibraryDialog {
         }
         catalogTime = System.currentTimeMillis();
         Collator collator = Collator.getInstance();
-        apps.sort((a, b) -> {
+        java.util.Collections.sort(apps, (a, b) -> {
             String pa = a.activityInfo.packageName, pb = b.activityInfo.packageName;
             int priority = LibraryApps.comparePriority(home.get(pa), installTimes.get(pa),
                     home.get(pb), installTimes.get(pb), catalogTime);
