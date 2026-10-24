@@ -160,33 +160,41 @@ def main():
         print("Could not retrieve remote catalog. Check network connection.")
         sys.exit(1)
 
-    # Map candidate app names to remote keys
-    # Local pattern -> remote candidate name in catalog
-    TARGET_MAPPINGS = {
-        "千寻": "千寻.apk",
-        "独播库TV": "独播库TV.apk",
-        "剧迷TV": "剧迷TV4.0.apk",
-        "爱壹帆": "爱壹帆v2.4.5.apk",
-        "多米直播": "多米直播.apk",
-        "看客": "看客.apk",
-        "小苹果": "小苹果5.0.apk",
-        "乐播投屏": "乐播投屏.apk",
-    }
+    # Target apps specification:
+    # (local_prefix, candidate_remote_keys, display_name)
+    # The script looks for local files named <local_prefix>_v<version>.apk
+    # and matches against possible naming variations on ysupan网盘.
+    TARGET_APPS = [
+        ("千寻", ["千寻.apk", "千寻电视.apk"], "千寻电视"),
+        ("独播库TV", ["独播库TV.apk", "独播库.apk"], "独播库 TV"),
+        ("剧迷TV", ["剧迷TV4.0.apk", "剧迷TV.apk", "剧迷.apk"], "剧迷 TV"),
+        ("爱壹帆", ["爱壹帆v2.4.5.apk", "爱壹帆.apk", "爱一帆.apk"], "爱壹帆"),
+        ("多米直播", ["多米直播.apk"], "多米直播"),
+        ("看客", ["看客.apk"], "看客"),
+        ("小苹果5", ["小苹果5.0.apk", "小苹果5.apk", "小苹果.apk"], "小苹果 5"),
+        ("乐播投屏TV版", ["乐播投屏.apk", "乐播投屏TV版.apk"], "乐播投屏 TV 版"),
+        ("最新更多下载", ["最新更多下载.apk"], "最新更多下载"),
+    ]
 
-    local_files = glob.glob(os.path.join(APKS_DIR, "*.apk"))
+    local_files = [f for f in glob.glob(os.path.join(APKS_DIR, "*.apk")) if not os.path.basename(f).startswith("Updated")]
     os.makedirs("/tmp/cleantv_check_apks", exist_ok=True)
 
-    print("\nChecking local APK versions against remote:")
+    print("\nChecking local APK versions against remote (ysupan.com):")
     print("-" * 75)
 
     updated_count = 0
 
-    for prefix, remote_key in TARGET_MAPPINGS.items():
-        if remote_key not in catalog:
+    for prefix, remote_candidates, display_name in TARGET_APPS:
+        # Find which remote candidate exists in catalog
+        remote_key = next((k for k in remote_candidates if k in catalog), None)
+        if not remote_key:
             continue
 
-        # Find matching local file
-        matched_local = [f for f in local_files if prefix in os.path.basename(f)]
+        # Find matching local file (strictly matching prefix + '_v')
+        matched_local = [
+            f for f in local_files
+            if os.path.basename(f) == f"{prefix}.apk" or os.path.basename(f).startswith(f"{prefix}_v")
+        ]
         if not matched_local:
             continue
         local_apk = matched_local[0]
@@ -200,7 +208,7 @@ def main():
         remote_info = catalog[remote_key]
         temp_dest = os.path.join("/tmp/cleantv_check_apks", remote_key)
 
-        print(f"Checking {prefix} (Local: {local_vname or '?'}, code={local_code or '?'})...")
+        print(f"Checking {display_name} (Local: {local_base}, code={local_code or '?'})...")
         try:
             download_apk(remote_info["url"], temp_dest)
             rem_pkg, rem_code, rem_vname = get_apk_badging(temp_dest)
@@ -210,10 +218,10 @@ def main():
 
             if local_code and rem_code > local_code:
                 print(
-                    f"  🔥 NEW VERSION FOUND for {prefix}: {local_vname} (code {local_code}) "
+                    f"  🔥 NEW VERSION FOUND for {display_name}: {local_vname} (code {local_code}) "
                     f"-> {rem_vname} (code {rem_code})"
                 )
-                # Form new filename using standard format: <Prefix>_v<Version>.apk
+                # Form unified new filename: <Prefix>_v<Version>.apk
                 new_base = f"{prefix}_v{rem_vname}.apk" if rem_vname else f"{prefix}.apk"
                 new_dest = os.path.join(APKS_DIR, new_base)
                 shutil.copy2(temp_dest, new_dest)
@@ -241,7 +249,7 @@ def main():
                 update_docs_refs(local_base, new_base)
                 updated_count += 1
             else:
-                print(f"  Up-to-date (Local code {local_code} >= Remote code {rem_code})")
+                print(f"  Up-to-date (Local: code {local_code} >= Remote: code {rem_code})")
         except Exception as e:
             print(f"  [error] Failed checking {remote_key}: {e}")
 
