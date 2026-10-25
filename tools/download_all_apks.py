@@ -12,6 +12,8 @@ import argparse
 import base64
 import os
 import re
+import shutil
+import socket
 import sys
 import time
 import urllib.parse
@@ -21,7 +23,11 @@ from email.utils import parsedate_to_datetime
 TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
 # Default download directory: ../../apks/downloads relative to this script
 DEFAULT_DOWNLOAD_DIR = os.path.abspath(os.path.join(TOOLS_DIR, "../../apks/downloads"))
+DEFAULT_COMMON_DIR = os.path.abspath(os.path.join(TOOLS_DIR, "../../apks/common"))
 YSUPAN_BASE = "https://xiaomihezi.ysupan.com"
+
+# Cache for host reachability: {hostname: True/False}
+HOST_REACHABLE = {}
 
 HEADERS = {
     "Referer": f"{YSUPAN_BASE}/f_ht/ajcx/000ht.html?bbh=1183",
@@ -30,6 +36,49 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ),
 }
+
+
+def is_host_reachable(hostname, port=443, timeout=1.5):
+    """Fast check whether a remote CDN host is reachable via TCP."""
+    if not hostname:
+        return True
+    host_lower = hostname.lower()
+    if host_lower in HOST_REACHABLE:
+        return HOST_REACHABLE[host_lower]
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        res = sock.connect_ex((hostname, port))
+        sock.close()
+        reachable = (res == 0)
+    except Exception:
+        reachable = False
+
+    HOST_REACHABLE[host_lower] = reachable
+    return reachable
+
+
+def try_local_fallback(name, dest_file, common_dir=DEFAULT_COMMON_DIR):
+    """If remote file is unreachable, try finding a matching APK in apks/common/."""
+    if not os.path.isdir(common_dir):
+        return False
+
+    # Normalize name for comparison (e.g., '小苹果5.0.apk' -> '小苹果5')
+    clean_key = re.sub(r"[\.v_\-0-9]", "", os.path.splitext(name)[0]).strip().lower()
+
+    for item in os.listdir(common_dir):
+        if not item.lower().endswith(".apk"):
+            continue
+        item_key = re.sub(r"[\.v_\-0-9]", "", os.path.splitext(item)[0]).strip().lower()
+        if (clean_key and clean_key in item_key) or (name.split(".")[0] in item):
+            src_file = os.path.join(common_dir, item)
+            try:
+                shutil.copy2(src_file, dest_file)
+                return item
+            except Exception:
+                pass
+    return False
 
 
 def sanitize_folder_name(name):
@@ -84,9 +133,11 @@ def fetch_folder_apks(mlbh, cat_name):
     return items
 
 
-def get_remote_file_meta(url, timeout=10):
+def get_remote_file_meta(url, timeout=5):
     """Probe remote file size and mtime using HTTP Range request."""
     parts = urllib.parse.urlsplit(url)
+    if not is_host_reachable(parts.hostname):
+        return None, None
     encoded_url = urllib.parse.urlunsplit(
         (parts.scheme, parts.netloc, urllib.parse.quote(parts.path), parts.query, parts.fragment)
     )
@@ -115,6 +166,10 @@ def get_remote_file_meta(url, timeout=10):
 def download_file(url, dest_path, max_retries=3):
     """Download single file with progress and atomic write."""
     parts = urllib.parse.urlsplit(url)
+    if not is_host_reachable(parts.hostname):
+        print(f"    [跳过] 节点 {parts.hostname} 当前网络不可达 (海外路由受阻或该分卷离线)")
+        return False
+
     encoded_url = urllib.parse.urlunsplit(
         (parts.scheme, parts.netloc, urllib.parse.quote(parts.path), parts.query, parts.fragment)
     )
@@ -123,7 +178,7 @@ def download_file(url, dest_path, max_retries=3):
     for attempt in range(1, max_retries + 1):
         try:
             req = urllib.request.Request(encoded_url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=25) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 total_size = int(resp.headers.get("Content-Length", 0))
                 last_mod = resp.headers.get("Last-Modified")
                 remote_mtime = None
@@ -200,6 +255,7 @@ def sync_apks(dest_dir, delete_orphans=False):
     synced_count = 0
     skipped_count = 0
     updated_count = 0
+    fallback_count = 0
     failed_count = 0
 
     for idx, item in enumerate(remote_apks, 1):
@@ -245,7 +301,13 @@ def sync_apks(dest_dir, delete_orphans=False):
             if download_file(url, local_file):
                 synced_count += 1
             else:
-                failed_count += 1
+                # If remote download failed, try local fallback from apks/common/
+                fallback_src = try_local_fallback(name, local_file)
+                if fallback_src:
+                    print(f"    [本地补充] 从 apks/common/{fallback_src} 成功复制同步")
+                    fallback_count += 1
+                else:
+                    failed_count += 1
 
     # Optional orphan cleanup if requested
     deleted_count = 0
@@ -269,9 +331,14 @@ def sync_apks(dest_dir, delete_orphans=False):
     print(f"  - 新增下载: {synced_count}")
     print(f"  - 校验更新: {updated_count}")
     print(f"  - 本地已最新(跳过): {skipped_count}")
+    if fallback_count > 0:
+        print(f"  - 本地库补齐: {fallback_count}")
     if delete_orphans:
         print(f"  - 本地冗余清理: {deleted_count}")
-    print(f"  - 失败重试未果: {failed_count}")
+    print(f"  - 远程节点不可达/重试未果: {failed_count}")
+    if failed_count > 0:
+        print("\n提示: 失败的文件由于远程存储节点 (如 ys-L.ysupan.com) 离线或海外路由限制导致。")
+        print("      待网盘节点恢复或配置国内代理 (HTTP_PROXY) 后重新运行脚本即可自动增量补齐。")
     print("=" * 60)
 
 
