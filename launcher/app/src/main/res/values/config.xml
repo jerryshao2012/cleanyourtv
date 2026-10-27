@@ -20,7 +20,6 @@
         <item>tv.ifvod.classic</item>
         <item>com.jumi.tv</item>
         <item>com.dmtv.yj</item>
-        <item>com.xpgtv.live.tv</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -268,9 +267,7 @@
          nearly empty. Empty (off) by default, so existing setups change nothing. -->
     <string-array name="library_apps" translatable="false">
         <item>com.jumi.tv</item>
-        <item>com.kanke.tv</item>
         <item>com.dmtv.yj</item>
-        <item>com.xpgtv.live.tv</item>
         <item>com.hpplay.happyplay.aw</item>
         <item>screnmirroring.com</item>
         <item>com.dangbeimarket</item>
