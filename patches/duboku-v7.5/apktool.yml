@@ -1,0 +1,20 @@
+version: 3.0.3
+apkFileName: baseline.apk
+usesFramework:
+  ids:
+  - 1
+sdkInfo:
+  minSdkVersion: 22
+  targetSdkVersion: 34
+versionInfo:
+  versionCode: 33
+  versionName: 7.5
+resourcesInfo:
+  packageId: 127
+doNotCompress:
+- arsc
+- png
+- so
+- webp
+- assets/dexopt/baseline.prof
+- assets/dexopt/baseline.profm
