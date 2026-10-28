@@ -1,0 +1,7 @@
+[target.aarch64-linux-android]
+linker = "/Users/jerryshao/.cargo_lld/ld-gnu.sh"
+rustflags = ["-C", "link-arg=-nostdlib"]
+
+[target.armv7-linux-androideabi]
+linker = "/Users/jerryshao/.cargo_lld/ld-gnu.sh"
+rustflags = ["-C", "link-arg=-nostdlib"]
