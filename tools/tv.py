@@ -12,6 +12,10 @@ Set TV_HOST to the TV's IP (or IP:port). Usage:
     tv.py --reboot                     return once the reboot request is accepted; the TV may still be restarting
     tv.py --help                       this text; needs neither the venv nor a TV
 
+Exit status: 0 the command ran (the TV's own answer is in its output), 1 the screenshot came back
+empty or failed, 2 it was refused before anything ran on the TV - a flag it does not have, a local
+path that cannot be used, a port it could not open.
+
 Set TV_ADB_BINARY to the Google adb executable to use an already connected, paired transport
 (including encrypted Wireless debugging). See tools/native-adb.md.
 """
@@ -51,7 +55,6 @@ except ImportError as e:
         _args = [_venv, "-I", os.path.abspath(__file__), *sys.argv[1:]]
         if os.name == "nt":
             # No exec on Windows: os.execv starts a second process, and the shell takes its prompt back.
-            import subprocess
             sys.exit(subprocess.call(_args))
         os.execv(_venv, _args)
     _make = (r"python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt"
@@ -311,9 +314,18 @@ ARITY = {"--probe": 1, "--push": 3, "--pull": 3, "--batch": 1, "--reboot": 1}
 # PNG on some MediaTek sets (docs/TROUBLESHOOTING.md). /data/local/tmp is writable from shell.
 SHOT_REMOTE = "/data/local/tmp/cleanyourtv-shot.png"
 PNG = b"\x89PNG\r\n\x1a\n"
+# The last 8 bytes of every PNG: the IEND chunk's type and CRC. `screencap -p` writes one, so a file
+# that starts with the signature and does not end with this is a picture the pull stopped in the middle
+# of - not a screen. The signature alone let that through: the file was announced with its size and
+# exit 0, and the reader got half a screenshot that GitHub draws as a picture cut off at the bottom.
+PNG_END = b"IEND\xaeB`\x82"
 # Key names go into a shell command on the TV, so only plain key names and numeric keycodes get through.
 KEY_NAME = re.compile(r"^[A-Z0-9_]+$")
 KEY_GAP_S = 0.6   # between two keys, so the UI has finished reacting to the first
+# The pause after the last key is there for a screen to settle. The capture's read timeout is 120 s and
+# the pull's 300 s, so a pause longer than that is a unit typo rather than a settle: "seconds" typed as
+# milliseconds or nanoseconds ("--wait 1000000000") used to hang the run for years instead of returning.
+WAIT_MAX_S = 300.0
 
 
 def check_arity(args):
@@ -328,8 +340,95 @@ def check_arity(args):
         sys.exit(2)
     if args and args[0] == "--screenshot":
         screenshot_args(args[1:])
+    elif args and args[0] in ("--push", "--pull"):
+        transfer_args(args)
     elif args and args[0].startswith("-") and args[0] not in ARITY:
         usage_error(f"not a flag of tv.py: {args[0]!r}")
+
+
+def transfer_args(args):
+    """Judge the two paths of --push/--pull before the TV is opened.
+
+    adb_shell opens the local path itself, so a path typed from the wrong folder was a
+    FileNotFoundError traceback that only started once the connection had been made: exit 1, the code
+    this script otherwise returns for a screenshot that came back empty, and not a word saying the run
+    had sent nothing. --pull writes to the name it is given, so a folder sitting there was
+    IsADirectoryError and a name in a folder that does not exist FileNotFoundError, both after the TV
+    had already been asked for the file - tools/b64push.py's own local path has been answered this way
+    since #1633. All of these are wrong before anything can be sent, so they are answered here, in the
+    words b64push.py uses, and the TV is never opened for them.
+
+    The two directions do not share one rule: a folder is a valid --push argument (adb_shell sends the
+    files inside it), while --pull needs a file name inside a folder that is there.
+    """
+    if len(args) != 3:      # check_arity has already answered the count
+        return
+    push = args[0] == "--push"
+    local, remote = (args[1], args[2]) if push else (args[2], args[1])
+    if push:
+        if not remote:
+            usage_error("--push needs the path on the TV to write to")
+        if not local:
+            usage_error("--push needs the local file to send")
+        if os.path.isdir(local):
+            return          # adb_shell pushes the files inside it
+        try:
+            # Opened, not read: adb_shell opens it the same way, and a 500 KB APK is not loaded to
+            # find out that it is not there.
+            with open(local, "rb"):
+                pass
+        except OSError as e:
+            path_error(f"cannot read {local}: {e.strerror or e}. Nothing was sent to the TV.")
+        return
+    if not remote:
+        usage_error("--pull needs the path on the TV to read")
+    if not local:
+        usage_error("--pull needs the local file to save to")
+    folder = os.path.dirname(os.path.abspath(local))
+    if not os.path.isdir(folder):
+        path_error(f"there is no folder {folder} for {local}: create it, or pull into a folder that is "
+                   f"there. Nothing was pulled.")
+    if os.path.isdir(local):
+        path_error(f"{local} is a folder, and --pull writes the file to the name it is given: give a "
+                   f"file name. Nothing was pulled.")
+    if os.path.exists(local) and not os.access(local, os.W_OK):
+        path_error(f"cannot write {local}: permission denied. Nothing was pulled.")
+
+
+def screenshot_target(local):
+    """Judge the file --screenshot saves to, and make the folder it needs, before the TV is opened.
+
+    Every page here hands out `--screenshot shots/01.png` - PROMPT.md, AGENTS.md, CONTRIBUTING.md - and
+    the folder that does not exist yet was fixed for them in #364. Two other shapes a destination takes
+    were judged nowhere: a folder of that name (`mkdir shots` and then `--screenshot shots`, or a name
+    typed with its trailing separator) reached adb_shell's pull, which writes to the name it is given,
+    as an IsADirectoryError *after* the TV had run `screencap` - exit 1, the code this client keeps for a
+    capture that came back empty, so the run read as a TV with nothing on screen; no PNG; and the
+    capture left on the TV, because the cleanup after the pull never ran. A path through a file was the
+    same shape one step earlier, out of os.makedirs, and `--screenshot ""` - what
+    `--screenshot "$SHOT"` sends when SHOT was never set - was FileNotFoundError: ''. --push and --pull
+    have been judged this way since #2039; this is the flag the pages hand out most.
+
+    A folder that is not there is still made rather than refused: that is the one shape the command is
+    expected to fix for itself.
+    """
+    if not local:
+        usage_error("--screenshot needs the file to save to")
+    if os.path.isdir(local):
+        path_error(f"{local} is a folder, and --screenshot saves the PNG to a file: give a file name, such "
+                   f"as {os.path.join(local, '01-home.png')}. Nothing was captured.")
+    folder = os.path.dirname(os.path.abspath(local))
+    if os.path.exists(folder) and not os.path.isdir(folder):
+        path_error(f"{folder} is a file, not a folder: --screenshot cannot save {local} inside it. "
+                   f"Nothing was captured.")
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError as e:
+        path_error(f"cannot create the folder {folder} for {local}: {e.strerror or e}. Nothing was captured.")
+    if not os.access(folder, os.W_OK):
+        path_error(f"cannot write {local}: {folder} is not writable. Nothing was captured.")
+    if os.path.exists(local) and not os.access(local, os.W_OK):
+        path_error(f"cannot write {local}: permission denied. Nothing was captured.")
 
 
 def screenshot_args(rest):
@@ -338,7 +437,8 @@ def screenshot_args(rest):
     KEY is an Android key name without the KEYCODE_ prefix (HOME, DPAD_RIGHT), a full name (KEYCODE_BACK)
     or a numeric keycode (83). The screenshot is taken --wait seconds after the last key (default 1). With no
     keys, --wait still pauses before the capture, so a screen that is still loading can settle; without it,
-    no keys means no pause."""
+    no keys means no pause. The pause is 0 to 300 seconds: a value time.sleep() cannot take, or one that is
+    a unit typo, is a usage error here rather than a traceback after the keys have been pressed."""
     local, keys, wait = None, [], None
     i = 0
     while i < len(rest):
@@ -350,8 +450,15 @@ def screenshot_args(rest):
                 wait = float(rest[i + 1])
             except ValueError:
                 wait = -1
-            if wait < 0:
-                usage_error(f"--wait needs a number of seconds, not {rest[i + 1]!r}")
+            # Judged here, with the destination and before connect(), because time.sleep() cannot take
+            # every float: NaN is a ValueError and an infinity (or 1e18) an OverflowError, both raised in
+            # screenshot() *after* the keys have been pressed on the TV - exit 1, the code this client
+            # keeps for a capture that came back empty, so a typo in the pause read as a TV with nothing
+            # on screen, with no PNG and the capture never taken. A NaN fails both comparisons, so this
+            # one test covers it too.
+            if not 0 <= wait <= WAIT_MAX_S:
+                usage_error(f"--wait needs a number of seconds between 0 and {WAIT_MAX_S:g}, "
+                            f"not {rest[i + 1]!r}")
             i += 2
             continue
         if local is None and not arg.startswith("--"):
@@ -364,6 +471,7 @@ def screenshot_args(rest):
         i += 1
     if local is None:
         usage_error("--screenshot needs the file to save to")
+    screenshot_target(local)
     if wait is None:
         wait = 1.0 if keys else 0.0
     return local, keys, wait
@@ -374,6 +482,15 @@ def usage_error(message):
     sys.exit(2)
 
 
+def path_error(message):
+    """Refuse a path that cannot be used, before anything is sent. Exit 2, no usage block.
+
+    The message already says which path and why; the usage block would only repeat two lines the
+    caller did type correctly."""
+    sys.stderr.write(f"{message}\n")
+    sys.exit(2)
+
+
 def keyevent(name):
     """The `input keyevent` argument for a key name or keycode that already matched KEY_NAME."""
     return name if name.isdigit() or name.startswith("KEYCODE_") else "KEYCODE_" + name
@@ -381,10 +498,11 @@ def keyevent(name):
 
 def screenshot(dev, local, keys=(), wait=0.0):
     """Press `keys`, then capture the TV screen into `local`. Returns 0, or 1 when the capture failed or
-    came back empty."""
-    # Agents pass paths like shots/01-home.png before that folder exists, and the pull then fails
-    # after the capture has already run on the TV (#364). Create it first.
-    os.makedirs(os.path.dirname(os.path.abspath(local)), exist_ok=True)
+    came back empty.
+
+    `local` and the folder it needs are judged - and the folder made - by screenshot_target() before the
+    TV is opened: agents pass shots/01-home.png before that folder exists (#364), and a destination that
+    cannot be written has to be answered before a capture is run for it."""
     for i, key in enumerate(keys):
         if i:
             time.sleep(KEY_GAP_S)
@@ -413,6 +531,16 @@ def screenshot(dev, local, keys=(), wait=0.0):
     with open(local, "rb") as f:
         if f.read(len(PNG)) != PNG:
             print(f"{local} is not a PNG: the pull from the TV came back damaged; try again", file=sys.stderr)
+            return 1
+        # A PNG that stops before its IEND chunk kept the signature and went through the check above:
+        # the run printed "screenshot <file> (N bytes)", returned 0 and left the reader a picture that
+        # ends in the middle - a pull that ran out (a transport that dropped, a fill that stopped on
+        # the TV) reads as a plain short screenshot, and the docs ask for those to go in a PR
+        # description. The end marker is what tells the two apart.
+        f.seek(max(0, size - len(PNG_END)))
+        if f.read() != PNG_END:
+            print(f"{local} is {size} bytes of a PNG that stops before its IEND chunk: the pull from the "
+                  "TV ended before the picture did; try again", file=sys.stderr)
             return 1
     print(f"screenshot {local} ({size} bytes)")
     return 0
