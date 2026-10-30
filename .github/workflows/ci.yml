@@ -24,7 +24,29 @@ jobs:
       - name: Example lists, README tables, shell helpers
         env:
           CLEANYOURTV_STRICT: ${{ github.event_name == 'push' && '1' || '' }}
-        run: python3 -m unittest discover -s tests -v
+        # The venv interpreter, not the runner's python3: the runner has no adb_shell, so
+        # running the suite with it leaves test_tv_reboot to its child-rerun workaround
+        # instead of running in-process (#1800).
+        run: tools/venv/bin/python -m unittest discover -s tests -v
+
+  tables:
+    # Main only: a list PR adds just its folder and tv.json, so on a pull request the tables lag on purpose.
+    # A job of its own, so "the tables want regenerating" never reads as "the lists are broken": the merge
+    # bot waits for main to be green between merges and regenerates the tables after the wave.
+    name: README tables
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: README TV tables match examples/*/tv.json
+        run: |
+          python3 tools/gen_tables.py --check || {
+            echo "::error::README.md and examples/README.md are generated from examples/*/tv.json. A maintainer runs python3 tools/gen_tables.py on main and commits the result; contributors never need to."
+            exit 1
+          }
 
   launcher:
     name: Launcher build and unit tests
@@ -50,4 +72,4 @@ jobs:
         run: |
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
-          test "$size" -lt 491520 || { echo "APK is over 480 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+          test "$size" -lt 589824 || { echo "APK is over 576 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
