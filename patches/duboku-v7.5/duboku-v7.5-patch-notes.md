@@ -304,7 +304,15 @@ $BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
 - 包体：minSdk 22、`com.supertws.dubokutv`/versionCode 33 不变、v1+v2+v3 签名通过（debug 证书 SHA-256 `ab5e76e7...cbc7ae`，**与官方签名不同，覆盖安装前必须先卸载**）；
 - 指令级：成品重新解码确认每处 smali 守卫真实生效。
 
-## 8. 待验证 / 残余风险
+## 8. 剧集选集逆序排序优化（TV 详情页倒序排列）
+
+- **需求**：TV 端选集默认正序（第01集排在最前），电视剧集数较多时，用户更习惯倒序查看最新更新剧集（从最后一集排到第一集）。
+- **实现**：
+  - 定位 TV 详情页选集列表渲染点：[`TvEpisodeList`（i0.smali）](file:///Users/jerryshao/Documents/cleantv/apks/patches/duboku-v7.5/smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/i0.smali#L810-L820)。
+  - 在遍历 `episodeList` 渲染选集按钮前，增加 `invoke-static {v1}, Lkotlin/collections/r;->H0(Ljava/lang/Iterable;)Ljava/util/List;`（`CollectionsKt.reversed(Iterable)`），仅在 UI 渲染层将剧集倒序排列。
+  - **核心保障**：底层数据模型 `Lqa/p;->o` 及播放器传参 `Lqa/f0;->n` 均保持不变，因此播放器内部的“自动下一集”、“剧集定位”等业务逻辑依然保持正向连贯，不受影响。
+
+## 9. 待验证 / 残余风险
 
 1. **00:12 探针包待上机**：验证 shim 是否消除 native 段错误；`gS.begin/gS.ok` 信标将给出 gS 签名调用是否成功。
 2. 若 MainActivity 后仍死且无信标：下一嫌疑为 `libandroidx.graphics.path.so`/`libdatastore_shared_counter.so` 之外的其他 native 路径，或需要用 `adb`（若授权能通）抓 tombstone（`/data/tombstones/`）。
