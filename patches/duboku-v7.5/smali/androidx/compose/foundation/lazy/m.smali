@@ -623,6 +623,9 @@
     .line 275
     const/4 v4, 0x0
 
+    .line 276
+    if-lez v3, :cond_8
+
     .line 277
     .line 278
     invoke-static {v0}, Ll8/t1;->h(Landroid/content/Context;)Landroid/app/Activity;
