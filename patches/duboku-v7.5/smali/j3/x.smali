@@ -397,24 +397,118 @@
 
     .line 112
     :goto_3
-    # duboku: 音频轨道创建兼容层（Builder API23 / legacy 七参构造）
+    # duboku: SDK_INT >= 23 走官方 AudioTrack；SDK_INT < 23 走 DubokuCompat (Android 5.1)
+    sget v5, Landroid/os/Build$VERSION;->SDK_INT:I
+    const/16 v7, 0x17
+    if-ge v5, v7, :cond_duboku_track_builder
     move-object v1, v4
-
     move v7, v6
-
     iget v2, p1, Lj3/k;->b:I
-
     iget v3, p1, Lj3/k;->c:I
-
     iget v4, p1, Lj3/k;->a:I
-
     iget v5, p1, Lj3/k;->f:I
-
     move v6, v0
-
     invoke-static/range {v1 .. v7}, Lcom/supertws/dubokutv/DubokuCompat;->createAudioTrack(Landroid/media/AudioAttributes;IIIIII)Landroid/media/AudioTrack;
-
     move-result-object v1
+    const/4 v6, 0x1
+    goto :goto_duboku_track_done
+    :cond_duboku_track_builder
+    new-instance v5, Landroid/media/AudioTrack$Builder;
+
+    .line 113
+    .line 114
+    invoke-direct {v5}, Landroid/media/AudioTrack$Builder;-><init>()V
+
+    .line 115
+    .line 116
+    .line 117
+    invoke-virtual {v5, v4}, Landroid/media/AudioTrack$Builder;->setAudioAttributes(Landroid/media/AudioAttributes;)Landroid/media/AudioTrack$Builder;
+
+    .line 118
+    .line 119
+    .line 120
+    move-result-object v4
+
+    .line 121
+    invoke-virtual {v4, v2}, Landroid/media/AudioTrack$Builder;->setAudioFormat(Landroid/media/AudioFormat;)Landroid/media/AudioTrack$Builder;
+
+    .line 122
+    .line 123
+    .line 124
+    move-result-object v2
+
+    .line 125
+    invoke-virtual {v2, v6}, Landroid/media/AudioTrack$Builder;->setTransferMode(I)Landroid/media/AudioTrack$Builder;
+
+    .line 126
+    .line 127
+    .line 128
+    move-result-object v2
+
+    .line 129
+    iget v4, p1, Lj3/k;->f:I
+
+    .line 130
+    .line 131
+    invoke-virtual {v2, v4}, Landroid/media/AudioTrack$Builder;->setBufferSizeInBytes(I)Landroid/media/AudioTrack$Builder;
+
+    .line 132
+    .line 133
+    .line 134
+    move-result-object v2
+
+    .line 135
+    invoke-virtual {v2, v0}, Landroid/media/AudioTrack$Builder;->setSessionId(I)Landroid/media/AudioTrack$Builder;
+
+    .line 136
+    .line 137
+    .line 138
+    move-result-object v0
+
+    .line 139
+    sget v2, Landroid/os/Build$VERSION;->SDK_INT:I
+
+    .line 140
+    .line 141
+    const/16 v4, 0x1d
+
+    .line 142
+    .line 143
+    if-lt v2, v4, :cond_4
+
+    .line 144
+    .line 145
+    iget-boolean v4, p1, Lj3/k;->e:Z
+
+    .line 146
+    .line 147
+    invoke-virtual {v0, v4}, Landroid/media/AudioTrack$Builder;->setOffloadedPlayback(Z)Landroid/media/AudioTrack$Builder;
+
+    .line 148
+    .line 149
+    .line 150
+    :cond_4
+    if-lt v2, v3, :cond_5
+
+    .line 151
+    .line 152
+    if-eqz v1, :cond_5
+
+    .line 153
+    .line 154
+    invoke-virtual {v0, v1}, Landroid/media/AudioTrack$Builder;->setContext(Landroid/content/Context;)Landroid/media/AudioTrack$Builder;
+
+    .line 155
+    .line 156
+    .line 157
+    :cond_5
+    invoke-virtual {v0}, Landroid/media/AudioTrack$Builder;->build()Landroid/media/AudioTrack;
+
+    .line 158
+    .line 159
+    .line 160
+    move-result-object v1
+    :goto_duboku_track_done
     :try_end_1
     .catch Ljava/lang/UnsupportedOperationException; {:try_start_1 .. :try_end_1} :catch_1
     .catch Ljava/lang/IllegalArgumentException; {:try_start_1 .. :try_end_1} :catch_0
@@ -428,8 +522,6 @@
     move-result v0
 
     .line 165
-    const/4 v6, 0x1
-
     if-ne v0, v6, :cond_6
 
     .line 166
@@ -1609,12 +1701,10 @@
     .line 26
     iget-object v4, v0, Lj3/e;->d:Lj3/c;
 
-    if-eqz v4, :cond_duboku_skipunreg
-
     .line 27
+    if-eqz v4, :cond_duboku_skipunreg
     .line 28
     invoke-virtual {v3, v4}, Landroid/media/AudioManager;->unregisterAudioDeviceCallback(Landroid/media/AudioDeviceCallback;)V
-
     :cond_duboku_skipunreg
 
     .line 29
@@ -1822,11 +1912,10 @@
     .line 64
     iget-object v4, v1, Lj3/e;->d:Lj3/c;
 
-    if-eqz v4, :cond_duboku_skipreg
-
     .line 65
     .line 66
     iget-object v5, v1, Lj3/e;->c:Landroid/os/Handler;
+    if-eqz v4, :cond_duboku_skipreg
 
     .line 67
     .line 68
