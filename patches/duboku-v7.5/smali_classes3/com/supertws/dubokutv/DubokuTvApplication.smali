@@ -199,6 +199,25 @@
     return-void
 .end method
 
+.method protected attachBaseContext(Landroid/content/Context;)V
+    .locals 1
+
+    :try_start_0
+    invoke-static {}, Lcom/supertws/dubokutv/Dbg;->install()V
+    :try_end_0
+    .catch Ljava/lang/Throwable; {:try_start_0 .. :try_end_0} :catch_0
+
+    goto :goto_0
+
+    :catch_0
+    move-exception v0
+
+    :goto_0
+    invoke-super {p0, p1}, Landroid/app/Application;->attachBaseContext(Landroid/content/Context;)V
+
+    return-void
+.end method
+
 .method public final c()Ljava/lang/Object;
     .locals 1
 
@@ -443,6 +462,8 @@
 .method public final onActivityResumed(Landroid/app/Activity;)V
     .locals 1
 
+    invoke-static {p1}, Lcom/supertws/dubokutv/LanSyncManager;->onActivityResume(Landroid/app/Activity;)V
+
     const-string v0, "LC.resumed"
 
     invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
@@ -558,34 +579,17 @@
     return-void
 .end method
 
-.method protected attachBaseContext(Landroid/content/Context;)V
-    .locals 1
-
-    :try_start_ddbg
-    invoke-static {}, Lcom/supertws/dubokutv/Dbg;->install()V
-    :try_end_ddbg
-    .catch Ljava/lang/Throwable; {:try_start_ddbg .. :try_end_ddbg} :catch_ddbg
-
-    goto :goto_ddbg
-
-    :catch_ddbg
-    move-exception v0
-
-    :goto_ddbg
-    invoke-super {p0, p1}, Landroid/app/Application;->attachBaseContext(Landroid/content/Context;)V
-
-    return-void
-.end method
-
 .method public final onCreate()V
     .locals 9
 
     const-string v0, "app.onCreate.begin"
 
-invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
 
     .line 1
     invoke-virtual {p0}, Lcom/supertws/dubokutv/DubokuTvApplication;->a()V
+
+    invoke-static {p0}, Lcom/supertws/dubokutv/LanSyncManager;->onAppCreate(Landroid/content/Context;)V
 
     .line 2
     .line 3
@@ -675,15 +679,14 @@ invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
     .line 48
     move-result v0
 
-    # duboku: 钳制请求超时下限（gT 在本机返回 12ms 导致所有请求瞬超 → "网络连接错误"）
     const/16 v1, 0x2ee0
 
-    if-ge v0, v1, :cond_duboku_timeout_ok
+    if-ge v0, v1, :cond_0
 
     const/16 v0, 0x2ee0
 
-    :cond_duboku_timeout_ok
     .line 49
+    :cond_0
     sput v0, Lta/e;->e:I
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
@@ -875,7 +878,7 @@ invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
     move-result v1
 
     .line 143
-    if-nez v1, :cond_0
+    if-nez v1, :cond_1
 
     .line 144
     .line 145
@@ -936,7 +939,7 @@ invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
     return-void
 
     .line 174
-    :cond_0
+    :cond_1
     new-instance v0, Ljava/lang/IllegalArgumentException;
 
     .line 175

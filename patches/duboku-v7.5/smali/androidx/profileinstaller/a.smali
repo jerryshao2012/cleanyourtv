@@ -11,7 +11,7 @@
 
     const/16 v1, 0x18
 
-    if-lt v0, v1, :cond_duboku_lt24
+    if-lt v0, v1, :cond_0
 
     .line 1
     invoke-virtual {p0}, Landroid/content/Context;->createDeviceProtectedStorageContext()Landroid/content/Context;
@@ -24,6 +24,6 @@
     .line 5
     return-object p0
 
-    :cond_duboku_lt24
+    :cond_0
     return-object p0
 .end method

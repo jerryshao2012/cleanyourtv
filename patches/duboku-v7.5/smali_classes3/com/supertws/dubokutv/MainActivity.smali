@@ -237,7 +237,7 @@
 
     const-string v0, "main.onCreate.begin"
 
-invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
+    invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
 
     .line 1
     if-eqz p1, :cond_0
@@ -1062,14 +1062,12 @@ invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
 
     invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
 
-    # gT 返回值
     sget v0, Lta/e;->e:I
 
     const-string v1, "main.gT"
 
     invoke-static {v1, v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;I)V
 
-    # 屏幕尺寸
     const-string v0, "window"
 
     invoke-virtual {p0, v0}, Landroid/app/Activity;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
@@ -1470,4 +1468,3 @@ invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
     :cond_0
     return-void
 .end method
-

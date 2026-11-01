@@ -1503,7 +1503,7 @@
 
     add-int/lit8 v1, v1, -0x17
 
-    if-ltz v1, :cond_fb_lt23
+    if-ltz v1, :cond_0
 
     .line 24
     .line 25
@@ -1511,16 +1511,15 @@
 
     move-result p0
 
-    goto :goto_fb_col
+    goto :goto_0
 
-    :cond_fb_lt23
+    :cond_0
     invoke-virtual {p0, p1}, Landroid/content/res/Resources;->getColor(I)I
 
     move-result p0
 
-    :goto_fb_col
-
     .line 29
+    :goto_0
     invoke-static {p0}, Landroidx/compose/ui/graphics/e0;->c(I)J
 
     .line 30

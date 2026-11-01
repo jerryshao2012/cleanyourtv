@@ -281,7 +281,10 @@ cp shim/target/armv7-linux-androideabi/release/libdubokushim.so duboku_src/lib/a
 python3 apks/patches/duboku-v7.5/wire_shim.py \
   duboku_src/lib/arm64-v8a/libdubokutv.so duboku_src/lib/armeabi-v7a/libdubokutv.so
 
-# 3) 覆盖 apks/patches/duboku-v7.5/ 下的 smali*/、AndroidManifest.xml、apktool.yml（含信标可先加）
+# 3) 选择本补丁目录（也可指向 cleanyourtv/patches/duboku-v7.5）并覆盖文件
+PATCH_DIR=apks/patches/duboku-v7.5
+for part in smali smali_classes3 smali_classes4; do cp -R "$PATCH_DIR/$part/." "duboku_src/$part/"; done
+cp "$PATCH_DIR/AndroidManifest.xml" "$PATCH_DIR/apktool.yml" duboku_src/
 
 # 4) 打包签名
 apktool b duboku_src -o unsigned.apk
@@ -301,36 +304,46 @@ $BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
 
 - dex 完整性：4 dex 全 `dex\n035`，逐类比对 **25,857 类零缺失**；
 - native：成品内 `libdubokutv.so` NEEDED=`[libandroid, liblog, libdubokushim, libdl, libc]`、`DT_HASH` 存在、三符号真名恢复、文件大小与基线一致；shim 零 NEEDED；其余 8 个 .so 与原包逐字节一致；
-- 包体：minSdk 22、`com.supertws.dubokutv`/versionCode 33 不变、v1+v2+v3 签名通过（debug 证书 SHA-256 `ab5e76e7...cbc7ae`，**与官方签名不同，覆盖安装前必须先卸载**）；
+- 包体：minSdk 22、`com.supertws.dubokutv`/versionCode 33 不变、v1+v2+v3 签名通过（debug 证书 SHA-256 `ab5e76e7...cbc7ae`，**与官方签名不同；迁移前须确认数据可备份和恢复**）；
 - 指令级：成品重新解码确认每处 smali 守卫真实生效。
 
 ## 8. 剧集选集逆序排序优化（TV 详情页倒序排列）
 
 - **需求**：TV 端选集默认正序（第01集排在最前），电视剧集数较多时，用户更习惯倒序查看最新更新剧集（从最后一集排到第一集）。
 - **实现**：
-  - 定位 TV 详情页选集列表渲染点：[`TvEpisodeList`（i0.smali）](file:///Users/jerryshao/Documents/cleantv/cleanyourtv/patches/duboku-v7.5/smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/i0.smali#L810-L820)。
+  - 定位 TV 详情页选集列表渲染点：[`TvEpisodeList`（i0.smali）](file:///Users/jerryshao/Documents/cleantv/apks/patches/duboku-v7.5/smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/i0.smali#L810-L820)。
   - 在遍历 `episodeList` 渲染选集按钮前，增加 `invoke-static {v1}, Lkotlin/collections/r;->H0(Ljava/lang/Iterable;)Ljava/util/List;`（`CollectionsKt.reversed(Iterable)`），仅在 UI 渲染层将剧集倒序排列。
   - **核心保障**：底层数据模型 `Lqa/p;->o` 及播放器传参 `Lqa/f0;->n` 均保持不变，因此播放器内部的“自动下一集”、“剧集定位”等业务逻辑依然保持正向连贯，不受影响。
 
-## 9. 跨版本兼容保障（Android 5.1 小米盒子 & Android 10+ Sony TV 单一 APK）
+## 9. 待验证 / 残余风险
 
-- **背景与问题**：
-  - 早期补丁为了 Android 5.1（API 22）能够运行，将 ExoPlayer/Media3 中的 `AudioTrack.Builder`（API 23+）在 [`smali/j3/x.smali`](file:///Users/jerryshao/Documents/cleantv/cleanyourtv/patches/duboku-v7.5/smali/j3/x.smali) 中一律替换成了 `DubokuCompat.createAudioTrack(...)`（传统七参构造）。
-  - 在 Android 10+（如 Sony TV UR3, API 29）上，该粗暴替换丢弃了现代 AudioTrack 的 Offload Playback、音频属性及上下文配置，并在构建状态判断时引发 Media3 初始化异常，导致用户点击播放时退回桌面（Activity 异常崩溃）。
-- **解决方案**：
-  - 在 [`smali/j3/x.smali`](file:///Users/jerryshao/Documents/cleantv/cleanyourtv/patches/duboku-v7.5/smali/j3/x.smali) 中引入动态 `SDK_INT` 分支：
-    - 当 `SDK_INT >= 23`（如 Sony TV Android 10）：100% 走官方原版 `AudioTrack$Builder` 流程，保留 Offload Playback、Context 与设备高级路由能力。
-    - 当 `SDK_INT < 23`（如小米盒子 3 Android 5.1）：走 `DubokuCompat.createAudioTrack` 兜底构造。
-  - 在 [`smali/j3/x.smali`](file:///Users/jerryshao/Documents/cleantv/cleanyourtv/patches/duboku-v7.5/smali/j3/x.smali) 的音频设备回调管理中，安全守护 `registerAudioDeviceCallback` 与 `unregisterAudioDeviceCallback` 调用，防止在旧版本上注册空回调对象。
-  - 彻底恢复 [`smali/androidx/compose/foundation/lazy/m.smali`](file:///Users/jerryshao/Documents/cleantv/cleanyourtv/patches/duboku-v7.5/smali/androidx/compose/foundation/lazy/m.smali) 为官方代码，消除多余的非预期改动。
-- **真机实测**：
-  - Sony TV (192.168.87.232, Android 10)：安装新签名的 `Updated独播库TV_v7.5.apk`，点击剧集播放立即顺利起播（音频 OMX.google.aac.decoder / MtkACodecPlugin 正常驱动），返回详情页与倒序选集交互全部流畅正常。
-  - 小米盒子 3 (192.168.87.47, Android 5.1)：兼容性分支确保其平滑调用兼容层。
+1. **00:12 探针包待上机**：验证 shim 是否消除 native 段错误；`gS.begin/gS.ok` 信标将给出 gS 签名调用是否成功。
+2. 若 MainActivity 后仍死且无信标：下一嫌疑为 `libandroidx.graphics.path.so`/`libdatastore_shared_counter.so` 之外的其他 native 路径，或需要用 `adb`（若授权能通）抓 tombstone（`/data/tombstones/`）。
+3. 探针正式版需移除（Dbg 类 + 各植入点还原），签名保持同一 debug 证书。
+4. 版本化符号（`@LIBC`）在 6.0+ 链接器上从无 VERDEF 的 shim 解析的行为未验证——本包定位 5.1 盒子专用；6.0+ 设备建议用官方原包。
+5. 上游更新（`tools/update_apks.py` 自动同步 usb-pack）后**整套管线需重跑**。
+6. 冷路径未修（如触发将按信标定位）：`h1`/`vc/b` 文本测量（StaticLayout.Builder/getBreakStrategy，API 23）、gms consent `zzp` 的 getRootWindowInsets、`IconCompat` 系列（API 23 通知图标路径，TV 不走）。
 
-## 10. 上机验证清单（最终版）
+## 9. 上机验证清单（最终版）
 
-1. 设置 → 账号与安全 → 安装未知来源 → 允许；**先卸载旧版独播库**（若签名不同）。
-2. Sony TV 或小米盒子安装：`apks/common/Updated独播库TV_v7.5.apk`。
-3. 打开：过 Splash → 首页海报加载正常。
-4. 详情页选集呈现倒序排布（方便看最新一集），点击播放顺利起播。
+1. 设置 → 账号与安全 → 安装未知来源 → 允许；签名不同时先备份并确认能恢复数据，再决定是否迁移。
+2. U 盘（FAT32）拷入 `usb-pack/01_独播库TV_v7.5.apk`（认准文件时间）→ 高清播放器安装。
+3. 打开：应过 Splash（黑屏 loading）→ 进入主界面首页，海报图加载（coil 链路）。
+4. 播放任意视频 ≥5 分钟（gS 签名 + 播放链路）；搜索、切分类、收藏连续操作 10 分钟。
+5. 异常时记录现象（黑屏/弹窗/秒退/海报不加载/视频打不开）并同步到本文档 §5 追加轮次。
 
+## 10. 跨版本音频兼容记录
+
+`smali/j3/x.smali` 在 Android 6.0 及以上使用 `AudioTrack.Builder`，在 Android 5.1 使用 `DubokuCompat.createAudioTrack`，并守护音频设备回调。历史测试记录显示 Sony Android 10 可进入播放；Android 5.1 分支仍需在目标设备上验证。
+
+### 2026-11-01：局域网同步与详情页刷新
+
+- 补丁目录包含经过验证版本的 `LanSyncManager.java`、`smali_classes3/com/supertws/dubokutv/LanSyncManager*.smali` 和所需的应用入口、播放器、详情页调用点。构建时覆盖整个 `smali*/` 目录及 `AndroidManifest.xml`、`apktool.yml`；仅复制 Java 源码不会将同步功能加入 APK。
+- `qa.p` 的 `f` 是剧名，`b` 是详情地址，`a` 是 ID。`resolveLatestRecord` 以前将详情地址当剧名、ID 当地址，导致详情页重组后仍查询不到记录。现已修正字段映射，不改 Compose 的跳过控制流。补丁目录内 smali 已修复；`fix_detail_record_lookup.py <已解码目录>` 仅用于对包含旧版同步补丁的其他反编译目录应用修复，不能对已修复的目录重复运行。若重新编译 `LanSyncManager.java`，必须使用包含 `qa.p.f` 和 `qa.p.b` 的正确编译存根，并确认生成的 smali 保留该映射。
+- 真机验证：Sony 向 Hisense 的独立测试副本发送测试记录，详情页保持打开时，按钮从第39集 7% 更新到第40集 50%；临时副本和记录已删除。修复版在 Sony 上完成保留数据更新并启动。Hisense 原应用因签名不同未被覆盖，尚未在其原应用上验证。
+- 已知限制：首次启动的同步请求可能早于 Room 建表，导致传入记录写入失败；此问题未随本次详情页修复解决。详情页显示验证使用测试数据，未验证对应真实播放跳转。
+- 签名不同时不要直接卸载原应用：卸载会删除其本地数据。先确认数据可备份和恢复，再决定迁移方式。
+
+- 构建检查：将本目录 smali 和清单覆盖原版反编译目录后，`apktool b` 成功；生成的四个 DEX 与已验证修复版逐字节相同。该检查不涵盖 native 补丁重建或重新签名。
+
+- Hisense 正式安装实测：原版签名不同，按用户要求卸载后安装修复版；原版 APK 与仓库原版校验一致，ADB 数据备份未生成有效文件，原版本地数据已清除。Hisense 播放《早春晴朗》时，Sony 停留详情页由“播放”更新为“继续播放 第1集 1%”；Sony 接续播放后，Hisense 停留详情页从 1% 更新到 2%，并从约 62 秒处继续播放。全新安装首次启动仍出现 `no such table: records`，表创建前收到的同步记录未写入；此项尚未修复。

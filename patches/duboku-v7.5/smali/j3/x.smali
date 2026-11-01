@@ -218,7 +218,7 @@
     move-object p1, v0
 
     .line 31
-    goto/16 :goto_4
+    goto/16 :goto_5
 
     .line 32
     .line 33
@@ -397,22 +397,35 @@
 
     .line 112
     :goto_3
-    # duboku: SDK_INT >= 23 走官方 AudioTrack；SDK_INT < 23 走 DubokuCompat (Android 5.1)
     sget v5, Landroid/os/Build$VERSION;->SDK_INT:I
+
     const/16 v7, 0x17
-    if-ge v5, v7, :cond_duboku_track_builder
+
+    if-ge v5, v7, :cond_4
+
     move-object v1, v4
+
     move v7, v6
+
     iget v2, p1, Lj3/k;->b:I
+
     iget v3, p1, Lj3/k;->c:I
+
     iget v4, p1, Lj3/k;->a:I
+
     iget v5, p1, Lj3/k;->f:I
+
     move v6, v0
+
     invoke-static/range {v1 .. v7}, Lcom/supertws/dubokutv/DubokuCompat;->createAudioTrack(Landroid/media/AudioAttributes;IIIIII)Landroid/media/AudioTrack;
+
     move-result-object v1
+
     const/4 v6, 0x1
-    goto :goto_duboku_track_done
-    :cond_duboku_track_builder
+
+    goto :goto_4
+
+    :cond_4
     new-instance v5, Landroid/media/AudioTrack$Builder;
 
     .line 113
@@ -474,7 +487,7 @@
 
     .line 142
     .line 143
-    if-lt v2, v4, :cond_4
+    if-lt v2, v4, :cond_5
 
     .line 144
     .line 145
@@ -487,12 +500,12 @@
     .line 148
     .line 149
     .line 150
-    :cond_4
-    if-lt v2, v3, :cond_5
+    :cond_5
+    if-lt v2, v3, :cond_6
 
     .line 151
     .line 152
-    if-eqz v1, :cond_5
+    if-eqz v1, :cond_6
 
     .line 153
     .line 154
@@ -501,19 +514,19 @@
     .line 155
     .line 156
     .line 157
-    :cond_5
+    :cond_6
     invoke-virtual {v0}, Landroid/media/AudioTrack$Builder;->build()Landroid/media/AudioTrack;
 
     .line 158
     .line 159
     .line 160
     move-result-object v1
-    :goto_duboku_track_done
     :try_end_1
     .catch Ljava/lang/UnsupportedOperationException; {:try_start_1 .. :try_end_1} :catch_1
     .catch Ljava/lang/IllegalArgumentException; {:try_start_1 .. :try_end_1} :catch_0
 
     .line 161
+    :goto_4
     invoke-virtual {v1}, Landroid/media/AudioTrack;->getState()I
 
     .line 162
@@ -522,7 +535,7 @@
     move-result v0
 
     .line 165
-    if-ne v0, v6, :cond_6
+    if-ne v0, v6, :cond_7
 
     .line 166
     .line 167
@@ -553,7 +566,7 @@
     return-object v0
 
     .line 180
-    :cond_6
+    :cond_7
     :try_start_2
     invoke-virtual {v1}, Landroid/media/AudioTrack;->release()V
     :try_end_2
@@ -575,7 +588,7 @@
     throw p1
 
     .line 189
-    :goto_4
+    :goto_5
     new-instance v0, Landroidx/media3/exoplayer/audio/AudioOutputProvider$InitializationException;
 
     .line 190
@@ -1664,7 +1677,7 @@
 
     .line 9
     .line 10
-    if-eqz v0, :cond_4
+    if-eqz v0, :cond_5
 
     .line 11
     .line 12
@@ -1702,14 +1715,15 @@
     iget-object v4, v0, Lj3/e;->d:Lj3/c;
 
     .line 27
-    if-eqz v4, :cond_duboku_skipunreg
+    if-eqz v4, :cond_2
+
     .line 28
     invoke-virtual {v3, v4}, Landroid/media/AudioManager;->unregisterAudioDeviceCallback(Landroid/media/AudioDeviceCallback;)V
-    :cond_duboku_skipunreg
 
     .line 29
     .line 30
     .line 31
+    :cond_2
     sget v3, Landroid/os/Build$VERSION;->SDK_INT:I
 
     .line 32
@@ -1718,7 +1732,7 @@
 
     .line 34
     .line 35
-    if-lt v3, v4, :cond_2
+    if-lt v3, v4, :cond_3
 
     .line 36
     .line 37
@@ -1726,7 +1740,7 @@
 
     .line 38
     .line 39
-    if-eqz v3, :cond_2
+    if-eqz v3, :cond_3
 
     .line 40
     .line 41
@@ -1739,7 +1753,7 @@
 
     .line 45
     .line 46
-    :cond_2
+    :cond_3
     iget-object v2, v0, Lj3/e;->e:Landroidx/appcompat/app/b0;
 
     .line 47
@@ -1753,7 +1767,7 @@
 
     .line 52
     .line 53
-    if-eqz v1, :cond_3
+    if-eqz v1, :cond_4
 
     .line 54
     .line 55
@@ -1766,7 +1780,7 @@
     .line 58
     .line 59
     .line 60
-    :cond_3
+    :cond_4
     const/4 v1, 0x0
 
     .line 61
@@ -1774,7 +1788,7 @@
 
     .line 62
     .line 63
-    :cond_4
+    :cond_5
     :goto_0
     return-void
 .end method
@@ -1807,7 +1821,7 @@
 
     .line 12
     .line 13
-    if-nez v1, :cond_3
+    if-nez v1, :cond_4
 
     .line 14
     .line 15
@@ -1815,7 +1829,7 @@
 
     .line 16
     .line 17
-    if-eqz v4, :cond_3
+    if-eqz v4, :cond_4
 
     .line 18
     .line 19
@@ -1915,17 +1929,17 @@
     .line 65
     .line 66
     iget-object v5, v1, Lj3/e;->c:Landroid/os/Handler;
-    if-eqz v4, :cond_duboku_skipreg
+
+    if-eqz v4, :cond_2
 
     .line 67
     .line 68
     invoke-virtual {v0, v4, v5}, Landroid/media/AudioManager;->registerAudioDeviceCallback(Landroid/media/AudioDeviceCallback;Landroid/os/Handler;)V
 
-    :cond_duboku_skipreg
-
     .line 69
     .line 70
     .line 71
+    :cond_2
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
     .line 72
@@ -1934,7 +1948,7 @@
 
     .line 74
     .line 75
-    if-lt v0, v4, :cond_2
+    if-lt v0, v4, :cond_3
 
     .line 76
     .line 77
@@ -1942,7 +1956,7 @@
 
     .line 78
     .line 79
-    if-nez v0, :cond_2
+    if-nez v0, :cond_3
 
     .line 80
     .line 81
@@ -1988,7 +2002,7 @@
 
     .line 102
     .line 103
-    :cond_2
+    :cond_3
     new-instance v0, Landroid/content/IntentFilter;
 
     .line 104
@@ -2046,12 +2060,12 @@
     goto :goto_2
 
     .line 131
-    :cond_3
-    if-eqz v1, :cond_7
+    :cond_4
+    if-eqz v1, :cond_8
 
     .line 132
     .line 133
-    if-eqz v0, :cond_5
+    if-eqz v0, :cond_6
 
     .line 134
     .line 135
@@ -2067,14 +2081,14 @@
     move-result v4
 
     .line 141
-    if-eqz v4, :cond_4
+    if-eqz v4, :cond_5
 
     .line 142
     .line 143
     goto :goto_1
 
     .line 144
-    :cond_4
+    :cond_5
     iput-object v0, v1, Lj3/e;->i:Landroid/media/AudioDeviceInfo;
 
     .line 145
@@ -2129,7 +2143,7 @@
     .line 170
     .line 171
     .line 172
-    :cond_5
+    :cond_6
     :goto_1
     iget-object v0, p0, Lj3/x;->i:Lj3/e;
 
@@ -2147,14 +2161,14 @@
     move-result v1
 
     .line 180
-    if-eqz v1, :cond_6
+    if-eqz v1, :cond_7
 
     .line 181
     .line 182
     goto :goto_2
 
     .line 183
-    :cond_6
+    :cond_7
     iput-object p1, v0, Lj3/e;->j:Landroidx/media3/common/g;
 
     .line 184
@@ -2209,7 +2223,7 @@
     .line 209
     .line 210
     .line 211
-    :cond_7
+    :cond_8
     :goto_2
     iget-object p1, p0, Lj3/x;->h:Lj3/b;
 

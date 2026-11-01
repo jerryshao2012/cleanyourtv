@@ -7268,12 +7268,12 @@
 
     const/16 v1, 0x17
 
-    if-ge v0, v1, :cond_sdk23
+    if-ge v0, v1, :cond_0
 
     return-void
 
-    :cond_sdk23
     .line 1
+    :cond_0
     invoke-virtual {p0}, Lj3/f0;->n()Z
 
     .line 2
@@ -7282,7 +7282,7 @@
     move-result v0
 
     .line 5
-    if-eqz v0, :cond_0
+    if-eqz v0, :cond_1
 
     .line 6
     .line 7
@@ -7524,7 +7524,7 @@
 
     .line 125
     .line 126
-    :cond_0
+    :cond_1
     return-void
 .end method
 
