@@ -247,7 +247,7 @@
     .line 104
     .line 105
     .line 106
-    const v2, 0x3f4ccccd
+    const v2, 0x3f4ccccd    # 0.8f
 
     .line 107
     .line 108
@@ -286,7 +286,7 @@
     .line 124
     .line 125
     .line 126
-    const v2, 0x3f19999a
+    const v2, 0x3f19999a    # 0.6f
 
     .line 127
     .line 128
@@ -325,7 +325,7 @@
     .line 144
     .line 145
     .line 146
-    const v2, 0x3f19999a
+    const v2, 0x3f19999a    # 0.6f
 
     .line 147
     .line 148

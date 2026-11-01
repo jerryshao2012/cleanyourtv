@@ -121,7 +121,7 @@
 
     add-int/lit8 v0, v0, -0x17
 
-    if-ltz v0, :cond_duboku_legacy
+    if-ltz v0, :cond_9
 
     const/4 v0, 0x0
 
@@ -256,17 +256,15 @@
     :cond_8
     invoke-virtual {p0}, Landroid/text/StaticLayout$Builder;->build()Landroid/text/StaticLayout;
 
-
     .line 117
     .line 118
     .line 119
     move-result-object p0
 
-
     .line 120
     return-object p0
 
-    :cond_duboku_legacy
+    :cond_9
     invoke-static {p0, p3, p1, p2, p5}, Lcom/supertws/dubokutv/DubokuLegacyLayout;->make(Ljava/lang/CharSequence;ILandroid/text/TextPaint;ILandroid/text/Layout$Alignment;)Landroid/text/StaticLayout;
 
     move-result-object p0

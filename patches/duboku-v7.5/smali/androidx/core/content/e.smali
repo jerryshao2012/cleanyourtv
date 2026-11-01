@@ -249,7 +249,7 @@
 
     const/16 v1, 0x17
 
-    if-lt v0, v1, :cond_duboku_api22
+    if-lt v0, v1, :cond_0
 
     .line 1
     invoke-virtual {p0, p1}, Landroid/content/Context;->getColor(I)I
@@ -262,7 +262,7 @@
     .line 5
     return p0
 
-    :cond_duboku_api22
+    :cond_0
     invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0
@@ -589,7 +589,7 @@
 
     const/16 v6, 0x17
 
-    if-lt v5, v6, :cond_duboku_api22
+    if-lt v5, v6, :cond_8
 
     invoke-virtual {v0, p1, p0}, Landroid/content/res/Resources;->getColorStateList(ILandroid/content/res/Resources$Theme;)Landroid/content/res/ColorStateList;
 
@@ -600,7 +600,7 @@
 
     goto :goto_3
 
-    :cond_duboku_api22
+    :cond_8
     invoke-virtual {v0, p1}, Landroid/content/res/Resources;->getColorStateList(I)Landroid/content/res/ColorStateList;
 
     move-result-object v4
@@ -940,7 +940,7 @@
 
     const/16 v1, 0x17
 
-    if-lt v0, v1, :cond_duboku_api22
+    if-lt v0, v1, :cond_0
 
     .line 1
     invoke-virtual {p0, p1}, Landroid/content/Context;->getDrawable(I)Landroid/graphics/drawable/Drawable;
@@ -953,7 +953,7 @@
     .line 5
     return-object p0
 
-    :cond_duboku_api22
+    :cond_0
     invoke-virtual {p0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
 
     move-result-object v0

@@ -323,6 +323,7 @@
     .line 131
     :try_start_4
     const-string v1, "activity"
+
     invoke-virtual {v0, v1}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
 
     .line 132
@@ -397,6 +398,7 @@
     .line 167
     :try_start_5
     const-string v1, "activity"
+
     invoke-virtual {v0, v1}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
 
     .line 168

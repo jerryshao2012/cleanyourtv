@@ -99,7 +99,7 @@
     .line 28
     :cond_1
     :goto_0
-    :try_start_compose
+    :try_start_0
     iget-boolean p2, p0, Lcom/supertws/dubokutv/s;->b:Z
 
     .line 29
@@ -112,26 +112,26 @@
     .line 32
     .line 33
     invoke-static {v1, p2, p1, v0}, Lcom/supertws/dubokutv/d0;->a(Lcom/supertws/dubokutv/MainActivity;ZLandroidx/compose/runtime/k;I)V
-    :try_end_compose
-    .catch Ljava/lang/Throwable; {:try_start_compose .. :try_end_compose} :catch_compose
+    :try_end_0
+    .catch Ljava/lang/Throwable; {:try_start_0 .. :try_end_0} :catch_0
 
     goto :goto_1
 
-    :catch_compose
+    :catch_0
     move-exception v2
 
-    :try_start_cexp
+    :try_start_1
     invoke-virtual {v2}, Ljava/lang/Throwable;->toString()Ljava/lang/String;
 
     move-result-object v2
 
     invoke-static {v2}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
-    :try_end_cexp
-    .catch Ljava/lang/Throwable; {:try_start_cexp .. :try_end_cexp} :catch_cexp2
+    :try_end_1
+    .catch Ljava/lang/Throwable; {:try_start_1 .. :try_end_1} :catch_1
 
     goto :goto_1
 
-    :catch_cexp2
+    :catch_1
     move-exception v2
 
     .line 34
