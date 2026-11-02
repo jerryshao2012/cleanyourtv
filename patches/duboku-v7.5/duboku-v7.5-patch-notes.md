@@ -347,3 +347,11 @@ $BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
 - 构建检查：将本目录 smali 和清单覆盖原版反编译目录后，`apktool b` 成功；生成的四个 DEX 与已验证修复版逐字节相同。该检查不涵盖 native 补丁重建或重新签名。
 
 - Hisense 正式安装实测：原版签名不同，按用户要求卸载后安装修复版；原版 APK 与仓库原版校验一致，ADB 数据备份未生成有效文件，原版本地数据已清除。Hisense 播放《早春晴朗》时，Sony 停留详情页由“播放”更新为“继续播放 第1集 1%”；Sony 接续播放后，Hisense 停留详情页从 1% 更新到 2%，并从约 62 秒处继续播放。全新安装首次启动仍出现 `no such table: records`，表创建前收到的同步记录未写入；此项尚未修复。
+
+### 播放页跨电视续播（2026-11-01）
+
+暂停端只缓存另一台发送的进度，画面和播放焦点保持不变。按播放键时，同集且远端领先超过 5 秒才定位；较新集数从当前剧集列表查找 ID，加载媒体源后定位并播放。候选进度按发送时间去重；无法匹配剧名或集数时继续本机位置。播放器当前位置使用 `h0.M()`，`R()` 是时长。
+
+Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 OK 接续；跨集从第5集暂停切换到第6集约 22 秒。测试版回归确认版本流继续递增。首次启动同步早于数据库建表的问题仍未解决。
+
+测试进度选择：`javac -d /tmp/handoff-test HandoffProgress.java tests/HandoffProgressTest.java && java -ea -cp /tmp/handoff-test com.supertws.dubokutv.HandoffProgressTest`。

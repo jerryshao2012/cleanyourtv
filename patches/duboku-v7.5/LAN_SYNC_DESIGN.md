@@ -80,10 +80,13 @@ flowchart TD
 
 | 文件路径 | 修改目的与注入行为 |
 | :--- | :--- |
-| `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、冲突算法、Room Tracker 反射通知 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、冲突算法、Room Tracker 反射通知、`checkSyncOnPlay` / `applyPendingHandoff` 播放页接续 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$1.smali` | UDP Receiver 独立后台线程，包含启动阶段的历史自动清理 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$3.smali` | 响应全网同步的广播线程，包含防止扩散的过滤条件 |
+| `smali_classes3/com/supertws/dubokutv/HandoffProgress.smali` | 播放页进度暂存队列（去重与优选算法） |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/v.smali` | 详情页 Compose 组件：订阅版本流、劫持 `resolveLatestRecord` 与按钮文字重组 |
+| `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/l0.smali` | 播放器恢复/按播放键入口：调用 `checkSyncOnPlay` 触发无缝接续（同集 Seek / 异集切集） |
+| `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/p0.smali` | 播放器准备媒体源后：调用 `applyPendingHandoff` 定位异集目标播放进度 |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/p1.smali` | 播放器退出/后台时触发局域网广播广播当前进度 |
 | `smali_classes3/com/supertws/dubokutv/e.smali` | 拦截 `RecordDatabase` 构造并在 `LanSyncManager.sRoomDb` 暂存实例句柄 |
 | `smali_classes3/com/supertws/dubokutv/DubokuTvApplication.smali` | Application 启动入口调用 `LanSyncManager.onAppCreate(Context)` |
@@ -91,10 +94,23 @@ flowchart TD
 
 ---
 
-## 5. 跨设备验证表现 (Verification Results)
+## 5. 播放界面跨设备接续原理 (In-Player Handoff Mechanics)
 
-- **环境**：Sony Bravia 4K (Android 10) 与 海信 / 小米盒子 (Android 5.1)。
+当用户正在播放界面（已暂停状态或观看中）收到对端 TV 广播的新进度时：
+1. **静默暂存而不干扰当前焦点**：`LanSyncManager` 接收到广播后，通过 `HandoffProgress` 缓冲该记录，不打断当前的画面、字幕和遥控焦点；
+2. **按键恢复时智能裁决**：
+   - 用户按遥控器 OK / 播放键时，`l0.smali` 调用 `LanSyncManager.checkSyncOnPlay`；
+   - **同集续播**：若对端进度领先当前位置超过 5 秒，调用 `ExoPlayer.s(5, pos)` 快速 Seek 并提示 `"已同步到 XX秒"`；
+   - **跨集切集**：若对端观看集数更新，查找当前剧目列表中的对应集数 ID，触发 `refreshCallback` 切集；在媒体源加载完成 (`p0.smali`) 后自动调用 `applyPendingHandoff` 定位至对端断点进度，完成无感知接续播放。
+
+---
+
+## 6. 跨设备验证表现 (Verification Results)
+
+- **环境**：Sony Bravia 4K (Android 10) 与 海信 (Hisense TV, Android 11) / 小米盒子 (Android 5.1)。
 - **测试结果**：
-  1. 停留在剧集详情页（"继续播放" 按钮处于视野中），远端设备播放更高级数或向前跳跃进度时，**停顿屏幕在 1~2 秒内静默刷新为最新集数及百分比**，无需退出重进。
-  2. 点击刷新后的“继续播放”按钮，播放器准确跳转至对应最新集数与对应断点播放秒数。
+  1. **详情页实时响应**：停留在剧集详情页（"继续播放" 按钮处于视野中），远端设备播放更高级数或向前跳跃进度时，停顿屏幕在 1~2 秒内静默刷新为最新集数及百分比，无需退出重进。
+  2. **播放中无缝接续 (In-Player Handoff)**：
+     - 在播放界面暂停时收到另一台 TV 的新进度，按播放键即可直接从新进度继续播放；
+     - 跨集时（如第 5 集暂停，另一台看到第 6 集），按播放键自动完成切集并在新集就绪后跳转至对应断点进度。
   3. 各 TV 上的历史“测试同步剧”已被全自动静默消除。

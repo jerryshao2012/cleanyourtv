@@ -1793,6 +1793,8 @@
     .line 202
     invoke-virtual {v6, v3}, Landroidx/media3/exoplayer/h0;->i0(Landroidx/media3/exoplayer/source/a;)V
 
+    invoke-static {v6}, Lcom/supertws/dubokutv/LanSyncManager;->applyPendingHandoff(Ljava/lang/Object;)V
+
     .line 203
     invoke-virtual {v6}, Landroidx/media3/exoplayer/h0;->d0()V
 
@@ -2282,7 +2284,6 @@
     move-object/from16 v5, p4
 
     move-object/from16 v7, p8
-
 
     invoke-direct/range {v2 .. v16}, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/j0;-><init>(Landroidx/media3/exoplayer/ExoPlayer;Landroid/app/Activity;Lcom/supertws/dubokutv/data/models/PlayModeSelection;Lqa/f0;Lrb/k;Lcom/supertws/dubokutv/presentation/screens/videoPlayer/v1;Landroidx/compose/runtime/b1;Landroidx/compose/runtime/b1;Landroidx/compose/runtime/b1;Landroidx/compose/runtime/b1;Landroidx/compose/runtime/z0;Landroidx/compose/runtime/b1;ILandroidx/compose/runtime/b1;)V
 

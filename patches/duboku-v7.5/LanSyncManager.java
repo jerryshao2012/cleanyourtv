@@ -31,6 +31,9 @@ public class LanSyncManager {
     private static final String sCurrentDeviceId = Build.MODEL + "_" + (Build.SERIAL != null ? Build.SERIAL : "tv");
     private static final Pattern EP_PATTERN = Pattern.compile("(\\d+)");
     
+    private static final HandoffProgress sHandoff = new HandoffProgress();
+    private static HandoffProgress.Record sPendingHandoff;
+    private static String sPendingHandoffName;
     private static volatile String sLastSentName = null;
     private static volatile String sLastSentEpisode = null;
     private static volatile long sLastSentProgressMs = -1;
@@ -200,6 +203,7 @@ public class LanSyncManager {
                         cv.put("detailPageUrl", detailPageUrl);
                         cv.put("posterUrl", posterUrl);
                         db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                        sHandoff.offer(name, episode, progressInMillis, videoPageUrl, remoteModifiedAt);
                         bumpSyncVersion();
                         Log.i(TAG, "Synced newer remote progress for: " + name + " " + episode + " @" + (progressInMillis/1000) + "s from " + fromDevice);
                     } catch (Exception e) {
@@ -381,81 +385,55 @@ public class LanSyncManager {
         } catch (Throwable ignored) {}
     }
 
-    public static void checkSyncOnPlay(Object playerObj) {
+    public static boolean checkSyncOnPlay(Object playerObj) {
         try {
-            Log.i(TAG, "checkSyncOnPlay called, sInstance=" + (sInstance != null) + ", sActiveVideoAddress=" + (sActiveVideoAddress != null));
-            if (playerObj != null) sActiveExoPlayer = playerObj;
-            if (sInstance == null || sActiveVideoAddress == null) return;
-            qa.f0 curVa = (qa.f0) sActiveVideoAddress;
-            String dramaName = curVa.b;
-            String curEpisode = curVa.c;
-
-            SQLiteDatabase db = sInstance.mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
-            if (db == null) return;
-
-            Cursor c = db.rawQuery("SELECT episode, progressInMillis, videoPageUrl, modifiedAt FROM records WHERE name = ? ORDER BY modifiedAt DESC LIMIT 1",
-                    new String[]{dramaName});
-            String latestEp = null;
-            long latestProg = 0;
-            String latestVideoUrl = null;
-            long latestMod = 0;
-            if (c != null) {
-                if (c.moveToFirst()) {
-                    latestEp = c.getString(0);
-                    latestProg = c.getLong(1);
-                    latestVideoUrl = c.getString(2);
-                    latestMod = c.getLong(3);
-                }
-                c.close();
+            if (playerObj == null || sActiveVideoAddress == null) return false;
+            qa.f0 current = (qa.f0) sActiveVideoAddress;
+            androidx.media3.exoplayer.h0 player = (androidx.media3.exoplayer.h0) playerObj;
+            HandoffProgress.Record remote = sHandoff.select(current.b, current.c, player.M());
+            if (remote == null) return false;
+            if (remote.episode.equals(current.c)) {
+                player.s(5, remote.position);
+                showToast("已同步到 " + (remote.position / 1000) + "秒");
+                return false;
             }
-            db.close();
-
-            if (latestEp == null) return;
-
-            androidx.compose.foundation.layout.s0 player = (androidx.compose.foundation.layout.s0) (playerObj != null ? playerObj : sActiveExoPlayer);
-
-            // Case 1: Same episode
-            if (latestEp.equals(curEpisode)) {
-                long currentPos = 0;
-                try {
-                    currentPos = ((androidx.media3.exoplayer.h0) player).R();
-                } catch (Throwable ignored) {}
-
-                if (Math.abs(latestProg - currentPos) > 5000) {
-                    Log.i(TAG, "checkSyncOnPlay: seeking same episode " + curEpisode + " from " + (currentPos/1000) + "s to " + (latestProg/1000) + "s");
-                    if (player != null) {
-                        player.s(5, latestProg);
-                    }
-                    showToast("已同步到 " + (latestProg / 1000) + "秒");
-                }
-                return;
-            }
-
-            // Case 2: Different episode! Jump to the latest synced episode
-            Log.i(TAG, "checkSyncOnPlay: newer episode detected! Current=" + curEpisode + ", Synced=" + latestEp);
-
-            String targetVideoPageUrl = latestVideoUrl;
-            if (targetVideoPageUrl == null || targetVideoPageUrl.isEmpty()) {
-                List episodes = curVa.n;
-                if (episodes != null) {
-                    for (Object epObj : episodes) {
-                        qa.s ep = (qa.s) epObj;
-                        if (latestEp.equals(ep.b)) {
-                            targetVideoPageUrl = ep.c;
-                            break;
-                        }
-                    }
+            String episodeId = null;
+            List episodes = current.n;
+            if (episodes != null) {
+                for (Object item : episodes) {
+                    qa.s ep = (qa.s) item;
+                    if (remote.episode.equals(ep.b)) { episodeId = ep.a; break; }
                 }
             }
-
-            if (sActiveRefreshCallback != null && targetVideoPageUrl != null && !targetVideoPageUrl.isEmpty()) {
-                Log.i(TAG, "checkSyncOnPlay: invoking refreshCallback with " + targetVideoPageUrl);
-                rb.k callback = (rb.k) sActiveRefreshCallback;
-                callback.invoke(targetVideoPageUrl);
-                showToast("已自动同步跳转至 " + latestEp);
+            if (sActiveRefreshCallback == null || episodeId == null || episodeId.isEmpty()) return false;
+            sPendingHandoff = remote;
+            sPendingHandoffName = current.b;
+            try {
+                ((rb.k) sActiveRefreshCallback).invoke(episodeId);
+            } catch (Throwable t) {
+                sPendingHandoff = null;
+                sPendingHandoffName = null;
+                throw t;
             }
+            return true;
         } catch (Throwable t) {
             Log.w(TAG, "checkSyncOnPlay error: " + t.getMessage(), t);
+            return false;
+        }
+    }
+
+    public static void applyPendingHandoff(Object playerObj) {
+        try {
+            HandoffProgress.Record pending = sPendingHandoff;
+            if (pending == null || sActiveVideoAddress == null) return;
+            qa.f0 current = (qa.f0) sActiveVideoAddress;
+            if (!pending.episode.equals(current.c) || !sPendingHandoffName.equals(current.b)) return;
+            ((androidx.compose.foundation.layout.s0) playerObj).s(5, pending.position);
+            sPendingHandoff = null;
+            sPendingHandoffName = null;
+            showToast("已同步到 " + pending.episode + " " + (pending.position / 1000) + "秒");
+        } catch (Throwable t) {
+            Log.w(TAG, "applyPendingHandoff error: " + t.getMessage(), t);
         }
     }
 
