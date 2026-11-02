@@ -193,7 +193,11 @@
 
     .line 65
     :cond_1
-    invoke-static {p1}, Lcom/supertws/dubokutv/LanSyncManager;->checkSyncOnPlay(Ljava/lang/Object;)V
+    invoke-static {p1}, Lcom/supertws/dubokutv/LanSyncManager;->checkSyncOnPlay(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-nez v0, :cond_2
 
     invoke-virtual {p1}, Landroidx/compose/foundation/layout/s0;->o()V
 
@@ -447,6 +451,8 @@
     .line 181
     .line 182
     return-object p1
+
+    nop
 
     .line 183
     :pswitch_data_0

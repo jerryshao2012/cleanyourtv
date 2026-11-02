@@ -30,7 +30,7 @@
         }
     .end annotation
 
-    .line 320
+    .line 324
     iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$5;->val$recordObj:Ljava/lang/Object;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -43,7 +43,7 @@
 .method public run()V
     .locals 11
 
-    .line 324
+    .line 328
     const-string v0, "LanSyncManager"
 
     :try_start_0
@@ -51,19 +51,19 @@
 
     check-cast v1, Lpa/c;
 
-    .line 325
+    .line 329
     iget-object v2, v1, Lpa/c;->b:Ljava/lang/String;
 
-    .line 326
+    .line 330
     iget-object v3, v1, Lpa/c;->c:Ljava/lang/String;
 
-    .line 327
+    .line 331
     iget-wide v4, v1, Lpa/c;->d:J
 
-    .line 330
+    .line 334
     if-eqz v2, :cond_0
 
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$500()Ljava/lang/String;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$600()Ljava/lang/String;
 
     move-result-object v6
 
@@ -75,8 +75,8 @@
 
     if-eqz v3, :cond_0
 
-    .line 331
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$600()Ljava/lang/String;
+    .line 335
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$700()Ljava/lang/String;
 
     move-result-object v6
 
@@ -86,8 +86,8 @@
 
     if-eqz v6, :cond_0
 
-    .line 332
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$700()J
+    .line 336
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$800()J
 
     move-result-wide v6
 
@@ -103,25 +103,25 @@
 
     if-gez v10, :cond_0
 
-    .line 333
+    .line 337
     return-void
 
-    .line 335
-    :cond_0
-    invoke-static {v2}, Lcom/supertws/dubokutv/LanSyncManager;->access$502(Ljava/lang/String;)Ljava/lang/String;
-
-    .line 336
-    invoke-static {v3}, Lcom/supertws/dubokutv/LanSyncManager;->access$602(Ljava/lang/String;)Ljava/lang/String;
-
-    .line 337
-    invoke-static {v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$702(J)J
-
     .line 339
+    :cond_0
+    invoke-static {v2}, Lcom/supertws/dubokutv/LanSyncManager;->access$602(Ljava/lang/String;)Ljava/lang/String;
+
+    .line 340
+    invoke-static {v3}, Lcom/supertws/dubokutv/LanSyncManager;->access$702(Ljava/lang/String;)Ljava/lang/String;
+
+    .line 341
+    invoke-static {v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$802(J)J
+
+    .line 343
     new-instance v6, Lorg/json/JSONObject;
 
     invoke-direct {v6}, Lorg/json/JSONObject;-><init>()V
 
-    .line 340
+    .line 344
     const-string v7, "from"
 
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$000()Ljava/lang/String;
@@ -130,42 +130,42 @@
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 341
+    .line 345
     const-string v7, "id"
 
     iget-object v8, v1, Lpa/c;->a:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 342
+    .line 346
     const-string v7, "name"
 
     iget-object v8, v1, Lpa/c;->b:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 343
+    .line 347
     const-string v7, "episode"
 
     iget-object v8, v1, Lpa/c;->c:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 344
+    .line 348
     const-string v7, "progressInMillis"
 
     iget-wide v8, v1, Lpa/c;->d:J
 
     invoke-virtual {v6, v7, v8, v9}, Lorg/json/JSONObject;->put(Ljava/lang/String;J)Lorg/json/JSONObject;
 
-    .line 345
+    .line 349
     const-string v7, "durationInMillis"
 
     iget-wide v8, v1, Lpa/c;->e:J
 
     invoke-virtual {v6, v7, v8, v9}, Lorg/json/JSONObject;->put(Ljava/lang/String;J)Lorg/json/JSONObject;
 
-    .line 346
+    .line 350
     const-string v7, "modifiedAt"
 
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
@@ -174,37 +174,37 @@
 
     invoke-virtual {v6, v7, v8, v9}, Lorg/json/JSONObject;->put(Ljava/lang/String;J)Lorg/json/JSONObject;
 
-    .line 347
+    .line 351
     const-string v7, "videoPageUrl"
 
     iget-object v8, v1, Lpa/c;->h:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 348
+    .line 352
     const-string v7, "detailPageUrl"
 
     iget-object v8, v1, Lpa/c;->i:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v8}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 349
+    .line 353
     const-string v7, "posterUrl"
 
     iget-object v1, v1, Lpa/c;->j:Ljava/lang/String;
 
     invoke-virtual {v6, v7, v1}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 351
+    .line 355
     invoke-virtual {v6}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
 
     move-result-object v1
 
     const/4 v6, 0x0
 
-    invoke-static {v1, v6}, Lcom/supertws/dubokutv/LanSyncManager;->access$400(Ljava/lang/String;Ljava/lang/String;)V
+    invoke-static {v1, v6}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 352
+    .line 356
     new-instance v1, Ljava/lang/StringBuilder;
 
     invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
@@ -257,14 +257,14 @@
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 355
+    .line 359
     goto :goto_0
 
-    .line 353
+    .line 357
     :catch_0
     move-exception v1
 
-    .line 354
+    .line 358
     new-instance v2, Ljava/lang/StringBuilder;
 
     invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
@@ -289,7 +289,7 @@
 
     invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 356
+    .line 360
     :goto_0
     return-void
 .end method

@@ -30,7 +30,7 @@
         }
     .end annotation
 
-    .line 543
+    .line 521
     iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$6;->val$msg:Ljava/lang/String;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -43,7 +43,7 @@
 .method public run()V
     .locals 3
 
-    .line 547
+    .line 525
     :try_start_0
     sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveActivity:Landroid/app/Activity;
 
@@ -61,13 +61,13 @@
 
     goto :goto_0
 
-    .line 548
+    .line 526
     :catchall_0
     move-exception v0
 
     :goto_0
     nop
 
-    .line 549
+    .line 527
     return-void
 .end method
