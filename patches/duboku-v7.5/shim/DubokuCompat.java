@@ -82,6 +82,13 @@ public final class DubokuCompat {
         return track.write(buffer, sizeInBytes, writeMode);
     }
 
+    public static String fixImageUrl(String url) {
+        if (Build.VERSION.SDK_INT < 26 && url != null && url.startsWith("https://pic.dbokutv.com")) {
+            return "http://" + url.substring(8);
+        }
+        return url;
+    }
+
     public static void enableTls12(SSLSocket socket) {
         if (Build.VERSION.SDK_INT < 26) {
             try {
