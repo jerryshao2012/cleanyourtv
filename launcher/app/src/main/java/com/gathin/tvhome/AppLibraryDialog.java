@@ -189,13 +189,15 @@ final class AppLibraryDialog {
 
     private void reveal() {
         popup.showAtLocation(activity.getWindow().getDecorView(), Gravity.CENTER, 0, 0);
-        View container = panel.getRootView();
-        if (container.getLayoutParams() instanceof WindowManager.LayoutParams) {
-            WindowManager.LayoutParams params = (WindowManager.LayoutParams) container.getLayoutParams();
-            params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
-            params.dimAmount = 0.55f;
-            activity.getWindowManager().updateViewLayout(container, params);
-        }
+        try {
+            View container = panel.getRootView();
+            if (container.getLayoutParams() instanceof WindowManager.LayoutParams) {
+                WindowManager.LayoutParams params = (WindowManager.LayoutParams) container.getLayoutParams();
+                params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+                params.dimAmount = 0.55f;
+                activity.getWindowManager().updateViewLayout(container, params);
+            }
+        } catch (Throwable ignored) {}
         panel.setAlpha(0f);
         panel.animate().alpha(1f).setDuration(reducedMotion ? Motion.REDUCED_MS : 180).start();
     }
@@ -315,7 +317,7 @@ final class AppLibraryDialog {
             main.post(() -> {
                 iconsLoading.remove(pkg);
                 if (closed) return;
-                Drawable shown = result != null ? result : activity.getDrawable(R.drawable.ic_apps);
+                Drawable shown = result != null ? result : androidx.core.content.ContextCompat.getDrawable(activity, R.drawable.ic_apps);
                 icons.put(pkg, shown);
                 // The view may show another app by now; a view bound to it later takes it from the cache.
                 if (pkg.equals(icon.getTag())) icon.setImageDrawable(shown);
@@ -600,7 +602,8 @@ final class AppLibraryDialog {
             name.setEllipsize(TextUtils.TruncateAt.END);
             TextView status = holder.itemView.findViewById(R.id.status);
             boolean home = onHome.test(pkg);
-            boolean recent = LibraryApps.recent(installTimes.getOrDefault(pkg, 0L), catalogTime);
+            Long installTime = installTimes.get(pkg);
+            boolean recent = LibraryApps.recent(installTime != null ? installTime : 0L, catalogTime);
             status.setText(home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
             status.setVisibility(View.VISIBLE);
             holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
