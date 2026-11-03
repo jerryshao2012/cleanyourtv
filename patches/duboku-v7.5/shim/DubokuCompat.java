@@ -3,8 +3,12 @@ package com.supertws.dubokutv;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import javax.net.ssl.SSLSocket;
 
-/** API 23 资源方法兼容层：调用方保持直线字节码（规避 ART 5.1 校验器对分支补丁的拒绝）。 */
+/** API 23 资源及网络兼容层：调用方保持直线字节码（规避 ART 5.1 校验器对分支补丁的拒绝）。 */
 public final class DubokuCompat {
 
     public static Drawable getDrawable(Resources res, int id, Resources.Theme theme) {
@@ -69,6 +73,45 @@ public final class DubokuCompat {
         }
         return new android.media.AudioTrack(streamType, sampleRate, channelConfig,
                 encoding, bufferSizeInBytes, transferMode, sessionId);
+    }
+
+    public static int writeAudioTrack(android.media.AudioTrack track, java.nio.ByteBuffer buffer, int sizeInBytes, int writeMode) {
+        if (Build.VERSION.SDK_INT < 23) {
+            writeMode = 0;
+        }
+        return track.write(buffer, sizeInBytes, writeMode);
+    }
+
+    public static void enableTls12(SSLSocket socket) {
+        if (Build.VERSION.SDK_INT < 26) {
+            try {
+                String[] supported = socket.getSupportedProtocols();
+                if (supported != null) {
+                    boolean hasTls12 = false;
+                    for (String p : supported) {
+                        if ("TLSv1.2".equals(p)) {
+                            hasTls12 = true;
+                            break;
+                        }
+                    }
+                    if (hasTls12) {
+                        String[] enabled = socket.getEnabledProtocols();
+                        List<String> list = new ArrayList<String>();
+                        if (enabled != null) {
+                            list.addAll(Arrays.asList(enabled));
+                        }
+                        if (!list.contains("TLSv1.2")) {
+                            list.add("TLSv1.2");
+                        }
+                        if (!list.contains("TLSv1.1")) {
+                            list.add("TLSv1.1");
+                        }
+                        socket.setEnabledProtocols(list.toArray(new String[0]));
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private DubokuCompat() {
