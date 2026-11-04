@@ -13221,6 +13221,8 @@
     move-result-object v9
 
     .line 308
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
+
     sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sSyncVersionFlow:Lkotlinx/coroutines/flow/r2;
 
     invoke-static {v1, v7}, Landroidx/lifecycle/compose/b;->c(Lkotlinx/coroutines/flow/q2;Landroidx/compose/runtime/k;)Landroidx/compose/runtime/b1;

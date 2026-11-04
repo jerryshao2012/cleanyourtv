@@ -374,3 +374,28 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
   - 播放视频呼出控制栏，按键正确渲染在“折叠”与“后退10秒”之间。
   - 遥控器向右切换焦点至“跳过片头”并点击，播放进度瞬时精准快进 30 秒，画面与进度条同步跳转。
 
+### 局域网播放进度同步无缝优化（2026-11-03）
+
+- **问题现象**：
+  - Hisense Fire TV 播放至第 5 集，Sony TV 停留在首页，此时进入历史记录页或从首页选择相同片子打开详情页，仍显示停留在第 4 集；只有在 Sony TV 再次按播放第 5 集时才触发接续同步。
+- **根本原因分析**：
+  1. **被动同步局限**：原先 `LanSyncManager.requestSyncFromLan()` 仅在应用冷启动及 `MainActivity.onActivityResume()` 时广播。若接收端一直开机停留在主页（Launcher）没有切走，期间只要 Hisense 发送单次播放结束广播时 Sony 出现网络瞬断或单次 UDP 丢包，Sony 端将没有任何二次补拉机制。
+  2. **页面进入未触发补拉**：进入“历史记录页”或“剧集详情页”时没有主动发出同步请求，依赖历史单次广播残留。
+  3. **冲突裁决规则对主动回看与切集不敏感**：旧裁决若远端集数小于本地集数，必须满足 `remoteModAt > localModAt + 30000ms`，在快速切换或多端短时间操作时可能被误判为过期数据而被丢弃。
+- **优化与改进方案**：
+  1. **3秒防抖主动拉取 (`requestSyncDebounced`)**：
+     - 在 `LanSyncManager` 中增加 `requestSyncDebounced()`，限制 3000ms 冷却时间。
+     - 在详情页进入入口（`presentation/screens/moviedetail/v.smali`）和历史页进入入口（`presentation/screens/history/i.smali`）注入主动拉取。
+     - 用户在电视上从首页进入历史或详情页时，后台自动触发一次防抖拉取，局域网对端 TV 响应回传最新 20 条记录，无需按播放键即可静默更新。
+  2. **单调时间戳优先裁决算法 (Monotonic Timestamp First)**：
+     - 改进 `LanSyncManager$2.smali` 中的裁决判定：
+       - `remoteModifiedAt > existingModAt`：无条件视为用户最新意图并采纳（完美兼容向前看、切新集、以及回看旧集）；
+       - `remoteModifiedAt == existingModAt`：比较集数与进度大小；
+       - `remoteModifiedAt < existingModAt`：丢弃网络乱序旧包。
+  3. **历史记录页与详情页双端响应式刷新**：
+     - 在 `history/i.smali` 中注入订阅 `sSyncVersionFlow`，与 `moviedetail/v.smali` 相同，收到对端同步并写入数据库后，触发 Room `invalidationTracker.refreshVersionsSync()` 和 Compose 重组，历史记录列表与详情页“继续播放”按钮无需退出重进即可秒级静默刷新。
+- **实机与模拟验证**：
+  - Sony TV 安装新构建的补丁包后，由局域网模拟 Hisense 发送更新数据包（《早春晴朗》第5集 @120s）。
+  - Sony TV 成功接收并输出：`Synced newer remote progress for: 早春晴朗 第5集 @120s from Hisense_FireTV_test`、`Triggered Room invalidationTracker.refreshVersionsSync()`、`bumpSyncVersion to 1`。
+  - 详情页与历史页成功根据新时间戳与新进度完成更新。
+

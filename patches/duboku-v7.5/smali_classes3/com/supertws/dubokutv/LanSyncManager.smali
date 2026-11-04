@@ -30,6 +30,8 @@
 
 .field private static volatile sLastSentProgressMs:J
 
+.field private static volatile sLastRequestSyncTime:J
+
 .field private static sPendingHandoff:Lcom/supertws/dubokutv/HandoffProgress$Record;
 
 .field private static sPendingHandoffName:Ljava/lang/String;
@@ -1381,6 +1383,34 @@
     return-void
 .end method
 
+
+.method public static requestSyncDebounced()V
+    .locals 6
+
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    sget-wide v2, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
+
+    sub-long v2, v0, v2
+
+    const-wide/16 v4, 0xbb8
+
+    cmp-long v2, v2, v4
+
+    if-gez v2, :cond_0
+
+    return-void
+
+    :cond_0
+    sput-wide v0, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
+
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncFromLan()V
+
+    return-void
+.end method
+
 .method public static onActivityResume(Landroid/app/Activity;)V
     .locals 0
 
@@ -1388,7 +1418,7 @@
     sput-object p0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveActivity:Landroid/app/Activity;
 
     .line 540
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncFromLan()V
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
 
     .line 541
     return-void
