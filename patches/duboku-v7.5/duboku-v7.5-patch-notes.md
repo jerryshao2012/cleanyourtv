@@ -96,6 +96,8 @@ adb 走不通，改为在 APK 内植入手写探针 `com.supertws.dubokutv.Dbg`�
 | `smali/j3/x.smali` | `AudioTrack$Builder`（API 23）替换为 `DubokuCompat.createAudioTrack`；**修复 `if-ne v0, v6` 前恢复 `const/4 v6, 0x1`**（修复寄存器 `v6` 被 `audioSessionId=0` 覆盖导致创建成功的 `AudioTrack` 被误判失败释放、报 `ERROR_CODE_AUDIO_TRACK_INIT_FAILED` 的 bug） |
 | `smali/j3/f0.smali` | `DefaultAudioSink` 设置倍速参数 `t()`：在 `new PlaybackParams()`（API 23）前加 `SDK_INT < 23` 守卫提前返回 |
 | `smali/x3/i.smali` | `MediaCodecVideoRenderer`：`O0(Ln3/n;)Z`（`shouldUsePlaceholderSurface`）与 `M0(Ljava/lang/Object;)V`（切换 Surface）恢复被 R8 折叠的 `SDK_INT >= 23` 守卫——API 22 不创建 `PlaceholderSurface`，Surface 变更时走 `:cond_4`（`m0()` 释放 + `W()` 重建解码器），规避 API 23 `MediaCodec.setOutputSurface` `NoSuchMethodError` |
+| `smali/androidx/tv/material3/SurfaceImplKt$handleDPadEnter$2.smali` | 在 `Lz0/c;->d`（D-Pad `onKeyEvent`）外层注入 `Landroidx/compose/foundation/i;->k`（`CombinedClickableElement`），赋予全局 TV Material3 控件（导航栏、分类筛选、影视卡片、搜索框、播放控制按钮）触摸屏点击能力，同时保持内层 D-Pad 拦截防止遥控器重复触发 |
+| `smali_classes3/com/supertws/dubokutv/presentation/utils/d.smali`、`smali_classes4/mc/d.smali` | `utils/d` 实现 `Lrb/a;` 接口复用 `this.f.invoke(Boolean.FALSE)`，并在 `mc/d;->q` 中挂载 `Landroidx/compose/foundation/i;->j`（`clickable`），支持视频播放界面全屏触屏点击呼出控制栏与切换播放/暂停 |
 | `smali_classes3/.../Dbg*.smali` | 信标类（调试期用于捕获堆栈与阶段信标；**最终交付版已将 `Dbg.smali` 所有方法置为空操作 no-op**，消除每秒 `Debug.getMemoryInfo()` PSS 扫描、`Choreographer` 帧率采样及 HTTP 线程对盒子 CPU 与播放流畅度的干扰） |
 
 ### 4.4 `libdubokushim.so`（Rust no_std cdylib）+ `wire_shim.py` — 替代符号改名（第六轮）
@@ -420,5 +422,19 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
        - 首页所有海报（如《兰香如故》、《早春晴朗》、《花开锦绣》等）全部恢复正常彩色封面，无红“D”图标。
        - 进入详情页并点击“继续播放 第38集 7%”，播放器瞬时顺利打开，画面与音频正常播放，零崩溃。
        - 呼出控制栏，`[ ∨ ] [ 30 ] [ 10 ] [ 15 ]` 焦点与点击快进 30 秒功能均正常无误。
+
+### 全局触摸屏点击与播放器触屏交互支持（2026-11-04）
+
+- **需求**：让独播库 TV（`com.supertws.dubokutv` v7.5）支持手机、平板及带触摸屏设备的点击与播放控制。
+- **根本原因分析**：
+  1. **全局 TV Material3 控件未挂载 PointerInput**：导航栏 Tab、分类筛选 `FilterChip`、影视卡片 `Card`、剧集选集按钮、搜索页输入框外层 `Surface` 以及播放控制栏按钮均汇总调用 `Landroidx/tv/material3/i;->o` / `p`，最终通过 `SurfaceImplKt$handleDPadEnter$2.smali` 仅注册了 `onKeyEvent`（监听遥控器确认键），未注册任何触摸点击监听。
+  2. **视频播放器根容器仅监听按键预览**：`TvVideoPlayer` 根容器通过 `Lmc/d;->q`（`handleDPadKeyEvents`）仅绑定了 `onPreviewKeyEvent`（`utils/d.smali`），全屏播放且控制栏隐藏时点击屏幕无响应。
+- **极简修复方案（Ponytail 根因注入）**：
+  1. **`smali/androidx/tv/material3/SurfaceImplKt$handleDPadEnter$2.smali`**：在 `Lz0/c;->d(p1, v2)`（`onKeyEvent`）之前注入一行 `Landroidx/compose/foundation/i;->k(p1, v6, v5)`（Compose Foundation `CombinedClickableElement`）。由于 `d` 处于修饰符链内层且对遥控器确认键 `ACTION_DOWN`/`ACTION_UP` 返回 `Boolean.TRUE` 拦截冒泡，电视遥控器不会双重触发，而触摸屏点击则由外层的 `k` 完整响应。
+  2. **`smali_classes3/com/supertws/dubokutv/presentation/utils/d.smali` & `smali_classes4/mc/d.smali`**：让 `utils/d` 同时实现 `Lrb/a;` 接口并复用 `this.f.invoke(Boolean.FALSE)`（等同于短按遥控器确认键：播放时暂停并呼出控制栏，暂停时呼出控制栏或恢复播放），在 `mc/d;->q` 末尾通过 `Landroidx/compose/foundation/i;->j(v0, v9, null, v14, 0x6)` 挂载到播放器根容器。
+- **实机验证（华为平板 Huawei Pad）**：
+  - 通过 FTP（`ftp://192.168.87.24:3721/01_独播库TV_v7.5.apk`）部署至华为平板实机测试，全局导航栏切换、分类筛选标签、影视海报卡片、剧集选集、搜索输入以及视频播放器触屏呼出控制栏/暂停播放/进度控制均完美运行。
+
+
 
 
