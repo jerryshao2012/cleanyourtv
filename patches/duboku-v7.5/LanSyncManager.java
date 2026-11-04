@@ -37,6 +37,7 @@ public class LanSyncManager {
     private static volatile String sLastSentName = null;
     private static volatile String sLastSentEpisode = null;
     private static volatile long sLastSentProgressMs = -1;
+    private static volatile long sLastRequestSyncTime = 0;
 
     // Active player context tracking
     public static volatile Object sActiveExoPlayer = null;
@@ -160,31 +161,29 @@ public class LanSyncManager {
                         }
 
                         // Determine priority:
-                        // Priority Rule: Episode number > Progress (if same episode) > Timestamp
+                        // 1. If remote modified time is newer, it represents user's latest interaction
+                        //    (progress forward, episode increment, or intentional rewatch of earlier episode).
+                        // 2. Reject stale/out-of-order packets where remoteModifiedAt < existingModAt.
                         boolean accept = false;
                         if (existingId == null) {
                             accept = true;
                         } else {
-                            int remoteEpNum = parseEpisodeNum(episode);
-                            int localEpNum = parseEpisodeNum(existingEp);
-                            if (remoteEpNum > localEpNum) {
-                                // Remote is a higher episode (e.g. Ep 41 > Ep 40)
+                            if (remoteModifiedAt > existingModAt) {
                                 accept = true;
-                            } else if (remoteEpNum == localEpNum) {
-                                // Same episode: prioritize progress or timestamp
-                                if (progressInMillis > existingProg || remoteModifiedAt >= existingModAt) {
+                            } else if (remoteModifiedAt == existingModAt) {
+                                // Equal timestamps: higher episode or higher progress wins
+                                int remoteEpNum = parseEpisodeNum(episode);
+                                int localEpNum = parseEpisodeNum(existingEp);
+                                if (remoteEpNum > localEpNum) {
                                     accept = true;
-                                }
-                            } else {
-                                // Remote is lower episode: only accept if remote timestamp is newer by 30s
-                                if (remoteModifiedAt > existingModAt + 30000) {
+                                } else if (remoteEpNum == localEpNum && progressInMillis > existingProg) {
                                     accept = true;
                                 }
                             }
                         }
 
                         if (!accept) {
-                            Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s, local: " + existingEp + " @" + (existingProg/1000) + "s)");
+                            Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s [mod=" + remoteModifiedAt + "], local: " + existingEp + " @" + (existingProg/1000) + "s [mod=" + existingModAt + "])");
                             return;
                         }
 
@@ -275,6 +274,15 @@ public class LanSyncManager {
                 }
             }
         }).start();
+    }
+
+    public static void requestSyncDebounced() {
+        long now = System.currentTimeMillis();
+        if (now - sLastRequestSyncTime < 3000) {
+            return; // Debounce within 3 seconds
+        }
+        sLastRequestSyncTime = now;
+        requestSyncFromLan();
     }
 
     private static void sendUdpPacket(String jsonStr, String directIp) {
@@ -537,7 +545,7 @@ public class LanSyncManager {
 
     public static void onActivityResume(Activity activity) {
         sActiveActivity = activity;
-        requestSyncFromLan();
+        requestSyncDebounced();
     }
 
     public static String formatButtonText(Object recordObj, Object movieDetailsObj, String fallbackText) {

@@ -242,64 +242,47 @@
 
     .line 168
     :cond_4
+    # Check if remote modified time is newer than existing modified time
+    iget-wide v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+
+    cmp-long v3, v8, v15
+
+    if-lez v3, :cond_5_mod_equal
+
+    # Remote is newer (progress forward, new episode, or rewatch of earlier episode)
+    const/4 v3, 0x1
+
+    goto :goto_3
+
+    :cond_5_mod_equal
+    if-nez v3, :cond_8
+
+    # Remote modified time equals local modified time: compare episode and progress
     iget-object v5, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
 
     invoke-static {v5}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
 
     move-result v5
 
-    .line 169
     invoke-static {v12}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
 
     move-result v3
 
-    .line 170
-    if-le v5, v3, :cond_5
+    if-le v5, v3, :cond_5_prog
 
-    .line 172
     const/4 v3, 0x1
 
     goto :goto_3
 
-    .line 173
-    :cond_5
-    if-ne v5, v3, :cond_7
+    :cond_5_prog
+    if-ne v5, v3, :cond_8
 
-    .line 175
     iget-wide v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
     cmp-long v3, v8, v13
 
-    if-gtz v3, :cond_6
-
-    iget-wide v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
-
-    cmp-long v3, v8, v15
-
-    if-ltz v3, :cond_8
-
-    .line 176
-    :cond_6
-    const/4 v3, 0x1
-
-    goto :goto_3
-
-    .line 180
-    :cond_7
-    iget-wide v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
-    :try_end_2
-    .catch Ljava/lang/Exception; {:try_start_2 .. :try_end_2} :catch_3
-    .catchall {:try_start_2 .. :try_end_2} :catchall_0
-
-    const-wide/16 v18, 0x7530
-
-    add-long v15, v15, v18
-
-    cmp-long v3, v8, v15
-
     if-lez v3, :cond_8
 
-    .line 181
     const/4 v3, 0x1
 
     goto :goto_3
