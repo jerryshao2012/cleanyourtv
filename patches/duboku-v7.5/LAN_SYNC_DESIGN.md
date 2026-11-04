@@ -33,7 +33,7 @@ flowchart TD
         C8 --> C9[formatButtonText 更新为 '继续播放 第X集 XX%']
     end
 ```
-
+![Architecture Design Diagram](architecture_design.png)
 ---
 
 ## 3. 关键机制与实现原理 (Key Principles)
