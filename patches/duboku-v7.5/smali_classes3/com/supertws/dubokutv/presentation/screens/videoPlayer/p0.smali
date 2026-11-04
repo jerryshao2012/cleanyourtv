@@ -3894,6 +3894,8 @@
 
     .line 361
     :cond_7f
+    invoke-static {v11, v14}, Lcom/supertws/dubokutv/SkipIntroHelper;->register(Ljava/lang/Object;Ljava/lang/Object;)V
+
     new-instance v0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/z;
 
     const/4 v1, 0x0
