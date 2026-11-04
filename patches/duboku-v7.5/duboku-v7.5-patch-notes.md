@@ -399,3 +399,26 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
   - Sony TV 成功接收并输出：`Synced newer remote progress for: 早春晴朗 第5集 @120s from Hisense_FireTV_test`、`Triggered Room invalidationTracker.refreshVersionsSync()`、`bumpSyncVersion to 1`。
   - 详情页与历史页成功根据新时间戳与新进度完成更新。
 
+### 播放界面崩溃（VerifierError）与封面变红D图标问题修复（2026-11-03）
+
+- **问题现象**：
+  1. 首页所有海报封面变为默认红色“D”占位图标。
+  2. 点击任意剧集播放时，直接闪退并退出回电视 Launcher 桌面。
+- **根本原因分析**：
+  1. **播放器闪退**：
+     - 在 `presentation/screens/videoPlayer/r.smali` 注入“跳过片头”按键调用 `s;->i(...)` 时，寄存器 `v3` 存储了 `player_control_skip_intro` 的字符串资源 ID（`0x7f110193`），但没有将其重新赋值为 `rb.a` 对象引用。
+     - ART 虚拟机在加载 `videoPlayer.r` 类时触发静态字节码校验失败：
+       `java.lang.VerifyError: Verifier rejected class com.supertws.dubokutv.presentation.screens.videoPlayer.r: ... [0x207] register v3 has type Imprecise Constant: 0x7fffffff but expected Reference: rb.a`。
+  2. **海报封面变红D图标**：
+     - 打包工具在增量构建时遗漏了此前针对图片加载及 TLS 1.2 的注入补丁（`smali/coil/fetch/k.smali`、`smali_classes4/mc/c.smali` 及 `DubokuCompat.smali`）。
+     - 导致 Coil 图片加载管线和底层 OkHttp 协议回退失败，静默回退至占位图 `ic_logo`。
+- **修复与验证**：
+  1. 修正 `r.smali` 中的寄存器分配，在调用 `s;->i(...)` 前正确注入 `sget-object v3, Lcom/supertws/dubokutv/SkipIntroHelper;->INSTANCE:Lcom/supertws/dubokutv/SkipIntroHelper;`。
+  2. 将 `smali/coil/fetch/`、`smali_classes4/mc/` 与 `DubokuCompat.smali` 完整纳入构建树并生成全量安装包。
+  3. **实机验证**：
+     - 在 Sony Bravia 4K TV（`192.168.87.232`）重新安装并实测：
+       - 首页所有海报（如《兰香如故》、《早春晴朗》、《花开锦绣》等）全部恢复正常彩色封面，无红“D”图标。
+       - 进入详情页并点击“继续播放 第38集 7%”，播放器瞬时顺利打开，画面与音频正常播放，零崩溃。
+       - 呼出控制栏，`[ ∨ ] [ 30 ] [ 10 ] [ 15 ]` 焦点与点击快进 30 秒功能均正常无误。
+
+
