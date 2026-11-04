@@ -355,3 +355,22 @@ $BT/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
 Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 OK 接续；跨集从第5集暂停切换到第6集约 22 秒。测试版回归确认版本流继续递增。首次启动同步早于数据库建表的问题仍未解决。
 
 测试进度选择：`javac -d /tmp/handoff-test HandoffProgress.java tests/HandoffProgressTest.java && java -ea -cp /tmp/handoff-test com.supertws.dubokutv.HandoffProgressTest`。
+
+### 播放控制栏新增“跳过片头”（快进30秒）功能按键（2026-11-03）
+
+- **需求**：在独播库 TV 端播放控制栏的“后退10秒”按键前面增加一个功能键“跳过片头”，行为如同“快进15秒”一样执行前进 30 秒（`position + 30000ms`）。
+- **按键排布**：
+  `[ 折叠 (∨) ]  →  [ 跳过片头 (30s) ]  →  [ 后退 10s ]  →  [ 快进 15s ]  →  [ 上一集 ]  →  [ 下一集 ]  →  [ 速度 ]`
+- **实现细节**：
+  1. **资源层**：
+     - 新增 `res/drawable/ic_rewind_30_seconds_forward.xml`（固定 public id `0x7f080101`），视觉风格与现有 15 秒快进按键严格一致，采用顺时针圆弧箭头并绘制“30”数字。
+     - 在 `strings.xml` 中添加 `player_control_skip_intro`（“跳过片头”，固定 public id `0x7f110193`）。
+  2. **逻辑层**：
+     - 创建 `com.supertws.dubokutv.SkipIntroHelper`，实现 `rb.a`（`() -> Unit`）接口，注册当前活动 `ExoPlayer` 与进度状态引用，执行 `((s0) player).s(5, currentPosition + 30000L)`。
+     - 在 `p0.smali` 播放器初始化时通过静态方法注入实例。
+     - 在 `r.smali` 控制栏渲染管线中，位于“折叠”之后、“后退10秒”之前插入新的 `s.i` 按键组件调用。遥控器左/右方向键自然获得焦点。
+- **实机验证**：
+  - 在局域网 Sony Bravia 4K TV（`192.168.87.232`）上完成在线安装实测。
+  - 播放视频呼出控制栏，按键正确渲染在“折叠”与“后退10秒”之间。
+  - 遥控器向右切换焦点至“跳过片头”并点击，播放进度瞬时精准快进 30 秒，画面与进度条同步跳转。
+
