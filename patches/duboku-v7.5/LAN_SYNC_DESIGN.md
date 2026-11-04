@@ -12,28 +12,29 @@
 
 ```mermaid
 flowchart TD
-    subgraph Device_A [发送端 TV (如 Sony TV)]
-        A1[ExoPlayer / 播放器退出或切集] --> A2[LanSyncManager.sendPlaybackSync]
-        A2 -->|组装 JSON 记录| A3[UDP Socket 端口 9876 广播]
+    subgraph Device_A ["Hisense 播放端"]
+        A1[播放器保存观看记录] --> A2["broadcastProgress：广播 UDP 进度包"]
+        A3["respondAllRecords：回传最近 20 条记录"]
     end
 
-    subgraph LAN [家庭局域网 UDP Broadcast (255.255.255.255:9876)]
-        A3 --> B1[局域网数据包]
+    subgraph Device_B ["Sony 接收端"]
+        B1["进入详情页或历史页 / Activity 恢复"] --> B2["requestSyncDebounced：3 秒内抑制重复请求"]
+        B2 --> B3[广播 REQUEST_SYNC]
+        B4[UDP 接收监听：过滤自身消息并解析记录] --> B5{"冲突裁决：时间戳优先；同时间戳比较集数和进度"}
+        B5 -->|接受| B6["SQLite 更新 records 表"]
+        B6 --> B7["bumpSyncVersion：请求 Room 刷新并递增状态流"]
+        B7 --> B8["详情页重组：读取最新记录并更新继续播放按钮"]
+        B7 --> B9["历史页重组 / Room 记录流更新"]
     end
 
-    subgraph Device_B [接收端 TV (如 小米盒子)]
-        B1 --> C1[LanSyncManager UDP 接收监听线程]
-        C1 --> C2{过滤自身广播 & 解析 JSON}
-        C2 --> C3{冲突裁决 Priority Rule}
-        C3 -->|胜出| C4[原生 SQLite 事务更新 records 表]
-        C4 --> C5[Room InvalidationTracker 强制刷新]
-        C4 --> C6[bumpSyncVersion 递增 Flow State]
-        C6 --> C7[MovieDetailsScreen Compose 重组]
-        C7 --> C8[resolveLatestRecord 读取最新进度]
-        C8 --> C9[formatButtonText 更新为 '继续播放 第X集 XX%']
-    end
+    A2 -->|主动广播| B4
+    B3 -->|局域网广播| A3
+    A3 -->|单播回传| B4
 ```
-![Architecture Design Diagram](architecture_design.png)
+
+两台设备的角色可以互换；App 启动时也会直接请求同步。接收端按记录分别启动写入线程，查询、删除与插入没有显式事务，因此图中的时间戳裁决不保证并发包按顺序写入。页面进入时的请求与界面刷新路径已注入 smali，实际效果仍需在目标电视验证。
+
+
 ---
 
 ## 3. 关键机制与实现原理 (Key Principles)
@@ -46,34 +47,22 @@ flowchart TD
   - **防死循环机制**：每台设备在内存中依据 `Build.MODEL + android_id` 生成唯一 `sCurrentDeviceId`。接收时若 `from` 与本机 ID 相同则直接丢弃，避免广播风暴。
 
 ### 3.2 播放进度覆盖与冲突裁决算法 (Priority Rules)
-当接收端本地已有相同剧集的记录时，并非盲目覆盖，而是严格遵循以**操作时间戳为主导 (Monotonic Timestamp First)** 的裁决逻辑，既防御网络乱序包，又保证用户主动切集与回看操作的无缝同步：
-1. **时间戳优先（Monotonic Timestamp Guard）**：
-   - 比较远端更新时间戳 `remoteModifiedAt` 与本地已有记录时间戳 `existingModAt`。
-   - **全新时间戳 (`remoteModifiedAt > existingModAt`)**：无条件信任并采纳远端进度。无论是正常向前推进、切到新一集，还是用户主动回退回看旧集（如在 Hisense 上返回第 4 集），都保证能立即更新写入，绝不误阻断用户的主动行为。
-   - **同时间戳竞态 (`remoteModifiedAt == existingModAt`)**：
-     - 若 `remoteEpisodeNum > localEpisodeNum`，集数更大者胜出；
-     - 若集数相同且 `remoteProgress > localProgress`，播放进度更深者胜出；
-   - **旧时间戳 (`remoteModifiedAt < existingModAt`)**：直接丢弃，阻断网络乱序包、延迟重复广播或旧设备心跳回滚。
+当接收端本地已有相同剧集的记录时，并非盲目覆盖，而是严格按照以下优先级裁决：
+1. **集数优先（Episode Number）**：
+   - 提取集数数字（例如 `第41集` > `第40集`）。只要远端集数更大，**无条件覆盖**本地记录。
+2. **同集进度优先（Progress within Same Episode）**：
+   - 当集数相同时，比较毫秒进度 `progressInMillis`；若远端进度更大或时间戳更新，则更新本地。
+3. **低集保护（Lower Episode Guard）**：
+   - 仅当远端修改时间戳比本地全新 30 秒以上时，才允许低集数覆盖高集数（防止误操作倒退）。
 
-### 3.3 按需主动拉取与防抖合并机制 (Debounced Sync Request)
-在 TV 使用场景中，接收端设备往往停留在主页（Launcher/Home）、历史记录页或剧集详情页。若单次 UDP 广播因网络偶发丢包而遗失，接收端将一直停留在旧进度。为此引入主动拉取与防抖合并机制：
-- **触发时机**：
-  - Activity 唤醒与切入前台 (`onActivityResume`)；
-  - 用户进入剧集详情页 (`MovieDetailsScreen` / `v.smali`)；
-  - 用户进入历史记录页 (`HistoryScreen` / `TvHistoryScreen` / `i.smali`)。
-- **3 秒防抖合并 (`requestSyncDebounced`)**：
-  - 在短时间内连续切换界面（如从首页进详情页，再点进历史页）时，3 秒内仅广播一次 `REQUEST_SYNC`，彻底杜绝短时间内并发广播导致的网络与 IO 风暴。
-  - 局域网内任意持有最新进度的在线设备收到后，立即异步回传其前 20 条记录。
-
-### 3.4 数据库层双重触发 (Room SQLite Integration)
+### 3.3 数据库层双重触发 (Room SQLite Integration)
 - 独播库应用使用 Room 架构，其表名为 `records`。
 - `LanSyncManager` 通过原生 `openOrCreateDatabase("record_database", ...)` 写入数据，并使用 `CONFLICT_REPLACE`。
 - **解决 Room 缓存不同步**：通过反射持有 `RecordDatabase` 实例，在底层写入完成后立即调用 `invalidationTracker.refreshVersionsSync()`，强制触发所有监听 `records` 表的 Coroutine Flow 向下游发射最新数据。
 
-### 3.5 Jetpack Compose 实时重组与数据绑定
+### 3.4 Jetpack Compose 实时重组与数据绑定
 - **状态驱动**：在 `LanSyncManager` 中暴露 `sSyncVersionFlow` (`r2` 状态流）。写入数据后调用其混淆后方法 `j(Integer)` 递增版本号。
-- **详情页 UI 订阅**：在 `MovieDetailsScreen` (`v.smali`) 顶层，通过 Compose 的 `collectAsStateWithLifecycle` 订阅该版本流并显式执行 `getValue()`。界面无需退出重进即可感知版本递增，重新计算并刷新“继续播放 第X集 XX%”。
-- **历史记录页 UI 订阅**：在 `HistoryScreen` (`i.smali`) 中同样订阅 `sSyncVersionFlow`，收到同步广播后实时触发 Compose 界面重组，重新拉取本地最新记录，与详情页保持完全一致的响应式体验。
+- **UI 订阅**：在 `MovieDetailsScreen` (`v.smali`) 顶层，通过 Compose 的 `collectAsStateWithLifecycle` 订阅该版本流并显式执行 `getValue()`。
 - **混淆数据映射修复 (Critical Fix)**：
   - 在 R8 混淆后的数据类 `qa.p`（`MovieDetails`）中：
     - `qa.p.f` = **剧名 (Drama Name)**
@@ -92,13 +81,11 @@ flowchart TD
 
 | 文件路径 | 修改目的与注入行为 |
 | :--- | :--- |
-| `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、防抖合并拉取 (`requestSyncDebounced`)、时间戳优先冲突算法、Room Tracker 反射通知、`checkSyncOnPlay` / `applyPendingHandoff` 播放页接续 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、冲突算法、Room Tracker 反射通知、`checkSyncOnPlay` / `applyPendingHandoff` 播放页接续 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$1.smali` | UDP Receiver 独立后台线程，包含启动阶段的历史自动清理 |
-| `smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali` | 单播解析与裁决处理线程，单调时间戳判定与 SQLite 写入 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$3.smali` | 响应全网同步的广播线程，包含防止扩散的过滤条件 |
 | `smali_classes3/com/supertws/dubokutv/HandoffProgress.smali` | 播放页进度暂存队列（去重与优选算法） |
-| `smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/v.smali` | 详情页 Compose 组件：进入时触发 `requestSyncDebounced()`，订阅版本流实时重组刷新“继续播放” |
-| `smali_classes3/com/supertws/dubokutv/presentation/screens/history/i.smali` | 历史页 Compose 组件：进入时触发 `requestSyncDebounced()`，订阅版本流实时重组刷新历史列表 |
+| `smali_classes3/com/supertws/dubokutv/presentation/screens/moviedetail/v.smali` | 详情页 Compose 组件：订阅版本流、劫持 `resolveLatestRecord` 与按钮文字重组 |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/l0.smali` | 播放器恢复/按播放键入口：调用 `checkSyncOnPlay` 触发无缝接续（同集 Seek / 异集切集） |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/p0.smali` | 播放器准备媒体源后：调用 `applyPendingHandoff` 定位异集目标播放进度 |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/p1.smali` | 播放器退出/后台时触发局域网广播广播当前进度 |
