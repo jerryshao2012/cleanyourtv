@@ -401,7 +401,50 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
   - Sony TV 成功接收并输出：`Synced newer remote progress for: 早春晴朗 第5集 @120s from Hisense_FireTV_test`、`Triggered Room invalidationTracker.refreshVersionsSync()`、`bumpSyncVersion to 1`。
   - 详情页与历史页成功根据新时间戳与新进度完成更新。
 
-### 播放界面崩溃（VerifierError）与封面变红D图标问题修复（2026-11-03）
+### 历史记录列表未响应外部同步更新根因与修复（2026-11-04）
+
+- **问题现象**：
+  - 在影片详情页（`MovieDetailsScreen`）中能正常同步并展示来自其他电视的最新播放进度，但在「历史记录」列表页面中进度迟迟没有更新。
+- **根本原因分析**：
+  1. **详情页直接绕过 Room Flow**：`MovieDetailsScreen` 订阅了 `sSyncVersionFlow` 触发重组，重组时直接调用 `LanSyncManager.resolveLatestRecord()`，通过独立底层连接执行裸 SQL `SELECT ... FROM records` 构造数据对象，因此详情页能够成功读取最新进度。
+  2. **历史记录页依赖 Room TriggerBasedInvalidationTracker**：历史列表数据源完全绑定在 `HistoryScreenViewModel`（`history/o.smali`）的 Room 响应式 Flow（`SELECT * from records ORDER BY modifiedAt DESC`）上。
+  3. **SQLite TEMP 触发器连接隔离失效**：
+     - `LanSyncManager` 接收网络同步包后，是通过 `openOrCreateDatabase("record_database", ...)` 建立外部独立 SQLite 连接写入数据。
+     - Room 内部追踪表变更机制使用的是 **SQLite TEMP 临时表（`room_table_modification_log`）和 TEMP 临时触发器**。
+     - 在 SQLite 规范中，**TEMP 触发器严格限制在创建该触发器的连接作用域（Connection-scoped）内**。通过外部原生连接插入或修改 `records` 表，不会在 Room 连接的 TEMP 触发器中置位 `invalidated = 1`。
+     - 随后 `LanSyncManager.bumpSyncVersion()` 虽然调用了 `((androidx.room.x) db).g().b()`（`invalidationTracker.refreshAsync()`），但查询到的失效表为空集合，Room 认为没有表被修改，不会递增版本流 `ObservedTableVersions`（`p.b`），导致 `HistoryScreenViewModel` 的 Flow 永远不向 UI 发射新列表。
+- **极简根因修复方案**：
+  1. **`LanSyncManager$2.smali` 先关闭外部写连接**：
+     - 写入 `records` 表后先显式调用 `db.close()` 释放写锁与 WAL 缓冲，确保随后 Room 读取协程查询时能读到最新一致性落盘数据。
+  2. **`LanSyncManager.bumpSyncVersion()` 强制更新表版本**：
+     - 在 `LanSyncManager.smali` 与 `LanSyncManager.java` 的 `bumpSyncVersion()` 中，除常规刷新外，直接调用 `ObservedTableVersions.b(Set(0))`（`0` 即 `records` 的 tableId）：
+       `((androidx.room.x) sRoomDb).g().b.i.b(Collections.singleton(0));`
+     - 直接强制 Room 的 `StateFlow<[I>` 递增，瞬间唤醒 `TriggerBasedInvalidationTracker$createFlow$1` 重新执行历史记录 DAO 查询并更新 `HistoryScreenViewModel`。
+
+### 历史记录列表《兰香如故》封面丢失与整页闪烁重绘修复（2026-11-04）
+
+- **问题现象**：
+  1. 历史记录中《兰香如故》的封面变成了缺省红色 "D" Logo。
+  2. 当局域网内另一台电视正在播放时，历史列表整个页面周期性不时闪烁重绘。
+- **根本原因分析**：
+  1. **封面丢失**：
+     - 测试脚本发送的广播包中 `posterUrl` 为空字符串且包含 `example.com` 测试地址。
+     - 原版 `LanSyncManager` 收到数据包时直接清空旧记录并存入远端空字段，未保留本地已有的有效海报 URL，且空海报记录通过局域网广播扩散。
+  2. **整页闪烁重绘（4 处联动机制）**：
+     - **AnimatedContent 销毁重建整行**：`history/i.smali` (`i.f`) 将整个 `recordList` 传入 `AnimatedContent`，因未传特定 `contentKey`，列表中任何一部剧的进度变化都会让 `newList != oldList` 触发整行淡出销毁与淡入重构，导致整行卡片海报重新加载闪烁。
+     - **LaunchedEffect 重置焦点**：`history/i.smali` (`i.b`) 的 `LaunchedEffect(recordList)` 以列表为 key，每次数据更新都会重新执行 `focusRequester.requestFocus()`，导致用户正在浏览时焦点闪烁或重置。
+     - **REQUEST_SYNC 广播风暴**：`history/i.smali` (`i.g` & `i.k`) 在 Composable 函数体内直接调用 `requestSyncDebounced()` 并订阅 `sSyncVersionFlow`。每次刷新重组又触发全网 `REQUEST_SYNC`，招致其他电视连发 20 条记录的回传风暴。
+     - **双包并发与无节流**：UDP 广播双发（255.255.255.255 与子网广播）相隔 1ms 并发写库；且对端每 5 秒秒级进度更新都强制唤醒 UI。
+- **修复方案**：
+  1. **`history/i.smali` (`i.f`)**：绕过 `AnimatedContent` 整行淡入淡出重建，直接调用 `history/v` (`LazyRow`)，配合单项稳定的 `qa.t.a` item key 实现卡片内进度文字原地平滑刷新，封面与组件零闪烁。
+  2. **`history/i.smali` (`i.b`)**：将 `LaunchedEffect` 的 key 改为常量 `Unit`，仅在首次进入历史页时申请初始焦点，后续同步更新时不抢夺用户遥控焦点。
+  3. **`history/i.smali` (`i.g` & `i.k`)**：仅在 Composable 首次挂载（`Composer.S == true`）时调用 `requestSyncDebounced()`，并移除冗余的 `sSyncVersionFlow` 订阅（由 Room 数据库响应式 Flow 驱动）。
+  4. **`LanSyncManagerPatch.java` / `LanSyncManagerPatch.smali`**：增加数据库操作同步锁；保留本地有效 `posterUrl`/`detailPageUrl`/`videoPageUrl`；过滤并清理 `example.com` 脏记录；对同集微小进度仅在整数百分比变化时通知 UI 重组。
+- **实机验证（Sony Bravia 4K TV & Hisense Fire TV）**：
+  - 双机实装部署并实测：
+    - 《兰香如故》历史记录封面恢复为真实剧照海报。
+    - 局域网持续高频广播播放进度时，历史列表完全不闪烁、海报不重载、用户选中的焦点不跳动，卡片内观看百分比平滑无感更新。
+
 
 - **问题现象**：
   1. 首页所有海报封面变为默认红色“D”占位图标。
@@ -434,6 +477,34 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
   2. **`smali_classes3/com/supertws/dubokutv/presentation/utils/d.smali` & `smali_classes4/mc/d.smali`**：让 `utils/d` 同时实现 `Lrb/a;` 接口并复用 `this.f.invoke(Boolean.FALSE)`（等同于短按遥控器确认键：播放时暂停并呼出控制栏，暂停时呼出控制栏或恢复播放），在 `mc/d;->q` 末尾通过 `Landroidx/compose/foundation/i;->j(v0, v9, null, v14, 0x6)` 挂载到播放器根容器。
 - **实机验证（华为平板 Huawei Pad）**：
   - 通过 FTP（`ftp://192.168.87.24:3721/01_独播库TV_v7.5.apk`）部署至华为平板实机测试，全局导航栏切换、分类筛选标签、影视海报卡片、剧集选集、搜索输入以及视频播放器触屏呼出控制栏/暂停播放/进度控制均完美运行。
+
+### 历史列表集数不匹配与播放按向上键退出到桌面修复（2026-11-04）
+
+- **问题现象**：
+  1. Sony TV 历史列表中显示《小城良方》第 12 集 55%，点击播放后播放器却从第 11 集开始播放。
+  2. 视频全屏播放状态下按遥控器向上键（DPAD_UP）想呼出控制按钮时，应用直接闪退并退出到系统桌面（Launcher）。
+- **根本原因分析**：
+  1. **集数与 VideoId 不匹配**：
+     - 在局域网进度同步写入 SQLite 数据库时（`LanSyncManagerPatch.smali` 第 81 行）：
+       `cv.put("id", (existingId != null && !existingId.isEmpty()) ? existingId : id);`
+     - 独播库中 `records.id` 即为具体的单集视频 ID（如第 11 集和第 12 集各自有不同的 `videoId`）。
+     - 当从其他电视同步第 12 集的最新进度时，因保留了本地旧的 `existingId`（第 11 集的 ID），导致数据库中的 `episode` 被更新为“第12集”，但主键 `id` 仍锁死在第 11 集。点击历史卡片时，程序取该 `id` 直接向 `VideoPlayer` 发起导航，导致播放了第 11 集！
+  2. **按向上键退出回桌面**：
+     - 播放器内按 DPAD_UP / DPAD_DOWN 时，`TvVideoPlayerControls` 控件渲染展示。
+     - 控制栏渲染过程中，若控制按钮（如“跳过片头” `SkipIntro`）所需的资源在当前系统语言配置下未被正确找到，或者因为资源合并打包时缺省值缺失，触发了 `android.content.res.Resources$NotFoundException: String resource ID #0x7f110193`。
+     - 此时未被捕获的资源异常直接导致 `Activity` 崩溃闪退回 Launcher。
+- **极简修复方案（Ponytail 根因注入）**：
+  1. **修正 `LanSyncManager` / `LanSyncManagerPatch.smali` ID 赋值逻辑**：
+     - 写入同步记录时，优先使用远端广播包携带的最新单集 `id`（`remoteId`），仅在远端未提供时才回退至本地已有 `id` 或剧集名称，确保 `id` 与 `episode` 严格对应。
+  2. **补全 `player_control_skip_intro`（`0x7f110193`）多语言资源与公共表**：
+     - 在 `res/values/strings.xml` 及 `res/values-zh-rTW/strings.xml` 等资源目录补齐 `player_control_skip_intro` 字符串定义。
+  3. **统一签名机制与输出包**：
+     - 使用统一 Debug 证书重打包，产物同步更新到 `apks/common/独播库TV_v7.5.apk`、`apks/common/Updated独播库TV_v7.5.apk` 以及 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`。
+- **实机验证**：
+  - 在 Sony Bravia 4K TV（`192.168.87.232`）与 Hisense Fire TV（`192.168.87.37`）实机静默热更安装验证：
+    - 播放视频时连续按遥控器向上键（DPAD_UP）、向下键（DPAD_DOWN）、确认键均能平滑呼出与操作控制栏，无任何崩溃或退回桌面。
+    - 点击历史卡片能够准确对应当前集数进行续播。
+
 
 
 

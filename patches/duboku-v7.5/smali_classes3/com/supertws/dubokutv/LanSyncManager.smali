@@ -529,7 +529,30 @@
     invoke-virtual {v2, v0, v3}, Ljava/lang/reflect/Method;->invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 575
-    const-string v0, "Triggered Room invalidationTracker.refreshVersionsSync()"
+    const-string v2, "Triggered Room invalidationTracker.refreshVersionsSync()"
+
+    invoke-static {v1, v2}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 576
+    check-cast v0, Landroidx/room/i;
+
+    iget-object v0, v0, Landroidx/room/i;->b:Landroidx/room/j0;
+
+    iget-object v0, v0, Landroidx/room/j0;->i:Landroidx/room/p;
+
+    const/4 v2, 0x0
+
+    invoke-static {v2}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+
+    move-result-object v2
+
+    invoke-static {v2}, Ljava/util/Collections;->singleton(Ljava/lang/Object;)Ljava/util/Set;
+
+    move-result-object v2
+
+    invoke-virtual {v0, v2}, Landroidx/room/p;->b(Ljava/util/Set;)V
+
+    const-string v0, "Triggered Room ObservedTableVersions.b for table 0 (records)"
 
     invoke-static {v1, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
     :try_end_0
