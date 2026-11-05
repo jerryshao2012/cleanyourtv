@@ -136,80 +136,134 @@ public class LanSyncManager {
             final String detailPageUrl = json.optString("detailPageUrl");
             final String posterUrl = json.optString("posterUrl");
 
+            if (detailPageUrl != null && detailPageUrl.contains("example.com")) {
+                Log.w(TAG, "Rejected dummy test packet with example.com for: " + name);
+                return;
+            }
+
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    SQLiteDatabase db = null;
-                    try {
-                        db = mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
-                        if (db == null) return;
+                    synchronized (LanSyncManager.class) {
+                        SQLiteDatabase db = null;
+                        try {
+                            db = mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
+                            if (db == null) return;
 
-                        Cursor c = db.rawQuery("SELECT id, episode, progressInMillis, modifiedAt FROM records WHERE name = ? OR detailPageUrl = ? ORDER BY modifiedAt DESC LIMIT 1",
-                                new String[]{name, detailPageUrl});
-                        String existingId = null;
-                        String existingEp = null;
-                        long existingProg = 0;
-                        long existingModAt = 0;
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                existingId = c.getString(0);
-                                existingEp = c.getString(1);
-                                existingProg = c.getLong(2);
-                                existingModAt = c.getLong(3);
+                            // Self-healing: clean up any dummy test records
+                            try {
+                                db.delete("records", "detailPageUrl LIKE '%example.com%' OR videoPageUrl LIKE '%example.com%'", null);
+                            } catch (Exception ignored) {}
+
+                            Cursor c = db.rawQuery("SELECT id, episode, progressInMillis, modifiedAt, durationInMillis, videoPageUrl, detailPageUrl, posterUrl FROM records WHERE name = ? OR (detailPageUrl != '' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1",
+                                    new String[]{name, detailPageUrl});
+                            String existingId = null;
+                            String existingEp = null;
+                            long existingProg = 0;
+                            long existingModAt = 0;
+                            long existingDur = 0;
+                            String existingVideo = null;
+                            String existingDetail = null;
+                            String existingPoster = null;
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    existingId = c.getString(0);
+                                    existingEp = c.getString(1);
+                                    existingProg = c.getLong(2);
+                                    existingModAt = c.getLong(3);
+                                    existingDur = c.getLong(4);
+                                    existingVideo = c.getString(5);
+                                    existingDetail = c.getString(6);
+                                    existingPoster = c.getString(7);
+                                }
+                                c.close();
                             }
-                            c.close();
-                        }
 
-                        // Determine priority:
-                        // 1. If remote modified time is newer, it represents user's latest interaction
-                        //    (progress forward, episode increment, or intentional rewatch of earlier episode).
-                        // 2. Reject stale/out-of-order packets where remoteModifiedAt < existingModAt.
-                        boolean accept = false;
-                        if (existingId == null) {
-                            accept = true;
-                        } else {
-                            if (remoteModifiedAt > existingModAt) {
+                            // Determine priority:
+                            // 1. If remote modified time is newer, it represents user's latest interaction
+                            //    (progress forward, episode increment, or intentional rewatch of earlier episode).
+                            // 2. Reject stale/out-of-order packets where remoteModifiedAt < existingModAt.
+                            boolean accept = false;
+                            if (existingId == null) {
                                 accept = true;
-                            } else if (remoteModifiedAt == existingModAt) {
-                                // Equal timestamps: higher episode or higher progress wins
-                                int remoteEpNum = parseEpisodeNum(episode);
-                                int localEpNum = parseEpisodeNum(existingEp);
-                                if (remoteEpNum > localEpNum) {
+                            } else {
+                                if (remoteModifiedAt > existingModAt) {
                                     accept = true;
-                                } else if (remoteEpNum == localEpNum && progressInMillis > existingProg) {
-                                    accept = true;
+                                } else if (remoteModifiedAt == existingModAt) {
+                                    // Equal timestamps: higher episode or higher progress wins
+                                    int remoteEpNum = parseEpisodeNum(episode);
+                                    int localEpNum = parseEpisodeNum(existingEp);
+                                    if (remoteEpNum > localEpNum) {
+                                        accept = true;
+                                    } else if (remoteEpNum == localEpNum && progressInMillis > existingProg) {
+                                        accept = true;
+                                    }
                                 }
                             }
-                        }
 
-                        if (!accept) {
-                            Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s [mod=" + remoteModifiedAt + "], local: " + existingEp + " @" + (existingProg/1000) + "s [mod=" + existingModAt + "])");
-                            return;
-                        }
+                            if (!accept) {
+                                Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s [mod=" + remoteModifiedAt + "], local: " + existingEp + " @" + (existingProg/1000) + "s [mod=" + existingModAt + "])");
+                                return;
+                            }
 
-                        // Delete any duplicate records for this same drama
-                        db.delete("records", "name = ? OR detailPageUrl = ?", new String[]{name, detailPageUrl});
+                            // Preserve valid local URLs if incoming remote values are empty or invalid
+                            String finalPoster = (posterUrl != null && (posterUrl.startsWith("http://") || posterUrl.startsWith("https://")))
+                                    ? posterUrl : (existingPoster != null ? existingPoster : "");
+                            String finalDetail = (detailPageUrl != null && !detailPageUrl.isEmpty() && !detailPageUrl.contains("example.com"))
+                                    ? detailPageUrl : (existingDetail != null ? existingDetail : "");
+                            String finalVideo = (videoPageUrl != null && !videoPageUrl.isEmpty() && !videoPageUrl.contains("example.com"))
+                                    ? videoPageUrl : (existingVideo != null ? existingVideo : "");
 
-                        ContentValues cv = new ContentValues();
-                        cv.put("id", (existingId != null && !existingId.isEmpty()) ? existingId : id);
-                        cv.put("name", name);
-                        cv.put("episode", episode);
-                        cv.put("progressInMillis", progressInMillis);
-                        cv.put("durationInMillis", durationInMillis);
-                        cv.put("createdAt", System.currentTimeMillis());
-                        cv.put("modifiedAt", remoteModifiedAt > 0 ? remoteModifiedAt : System.currentTimeMillis());
-                        cv.put("videoPageUrl", videoPageUrl);
-                        cv.put("detailPageUrl", detailPageUrl);
-                        cv.put("posterUrl", posterUrl);
-                        db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
-                        sHandoff.offer(name, episode, progressInMillis, videoPageUrl, remoteModifiedAt);
-                        bumpSyncVersion();
-                        Log.i(TAG, "Synced newer remote progress for: " + name + " " + episode + " @" + (progressInMillis/1000) + "s from " + fromDevice);
-                    } catch (Exception e) {
-                        Log.w(TAG, "Error writing sync record: " + e.getMessage());
-                    } finally {
-                        if (db != null) {
-                            try { db.close(); } catch (Exception ignored) {}
+                            // Delete any duplicate records for this same drama
+                            db.delete("records", "name = ? OR (detailPageUrl != '' AND detailPageUrl = ?)", new String[]{name, finalDetail});
+
+                            String finalId = (id != null && !id.isEmpty()) ? id : existingId;
+                            if (finalId == null || finalId.isEmpty()) finalId = name;
+
+                            ContentValues cv = new ContentValues();
+                            cv.put("id", finalId);
+                            cv.put("name", name);
+                            cv.put("episode", episode);
+                            cv.put("progressInMillis", progressInMillis);
+                            cv.put("durationInMillis", durationInMillis > 0 ? durationInMillis : existingDur);
+                            cv.put("createdAt", System.currentTimeMillis());
+                            cv.put("modifiedAt", remoteModifiedAt > 0 ? remoteModifiedAt : System.currentTimeMillis());
+                            cv.put("videoPageUrl", finalVideo);
+                            cv.put("detailPageUrl", finalDetail);
+                            cv.put("posterUrl", finalPoster);
+                            db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                            sHandoff.offer(name, episode, progressInMillis, finalVideo, remoteModifiedAt);
+
+                            // Close write connection first to ensure changes are flushed and locks released
+                            // before triggering Room to re-query
+                            try {
+                                db.close();
+                                db = null;
+                            } catch (Exception ignored) {}
+
+                            // Throttle UI recomposition: if same episode, only bump UI if integer percentage changed
+                            boolean shouldBumpUi = true;
+                            if (existingId != null && episode != null && episode.equals(existingEp)) {
+                                long effDur = durationInMillis > 0 ? durationInMillis : existingDur;
+                                if (effDur > 0) {
+                                    int oldPct = (int) (existingProg * 100 / effDur);
+                                    int newPct = (int) (progressInMillis * 100 / effDur);
+                                    if (oldPct == newPct) {
+                                        shouldBumpUi = false;
+                                    }
+                                }
+                            }
+
+                            if (shouldBumpUi) {
+                                bumpSyncVersion();
+                            }
+                            Log.i(TAG, "Synced newer remote progress for: " + name + " " + episode + " @" + (progressInMillis/1000) + "s from " + fromDevice + " (bumpUi=" + shouldBumpUi + ")");
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error writing sync record: " + e.getMessage());
+                        } finally {
+                            if (db != null) {
+                                try { db.close(); } catch (Exception ignored) {}
+                            }
                         }
                     }
                 }
@@ -574,13 +628,33 @@ public class LanSyncManager {
     public static void bumpSyncVersion() {
         if (sRoomDb != null) {
             try {
-                // invoke ((androidx.room.x) sRoomDb).g().b()
+                // 1. Invoke ((androidx.room.x) sRoomDb).g().b()
                 java.lang.reflect.Method gMethod = sRoomDb.getClass().getMethod("g");
                 Object tracker = gMethod.invoke(sRoomDb);
                 if (tracker != null) {
                     java.lang.reflect.Method bMethod = tracker.getClass().getMethod("b");
                     bMethod.invoke(tracker);
                     Log.i(TAG, "Triggered Room invalidationTracker.refreshVersionsSync()");
+
+                    // 2. Force Room ObservedTableVersions (androidx.room.p) to increment tableId 0 ("records").
+                    // Writes via external SQLiteDatabase connections do NOT fire Room's connection-scoped TEMP triggers.
+                    try {
+                        java.lang.reflect.Field bField = tracker.getClass().getDeclaredField("b");
+                        bField.setAccessible(true);
+                        Object j0Tracker = bField.get(tracker);
+                        if (j0Tracker != null) {
+                            java.lang.reflect.Field iField = j0Tracker.getClass().getDeclaredField("i");
+                            iField.setAccessible(true);
+                            Object observedVersions = iField.get(j0Tracker);
+                            if (observedVersions != null) {
+                                java.lang.reflect.Method bVersionsMethod = observedVersions.getClass().getMethod("b", java.util.Set.class);
+                                bVersionsMethod.invoke(observedVersions, java.util.Collections.singleton(Integer.valueOf(0)));
+                                Log.i(TAG, "Triggered ObservedTableVersions.b for table 0 (records)");
+                            }
+                        }
+                    } catch (Throwable t2) {
+                        Log.w(TAG, "Failed to update ObservedTableVersions: " + t2.getMessage());
+                    }
                 }
             } catch (Throwable t) {
                 Log.w(TAG, "Failed to refresh Room tracker: " + t.getMessage());

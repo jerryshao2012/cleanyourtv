@@ -58,7 +58,11 @@ flowchart TD
 ### 3.3 数据库层双重触发 (Room SQLite Integration)
 - 独播库应用使用 Room 架构，其表名为 `records`。
 - `LanSyncManager` 通过原生 `openOrCreateDatabase("record_database", ...)` 写入数据，并使用 `CONFLICT_REPLACE`。
-- **解决 Room 缓存不同步**：通过反射持有 `RecordDatabase` 实例，在底层写入完成后立即调用 `invalidationTracker.refreshVersionsSync()`，强制触发所有监听 `records` 表的 Coroutine Flow 向下游发射最新数据。
+- **解决 Room 缓存与 TriggerBasedInvalidationTracker 隔离**：
+  - Room 2.7 的 `TriggerBasedInvalidationTracker`（`j0`）使用基于 SQLite `TEMP` 表（`room_table_modification_log`）和 `TEMP` 触发器机制追踪表变更。因为 SQLite `TEMP` 触发器严格隔离在 Room 自身的数据库连接内部，外部原生连接写入数据无法被 `TEMP` 触发器感知。
+  - 通过持有 `RecordDatabase` 实例，在底层写入完成后立即关闭写连接释放锁，随后：
+    1. 调用 `invalidationTracker.refreshVersionsSync()`（`x.g().b()`）；
+    2. 直接触发 `ObservedTableVersions.b(Set)`（`x.g().b.i.b(Set(0))`，其中 `0` 为 `records` 表 ID），强制更新内部版本流 `StateFlow<[I>`，促使全应用所有通过 Room Flow 观察 `records` 表的 ViewModel（如 `HistoryScreenViewModel`）立即重新触发 DAO 查询并发射最新列表。
 
 ### 3.4 Jetpack Compose 实时重组与数据绑定
 - **状态驱动**：在 `LanSyncManager` 中暴露 `sSyncVersionFlow` (`r2` 状态流）。写入数据后调用其混淆后方法 `j(Integer)` 递增版本号。
@@ -75,6 +79,19 @@ flowchart TD
   - 在 `LanSyncManager$1` (UDP 监听线程启动入口) 与 `checkSyncOnPlay` 注入自动清理逻辑：App 启动或首次触发同步检测时，自动执行 `DELETE FROM records WHERE name = '测试同步剧'` 并触发版本流更新。
   - 在 `respondAllRecords` 的 SQL 查询中增加过滤条件，确保测试残留记录永远不会在局域网设备间反向扩散传播。
 
+### 3.6 历史记录列表原地平滑刷新与闪烁抑制 (History List Smooth Updates)
+- **消除 AnimatedContent 整行重绘与淡入淡出闪烁**：
+  - 原版 `history/i.smali` (`i.f`) 使用 `AnimatedContent` 包裹整行 `LazyRow`，且以整个 `ArrayList` 作为 targetState 和 contentKey。在另一台电视播放导致进度每 5 秒广播一次时，原代码会销毁并重新淡入淡出创建整行 `LazyRow`，导致所有卡片与海报图片周期性闪烁重绘。
+  - 通过将 `i.f` 修改为直接调用 `history/v`（`LazyRow`），配合每条记录稳定的 item key（`qa.t.a`），使剧集进度和集数在卡片内原地平滑更新文字，封面海报与组件完全不销毁、不闪烁。
+- **防止 LaunchedEffect 周期性抢夺与重置焦点**：
+  - 原版 `i.b` 中的 `LaunchedEffect(recordList)` 以列表对象为 key，每次数据刷新都重新执行 `focusRequester.requestFocus()`。将其 key 变更为 `Unit` 后，仅在进入历史页首次启动时申请焦点，后续跨设备同步刷新时不再打乱用户当前的遥控选择。
+- **抑制 UI 重组引发的 REQUEST_SYNC 广播风暴**：
+  - 将 `i.g` 和 `i.k` 中的 `requestSyncDebounced()` 限制为仅在 Compose 首次挂载（`Composer.S == true`）时调用，并移除冗余的 `sSyncVersionFlow` 订阅（统一由 Room Flow 驱动），避免收到进度触发重组后反复广播 `REQUEST_SYNC` 导致局域网 20 条记录连锁风暴。
+- **封面保护与测试脏数据自愈**：
+  - 在更新本地已有剧集记录时，保留非空的有效 `posterUrl`、`detailPageUrl` 和 `videoPageUrl`，防止远端或同步测试包中的空封面覆盖已有海报并导致回退显示缺省 "D" Logo。
+  - 过滤拦截包含 `example.com` 的脏数据包，并在入库时自动清理测试数据。
+  - 在数据库读写处增加 `synchronized (LanSyncManager.class)` 锁，消除双广播包（`255.255.255.255` 与子网广播）相差 1ms 的并发双写；对于同集的秒级微小进度更新，仅在显示的整数百分比变化时触发 UI 重组。
+
 ---
 
 ## 4. 关键注入点与 Smali 文件分布 (Smali Distribution)
@@ -82,6 +99,11 @@ flowchart TD
 | 文件路径 | 修改目的与注入行为 |
 | :--- | :--- |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、冲突算法、Room Tracker 反射通知、`checkSyncOnPlay` / `applyPendingHandoff` 播放页接续 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali` | 委托调用 `LanSyncManagerPatch.runSync` 执行异步入库与防抖裁决 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManagerPatch.smali` | 线程安全入库、封面保护、测试数据清洗、整数百分比变更节流与 Room 版本递增 |
+| `smali_classes3/com/supertws/dubokutv/smali_classes3/com/supertws/dubokutv/presentation/screens/history/i.smali` | 历史记录页：绕过 `AnimatedContent` 整行重绘、固定 `LaunchedEffect` 焦点、切断 `REQUEST_SYNC` 重组风暴 |
+| `smali_classes3/com/supertws/dubokutv/presentation/screens/history/v.smali` | 历史记录 `LazyRow`：解除对 `AnimatedContentScope` 的强依赖 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManager$1.smali` | UDP Receiver 独立后台线程，包含启动阶段的历史自动清理 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$1.smali` | UDP Receiver 独立后台线程，包含启动阶段的历史自动清理 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$3.smali` | 响应全网同步的广播线程，包含防止扩散的过滤条件 |
 | `smali_classes3/com/supertws/dubokutv/HandoffProgress.smali` | 播放页进度暂存队列（去重与优选算法） |

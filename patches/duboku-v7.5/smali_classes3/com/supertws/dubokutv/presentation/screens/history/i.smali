@@ -835,7 +835,9 @@
     .line 186
     .line 187
     .line 188
-    invoke-static {v12, v3, v13}, Landroidx/compose/runtime/q;->f(Landroidx/compose/runtime/k;Ljava/lang/Object;Lrb/n;)V
+    sget-object v14, Lkotlin/w;->a:Lkotlin/w;
+
+    invoke-static {v12, v14, v13}, Landroidx/compose/runtime/q;->f(Landroidx/compose/runtime/k;Ljava/lang/Object;Lrb/n;)V
 
     .line 189
     .line 190
@@ -4221,21 +4223,7 @@
 
     invoke-direct/range {v0 .. v7}, Lcom/supertws/dubokutv/presentation/screens/history/v;-><init>(FFLjava/lang/String;Lrb/k;FLcom/supertws/dubokutv/presentation/common/ItemDirection;Lrb/k;)V
 
-    const v3, 0x6d05a1c8
-
-    invoke-static {v3, v0, v9}, Landroidx/compose/runtime/internal/e;->d(ILkotlin/e;Landroidx/compose/runtime/k;)Landroidx/compose/runtime/internal/d;
-
-    move-result-object v15
-
-    shr-int/lit8 v0, v34, 0x1b
-
-    and-int/lit8 v0, v0, 0xe
-
-    const v3, 0x186000
-
-    or-int v17, v0, v3
-
-    const/16 v18, 0x2e
+    move-object v8, v0
 
     move v0, v10
 
@@ -4243,20 +4231,13 @@
 
     const/4 v11, 0x0
 
-    const/4 v12, 0x0
+    invoke-static {v11}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
 
-    .line 58
-    const-string v13, ""
+    move-result-object v11
 
-    const/4 v14, 0x0
+    move-object/from16 v12, p9
 
-    move-object/from16 v16, v9
-
-    move-object/from16 v9, p9
-
-    invoke-static/range {v9 .. v18}, Landroidx/compose/animation/d;->b(Ljava/lang/Object;Landroidx/compose/ui/q;Lrb/k;Landroidx/compose/ui/e;Ljava/lang/String;Lrb/k;Lrb/p;Landroidx/compose/runtime/k;II)V
-
-    move-object/from16 v9, v16
+    invoke-virtual {v8, v10, v12, v9, v11}, Lcom/supertws/dubokutv/presentation/screens/history/v;->invoke(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 59
     invoke-virtual {v9, v0}, Landroidx/compose/runtime/p;->p(Z)V
@@ -4603,12 +4584,10 @@
     .line 137
     invoke-static {v14, v2, v5, v1, v3}, Lmc/d;->a(ZLrb/a;Landroidx/compose/runtime/k;II)V
 
+    iget-boolean v1, v5, Landroidx/compose/runtime/p;->S:Z
+    if-eqz v1, :cond_sync_init_g
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
-
-    sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sSyncVersionFlow:Lkotlinx/coroutines/flow/r2;
-    invoke-static {v1, v5}, Landroidx/lifecycle/compose/b;->c(Lkotlinx/coroutines/flow/q2;Landroidx/compose/runtime/k;)Landroidx/compose/runtime/b1;
-    move-result-object v1
-    invoke-interface {v1}, Landroidx/compose/runtime/a3;->getValue()Ljava/lang/Object;
+    :cond_sync_init_g
 
     .line 138
     .line 139
@@ -8146,12 +8125,10 @@
     :goto_6
     invoke-virtual {v11}, Landroidx/compose/runtime/p;->q()V
 
+    iget-boolean v4, v11, Landroidx/compose/runtime/p;->S:Z
+    if-eqz v4, :cond_sync_init_k
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
-
-    sget-object v4, Lcom/supertws/dubokutv/LanSyncManager;->sSyncVersionFlow:Lkotlinx/coroutines/flow/r2;
-    invoke-static {v4, v11}, Landroidx/lifecycle/compose/b;->c(Lkotlinx/coroutines/flow/q2;Landroidx/compose/runtime/k;)Landroidx/compose/runtime/b1;
-    move-result-object v4
-    invoke-interface {v4}, Landroidx/compose/runtime/a3;->getValue()Ljava/lang/Object;
+    :cond_sync_init_k
 
     .line 151
     .line 152
