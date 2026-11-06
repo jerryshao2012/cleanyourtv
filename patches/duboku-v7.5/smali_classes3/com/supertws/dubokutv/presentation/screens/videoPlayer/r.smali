@@ -1123,8 +1123,8 @@
     const v3, 0x7f110193
     invoke-static {v8, v3}, Ll8/t1;->C(Landroidx/compose/runtime/k;I)Ljava/lang/String;
     move-result-object v5
-    sget-object v3, Lcom/supertws/dubokutv/SkipIntroHelper;->INSTANCE:Lcom/supertws/dubokutv/SkipIntroHelper;
-    iget-object v7, v14, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/r;->y:Lrb/a;
+    sget-object v3, Lcom/supertws/dubokutv/SkipIntroFocusNoop;->INSTANCE:Lcom/supertws/dubokutv/SkipIntroFocusNoop;
+    sget-object v7, Lcom/supertws/dubokutv/SkipIntroHelper;->INSTANCE:Lcom/supertws/dubokutv/SkipIntroHelper;
     const v4, 0x7f080101
     const/4 v6, 0x0
     const/16 v9, 0x186
