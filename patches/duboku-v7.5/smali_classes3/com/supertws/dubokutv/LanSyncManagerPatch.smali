@@ -82,11 +82,7 @@
     .line 22
     :cond_1
     :try_start_3
-    const-string v0, "records"
-
-    const-string v4, "detailPageUrl LIKE \'%example.com%\' OR videoPageUrl LIKE \'%example.com%\'"
-
-    invoke-virtual {v14, v0, v4, v12}, Landroid/database/sqlite/SQLiteDatabase;->delete(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)I
+    nop
     :try_end_3
     .catch Ljava/lang/Exception; {:try_start_3 .. :try_end_3} :catch_1
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
@@ -478,20 +474,6 @@
 
     .line 78
     :goto_9
-    const-string v2, "records"
-
-    const-string v3, "name = ? OR (detailPageUrl != \'\' AND detailPageUrl = ?)"
-
-    new-array v4, v4, [Ljava/lang/String;
-
-    aput-object v9, v4, v13
-
-    const/4 v15, 0x1
-
-    aput-object v1, v4, v15
-
-    invoke-virtual {v14, v2, v3, v4}, Landroid/database/sqlite/SQLiteDatabase;->delete(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)I
-
     .line 80
     new-instance v2, Landroid/content/ContentValues;
 
@@ -500,13 +482,20 @@
     .line 81
     const-string v3, "id"
 
-    if-eqz p8, :cond_use_local_id
+    if-eqz v12, :cond_use_remote_id
+
+    move-object v4, v12
+    goto :goto_a
+
+    :cond_use_remote_id
+
+    if-eqz p8, :cond_fallback_name
 
     invoke-virtual/range {p8 .. p8}, Ljava/lang/String;->isEmpty()Z
 
     move-result v4
 
-    if-nez v4, :cond_use_local_id
+    if-nez v4, :cond_fallback_name
 
     move-object/from16 v4, p8
 
@@ -630,6 +619,9 @@
     const/4 v8, 0x0
 
     invoke-virtual {v14, v0, v8, v2, v1}, Landroid/database/sqlite/SQLiteDatabase;->insertWithOnConflict(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;I)J
+
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/supertws/dubokutv/LanSyncManager;->sCloudMergeChanged:Z
 
     .line 93
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$400()Lcom/supertws/dubokutv/HandoffProgress;

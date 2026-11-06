@@ -509,3 +509,12 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 
 
 
+# Cloudflare R2 跨电视播放进度同步（2026-11-05）
+
+- 新增 Worker / KV 授权与 R2 每设备快照；家庭身份由局域网 UDP 自动发现，R2 不公开，APK 不含 S3 凭据。
+- Android 在本机记录提交后生成快照，合并上传并拉取已知 peer；云端不可用时保留 UDP 同步和本地记录。
+- Worker 已部署：`https://cleantv-r2-sync.jerry-shao.workers.dev`（版本 `511a0c02-cbee-4430-b9d6-87b2ea549918`）。
+- 实机验收：Sony Bravia 4K UR3（Android 10）播放并上传《兰香如故》第 47 集、4% 后休眠并停止 app 进程；确认 Sony 为 `Asleep` / 屏幕关闭后重启 Hisense Fire TV AFTHU71990（Android 11）app。Worker 实时日志出现成功的 peer snapshot GET，Hisense 观看记录显示同一集和 4%。
+- Xiaomi MiTV-AZFU0 / darkknight（Android 14）覆盖安装 v7.5，保留应用数据；首页和历史正常，播放《小城良方》第 15 集后进度由 46% 增到 48%，系统返回后 Worker 收到成功 PUT。停止 Xiaomi app 并休眠后，Hisense 再次刷新时 Worker 收到成功 GET。ADB 抓屏播放画面为黑色，ExoPlayer 初始化和进度推进正常，但画面渲染未能通过抓屏独立确认。
+- 实施、接口、限额策略和未覆盖验证项见 [R2_SYNC_IMPLEMENTATION.md](R2_SYNC_IMPLEMENTATION.md)。
+

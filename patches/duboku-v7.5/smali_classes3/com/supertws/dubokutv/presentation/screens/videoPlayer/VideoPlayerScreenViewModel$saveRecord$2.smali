@@ -348,5 +348,6 @@
 
     .line 88
     :cond_7
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave()V
     return-object v3
 .end method
