@@ -442,6 +442,8 @@
 .method public final onActivityPaused(Landroid/app/Activity;)V
     .locals 1
 
+    invoke-static {p1}, Lcom/supertws/dubokutv/LanSyncManager;->onActivityPause(Landroid/app/Activity;)V
+
     const-string v0, "LC.paused"
 
     invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V

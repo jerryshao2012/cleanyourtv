@@ -28,7 +28,7 @@ public class LanSyncManager {
     private static volatile LanSyncManager sInstance;
     private final Context mContext;
     private boolean mReceiverRunning = false;
-    private static final String sCurrentDeviceId = Build.MODEL + "_" + (Build.SERIAL != null ? Build.SERIAL : "tv");
+    private static volatile String sCurrentDeviceId = Build.MODEL + "_" + (Build.SERIAL != null ? Build.SERIAL : "tv");
     private static final Pattern EP_PATTERN = Pattern.compile("(\\d+)");
     
     private static final HandoffProgress sHandoff = new HandoffProgress();
@@ -118,6 +118,16 @@ public class LanSyncManager {
             }
 
             String action = json.optString("action", "");
+            FamilyIdentity identity = FamilyIdentity.get(mContext);
+            if ("FAMILY_DISCOVER".equals(action)) {
+                try { sendUdpPacket(identity.offer(json.optString("nonce", "")).toString(), senderIp); }
+                catch (Exception e) { Log.w(TAG, "Could not send family offer"); }
+                return;
+            }
+            if ("FAMILY_OFFER".equals(action)) {
+                if (identity.adopt(json)) CloudSyncClient.fetchKnownPeers(mContext);
+                return;
+            }
             if ("REQUEST_SYNC".equals(action)) {
                 Log.i(TAG, "Received REQUEST_SYNC from " + fromDevice + " (" + senderIp + "), responding with all local records...");
                 respondAllRecords(senderIp);
@@ -136,7 +146,8 @@ public class LanSyncManager {
             final String detailPageUrl = json.optString("detailPageUrl");
             final String posterUrl = json.optString("posterUrl");
 
-            if (detailPageUrl != null && detailPageUrl.contains("example.com")) {
+            if ((detailPageUrl != null && detailPageUrl.contains("example.com"))
+                    || (videoPageUrl != null && videoPageUrl.contains("example.com"))) {
                 Log.w(TAG, "Rejected dummy test packet with example.com for: " + name);
                 return;
             }
@@ -149,11 +160,6 @@ public class LanSyncManager {
                         try {
                             db = mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
                             if (db == null) return;
-
-                            // Self-healing: clean up any dummy test records
-                            try {
-                                db.delete("records", "detailPageUrl LIKE '%example.com%' OR videoPageUrl LIKE '%example.com%'", null);
-                            } catch (Exception ignored) {}
 
                             Cursor c = db.rawQuery("SELECT id, episode, progressInMillis, modifiedAt, durationInMillis, videoPageUrl, detailPageUrl, posterUrl FROM records WHERE name = ? OR (detailPageUrl != '' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1",
                                     new String[]{name, detailPageUrl});
@@ -214,10 +220,7 @@ public class LanSyncManager {
                             String finalVideo = (videoPageUrl != null && !videoPageUrl.isEmpty() && !videoPageUrl.contains("example.com"))
                                     ? videoPageUrl : (existingVideo != null ? existingVideo : "");
 
-                            // Delete any duplicate records for this same drama
-                            db.delete("records", "name = ? OR (detailPageUrl != '' AND detailPageUrl = ?)", new String[]{name, finalDetail});
-
-                            String finalId = (id != null && !id.isEmpty()) ? id : existingId;
+                            String finalId = existingId != null ? existingId : ((id != null && !id.isEmpty()) ? id : null);
                             if (finalId == null || finalId.isEmpty()) finalId = name;
 
                             ContentValues cv = new ContentValues();
@@ -593,13 +596,91 @@ public class LanSyncManager {
     }
 
     public static void onAppCreate(Context context) {
-        getInstance(context);
+        LanSyncManager manager = getInstance(context);
+        FamilyIdentity identity = FamilyIdentity.get(manager.mContext);
+        identity.ensure();
+        sCurrentDeviceId = identity.deviceId();
+        CloudSyncClient.initialize(manager.mContext);
+        try {
+            JSONObject discover = new JSONObject().put("action", "FAMILY_DISCOVER").put("from", sCurrentDeviceId)
+                    .put("nonce", java.util.UUID.randomUUID().toString());
+            sendUdpPacket(discover.toString(), null);
+        } catch (Exception ignored) { }
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try { Thread.sleep(2000L); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+                FamilyIdentity current = FamilyIdentity.get(manager.mContext);
+                CloudSyncClient.registerFamily(current.familyId(), current.familySecret());
+                try { sendUdpPacket(current.offer(java.util.UUID.randomUUID().toString()).toString(), null); }
+                catch (Exception ignored) { }
+            }
+        }, "LanSync-Family").start();
         requestSyncFromLan();
     }
 
     public static void onActivityResume(Activity activity) {
         sActiveActivity = activity;
         requestSyncDebounced();
+        CloudSyncClient.fetchKnownPeers(activity.getApplicationContext());
+    }
+
+    public static void onActivityPause(Activity activity) {
+        CloudSyncClient.onActivityPause();
+    }
+
+    /** Merges one validated peer snapshot in place; stale rows never trigger any delete. */
+    public static boolean mergeCloudSnapshot(JSONObject snapshot, String peerId) {
+        org.json.JSONArray records = snapshot.optJSONArray("records");
+        Context context = getAppContext();
+        if (records == null || context == null) return false;
+        boolean changed = false;
+        SQLiteDatabase db = null;
+        try {
+            db = context.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
+            db.beginTransaction();
+            for (int i = 0; i < records.length(); i++) {
+                JSONObject row = records.optJSONObject(i);
+                if (row == null) continue;
+                String name = row.optString("name", ""), detail = row.optString("detailPageUrl", "");
+                String video = row.optString("videoPageUrl", ""), episode = row.optString("episode", "");
+                long progress = row.optLong("progressInMillis", -1), duration = row.optLong("durationInMillis", -1);
+                long modified = row.optLong("modifiedAt", -1), created = row.optLong("createdAt", 0);
+                if (name.isEmpty() || progress < 0 || duration < 0 || modified < 0
+                        || detail.contains("example.com") || video.contains("example.com")) continue;
+                Cursor c = db.rawQuery("SELECT id,episode,progressInMillis,modifiedAt,durationInMillis,videoPageUrl,detailPageUrl,posterUrl,createdAt FROM records WHERE name = ? OR (detailPageUrl != '' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1", new String[]{name, detail});
+                String id = null, oldEpisode = null, oldVideo = null, oldDetail = null, oldPoster = null;
+                long oldProgress = 0, oldModified = 0, oldDuration = 0, oldCreated = 0;
+                if (c.moveToFirst()) {
+                    id = c.getString(0); oldEpisode = c.getString(1); oldProgress = c.getLong(2); oldModified = c.getLong(3);
+                    oldDuration = c.getLong(4); oldVideo = c.getString(5); oldDetail = c.getString(6); oldPoster = c.getString(7); oldCreated = c.getLong(8);
+                }
+                c.close();
+                boolean accept = id == null || modified > oldModified
+                        || (modified == oldModified && ProgressSnapshot.winsEqualTimestamp(parseEpisodeNum(episode), parseEpisodeNum(oldEpisode), progress, oldProgress));
+                if (!accept) continue;
+                String poster = row.optString("posterUrl", "");
+                if (!poster.startsWith("http://") && !poster.startsWith("https://")) poster = oldPoster == null ? "" : oldPoster;
+                if (detail.isEmpty()) detail = oldDetail == null ? "" : oldDetail;
+                if (video.isEmpty()) video = oldVideo == null ? "" : oldVideo;
+                String finalId = id != null && !id.isEmpty() ? id : row.optString("id", name);
+                ContentValues values = new ContentValues();
+                values.put("id", finalId); values.put("name", name); values.put("episode", episode);
+                values.put("progressInMillis", progress); values.put("durationInMillis", duration > 0 ? duration : oldDuration);
+                values.put("createdAt", oldCreated > 0 ? oldCreated : (created > 0 ? created : System.currentTimeMillis()));
+                values.put("modifiedAt", modified); values.put("videoPageUrl", video); values.put("detailPageUrl", detail); values.put("posterUrl", poster);
+                db.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                changed = true;
+            }
+            db.setTransactionSuccessful();
+        } catch (Exception e) { Log.w(TAG, "Cloud merge deferred: " + e.getClass().getSimpleName()); }
+        finally { if (db != null) { try { db.endTransaction(); } catch (Exception ignored) { } db.close(); } }
+        if (changed) bumpSyncVersion();
+        return changed;
+    }
+
+    /** Called only after the Room save coroutine has completed successfully. */
+    public static void onRecordSaved() {
+        CloudSyncClient.onCommittedSave();
     }
 
     public static String formatButtonText(Object recordObj, Object movieDetailsObj, String fallbackText) {

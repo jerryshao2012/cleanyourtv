@@ -1,0 +1,248 @@
+# R2 跨电视进度同步实施与验收
+
+> **状态：已实现并通过 Sony Bravia 4K UR3（Android 10）、Hisense Fire TV AFTHU71990（Android 11）及 Xiaomi MiTV-AZFU0 / darkknight（Android 14）实机验收，2026-11-05。** 下文保留设计契约和实现说明，供后续维护。
+
+> **验收结果：**Sony 播放并上传《兰香如故》第 47 集、4% 后休眠并停止 app 进程。Sony 报告 `Asleep` 且屏幕关闭时，重启 Hisense app；Worker 实时日志记录成功的 peer snapshot GET，Hisense 观看记录仍显示该剧第 47 集、4%（记录时间 2026-11-05 22:22:34）。随后在 Xiaomi MiTV-AZFU0（Android 14）保留数据覆盖安装，首页、历史及播放器可用，播放《小城良方》第 15 集时进度由 46% 前进到 48%，返回系统首页后 Worker 记录成功 PUT；停止 Xiaomi app 并让设备休眠后，Hisense 重启并再次读取快照。没有清除应用数据或卸载重装。
+
+> **部署：**Worker `https://cleantv-r2-sync.jerry-shao.workers.dev`，2026-11-05 部署版本 `511a0c02-cbee-4430-b9d6-87b2ea549918`。生产环境使用私有 R2 bucket `cleanyourtv`、Workers KV 与 Durable Object 注册协调器。
+
+**目标：**让一台电视休眠时，另一台仍能读取最近一次已上传的播放进度；Cloudflare 暂时不可用时继续使用现有 UDP 同步。
+
+**架构：**Cloudflare Worker 绑定私有 R2 bucket，作为稳定的 HTTPS 接口；每台电视只写自己的 R2 快照对象，避免对象列表和设备间写冲突。局域网 UDP 同时负责实时同步、首次自动发现家庭身份以及云端故障时的兜底。
+
+**技术栈：**现有 Duboku v7.5 smali 补丁、Android 原生网络与 SQLite、Cloudflare Workers、Workers KV、R2 Workers binding、Wrangler。
+
+---
+
+## 1. 已锁定的设计决策
+
+- 保持 `cleanyourtv` bucket 私有并使用 Standard 存储；APK 不访问 S3 endpoint，不内置 R2 Access Key、Secret 或预签名 URL。
+- 新增 Worker 作为唯一云端入口。R2 凭据由 Worker binding 管理；家庭授权由 Worker KV 校验。KV/Worker 用量与 R2 Class A/B 分开统计。
+- 每台 TV 拥有稳定随机 `deviceId`；每个家庭拥有随机 `familyId` 和独立随机 `familySecret`。不从公网 IP、设备型号或 Android ID 推导身份。
+- 首台 TV 生成家庭身份；未配对 TV 通过 UDP 自动发现并加入。家庭内所有运行本应用、处于同一广播域的设备都被视为可信成员；UDP 不作为公网安全边界。
+- R2 key 固定为 `v1/<familyId>/<deviceId>.json`。每个对象保存该设备最近 20 条记录；绝不使用 `ListObjects`。
+- 播放位置仍按现有路径写入本机数据库并继续广播 UDP。云端每 30 秒最多上传一次；切集、暂停、退出时立即尝试上传。上传失败只保留最新完整快照，不积累每个进度点的队列。
+- 打开应用、恢复前台或首次进入历史页时，从已知的其他设备各读取一次快照。没有定时轮询；网络恢复期间按 1、2、5、15 分钟封顶退避重试。
+- UDP 一直启用。Cloudflare 请求失败不得阻塞播放器、历史列表或本地保存；云端恢复后先读取并合并，再上传合并快照。
+- 记录冲突沿用现有时间戳优先规则；同时间戳依次以集数和进度决胜。更新本地记录时保留已有非空 `posterUrl`、`detailPageUrl`、`videoPageUrl`。
+
+## 2. 数据流
+
+```mermaid
+flowchart LR
+  P[播放器保存本机 records] --> U[现有 UDP 广播]
+  P --> C[30 秒合并上传 / 事件立即上传]
+  C --> W[Cloudflare Worker]
+  W --> R[(私有 R2: 每设备一个快照)]
+  H[TV2 前台 / 历史页] --> G[GET 已知 peer 快照]
+  G --> W
+  R --> G
+  G --> M[按 modifiedAt 合并到本机 SQLite]
+  M --> UI[Room 刷新历史列表]
+  W -. 不可用 .-> L[继续使用 UDP；快照保留待重试]
+```
+
+云端保存的是最后一次成功 PUT 的快照。电视休眠期间无法产生新进度；30 秒间隔意味着正常联网时云端最多落后约 30 秒。突然断电或断网可能丢失尚未成功上传的尾部进度。
+
+## 3. 家庭身份和 UDP 自动发现
+
+### 3.1 本地身份
+
+- `deviceId`：首次启动时用安全随机数生成 UUID，写入 app-private `SharedPreferences`；升级 APK 不得重置。
+- `familyId`：首次启动时客户端生成随机 UUID；保存在同一偏好文件。首次注册会把该 ID 固定为 Worker family key。
+- `familySecret`：首次启动时客户端生成 32 字节随机值，base64url 编码；仅家庭成员间授权 Worker 请求。保存在 app-private 偏好文件，禁止写日志或普通诊断信标。
+- UDP peer roster：保存已发现的 `deviceId`，仅用于指定 R2 GET key；不保存公网 IP 作为身份。
+
+### 3.2 UDP 消息
+
+沿用现有 UDP 端口 9876 和既有 JSON 传输，不新增 Android 权限。新动作均带 `from=deviceId` 和随机 `nonce`，接收端过滤自身消息。
+
+```json
+{"action":"FAMILY_DISCOVER","from":"<deviceId>","nonce":"<random>"}
+```
+
+已有家庭的设备对请求源 IP 单播回复：
+
+```json
+{
+  "action":"FAMILY_OFFER",
+  "from":"<deviceId>",
+  "familyId":"<uuid>",
+  "familySecret":"<base64url>",
+  "devices":["<deviceId>","..."]
+}
+```
+
+- 每次应用启动/前台恢复均广播发现，收集 2 秒；身份已保存的 TV 也回复当前身份。
+- canonical family 使用所有已收到 offer 中字典序最小的 `familyId`，因此无需设备时钟比较。若本机 ID 不是 canonical，必须采用携带 canonical ID 的 offer 中的 `familySecret` 和 roster，并广播 canonical offer；禁止出现“身份已保存就永不更改”的分支。
+- 尚无身份的 TV 若收到一个或多个 offer，按同一规则选定 canonical ID。若 2 秒内无响应，则本机生成 ID/secret、调用幂等注册接口，再广播 offer。
+- 迁移家庭身份时保留本机 records；先拉取 canonical family 的已知设备快照并合并，再上传本机快照。旧家庭对象可作为孤儿对象留存，不执行 bucket 列表或全桶删除。
+- 同一广播域中的多个 Duboku 家庭会自动合并到最小 familyId；v1 明确假设一个广播域就是一个家庭同步组，不提供多组选择 UI。
+- Worker 只接受格式正确的 UUID、设备 ID 和秘密；UDP 发现只在本地广播网段处理。`familySecret` 经 UDP 明文传输，故该实现假设家庭 LAN 可信；此秘密不是 Cloudflare/R2 API key。
+- 新电视首次自动加入需要同一广播域内至少有一台已配对电视在线。之后电视可休眠，其他设备仍通过 R2 同步。
+
+## 4. Worker API 契约
+
+Base URL 用部署后 Worker 的 HTTPS URL，通过 APK 的一个常量配置。请求体和响应统一 JSON/UTF-8。除家庭创建接口外，所有接口要求 `Authorization: Bearer <familySecret>`。Worker KV 只保存 `SHA-256(familySecret)`；比较采用常量时间比较。禁止记录 Authorization、familySecret、请求正文或预签名参数。
+
+### `POST /v1/families`
+
+首次设备建家庭。客户端先生成并持久化随机 `familyId` 和 32-byte `familySecret`，再发送注册请求。这样即使响应丢失，客户端仍可用同一请求重试恢复授权。
+
+Request:
+
+```json
+{"familyId":"<uuid>","familySecret":"<base64url-32-byte-random>"}
+```
+
+首次注册返回 `201 Created`；相同 ID/相同秘密重试返回 `200 OK`。同一 ID 对应不同秘密返回 `409 Conflict`。Worker 仅把秘密哈希写入 KV；不访问 R2。按来源 IP 对创建请求限速（每小时最多 10 次），限速计数使用独立 KV key。
+
+```json
+{"familyId":"<uuid>","registered":true}
+```
+
+秘密不会由 Worker 返回；客户端在注册前已持久化，并仅通过局域网 `FAMILY_OFFER` 交给新设备。
+
+### `GET /v1/sync/{familyId}/{deviceId}`
+
+读取一个已知 peer 快照。成功时 `200 OK`，返回：
+
+```json
+{
+  "schemaVersion":1,
+  "familyId":"<uuid>",
+  "deviceId":"<uuid>",
+  "updatedAt":<epochMillis>,
+  "records":[
+    {
+      "id":"...","name":"...","episode":"第5集",
+      "progressInMillis":120000,"durationInMillis":2400000,
+      "createdAt":<epochMillis>,"modifiedAt":<epochMillis>,
+      "videoPageUrl":"...","detailPageUrl":"...","posterUrl":"..."
+    }
+  ]
+}
+```
+
+对象不存在时仍返回相同结构的空 `records`，不把首次读取当错误。每个 GET 恰好调用一次 R2 `get`（Class B）。
+
+### `PUT /v1/sync/{familyId}/{deviceId}`
+
+用本机完整快照覆盖本机对象。请求体格式与 GET 返回结构相同。要求 `familyId/deviceId` 与路径完全相同、`schemaVersion=1`、记录数不超过 20、总正文不超过 64 KiB、进度和时长非负、URL 字段长度受限。Worker 验证通过后一次 R2 `put`（Class A），返回 `204 No Content`。每台设备只写自己的 key。
+
+客户端对每个 device key 使用 single-flight 串行上传：任一时刻最多一个 PUT；超时后先重试完全相同的幂等快照，成功后才发送期间合并出的最新快照。Worker 不为 PUT 额外 GET R2，因此不会产生额外 Class B；revision 不作为并发控制字段。
+
+### 错误和客户端处理
+
+| HTTP | 含义 | 客户端行为 |
+|---|---|---|
+| 400 | JSON、ID、schema 或字段无效 | 丢弃该快照并记录脱敏错误 |
+| 401 | 家庭秘密无效/家庭未注册 | 新注册/加入家庭后的 60 秒内按 1、2、5、10 秒重试以容忍 KV 跨区域传播；之后停止云请求，保留本地/UDP 同步且不自动换家庭 |
+| 404 | 未知路由 | 不重试 |
+| 413 | 快照超限 | 仅上传最近 20 条；记录错误 |
+| 429 / 5xx / 网络超时 | 暂时失败 | 指数退避；合并为最新一份快照 |
+
+Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端的认证机制。公开访问 R2 bucket 保持关闭。
+
+## 5. R2 操作预算
+
+- 一个设备快照 PUT = 1 次 Class A；一个 peer 快照 GET = 1 次 Class B。
+- 不执行 `LIST`、`HEAD`、单集单对象写入、周期性空轮询或为每条记录拆分对象。
+- 按每天播放 2 小时、每 30 秒上传一次估算：每设备约 `2 × 3600 ÷ 30 × 30 = 7,200` 次 PUT/月；暂停/切集立即上传会略增。
+- 两台 TV 中，TV2 每天打开 10 次且每次只读 TV1 一次，约 300 次 GET/月。设备数为 N 时，一次全量同步最多 `N-1` 次 GET。
+- R2 免费额度以当前账户定价页面为准；R2 对象操作不包括 Worker/KV 调用。Worker/KV 应另看对应额度与用量面板。
+
+## 6. Android 接入和降级
+
+### 6.1 上传
+
+- 使用现有 `records` SQLite 表作为快照来源，不增加数据库迁移。
+- 监听已提交的播放记录变更；上传必须在本地 Room 保存成功之后读取数据库，不能复用当前在本地保存前触发的 `broadcastProgress` 调用作为 cloud payload。
+- 新增单线程 cloud sync queue；同一时刻只处理一个请求。30 秒窗口内多个变更合并为一次最新快照；切集、暂停、播放器退出时立即排队一次。
+- 失败不覆盖本地数据、不阻塞播放；保留 `cloudDirty=true`，重试时从数据库重新构造完整快照，成功后清除 dirty。不要把每个 5 秒进度点存成独立上传任务。
+
+### 6.2 下载与合并
+
+- 前台恢复/历史页首次挂载时，先运行现有 UDP `REQUEST_SYNC`，并通过 Worker GET 已知 peer 的对象。
+- 收到云端快照后使用现有冲突/重复剧处理逻辑合并 SQLite；只在内容确实变化时刷新 Room/Compose。
+- 云 GET 结束且合并完成后，再上传本机合并快照（仅本机有更新或 roster 变更时）。不得在 GET 前把旧本机全量数据 PUT 到云端。
+- UDP 记录和云端记录走同一个本地 merge helper。UDP 仍在云端成功时运行，以提供局域网低延迟；云端失败时它是可用的独立备份通道。
+- 每次启动/前台恢复都允许一次云拉取；同一页面重组不再次拉取。网络失败退避 1/2/5/15 分钟，隐藏或进程退出时停止重试。
+
+### 6.3 故障边界
+
+- R2/Worker 不可达：本地保存和 UDP 同步照常；云端标记 dirty，按退避重试。
+- TV1 睡眠：云端只提供它最后成功上传的快照；不能承诺恢复不到该上传窗口内的秒级尾差。
+- Worker/KV 授权失败：不清除家庭身份、不将记录上传到新家庭；UDP 仍运行。需要通过应用升级或管理方式修复授权。
+- UDP 无 peer：云端读写仍可工作；首次新 TV 配对则需要已有 TV 醒着、在同一广播网段。
+
+## 7. 实施文件和工作项
+
+### 工作项 A：Cloudflare Worker
+
+**新增目录：**`apks/patches/duboku-v7.5/r2-sync-worker/`
+
+- 新增 `wrangler.toml`，配置 `R2_BUCKET` binding 指向 `cleanyourtv` 和 `FAMILY_AUTH` KV namespace；R2 保持 private。环境变量不得包含 S3 access key。
+- 新增 `src/index.ts` 实现三条路由、JSON schema 校验、KV 秘密哈希、R2 key 构造、大小限制和脱敏错误。对象 key 必须由校验后的 path IDs 构造，不能接受任意 key。
+- 新增单元/本地 Worker 测试覆盖新建家庭、GET 空对象、PUT/GET round-trip、跨家庭 401、路径错配、payload 超限和未知路径。
+- 部署时用 Wrangler 登录当前 Cloudflare 账户，创建 KV namespace，绑定现有 bucket，部署 Worker；把 Worker URL 写入 Android 构建常量。部署凭据不进入 Git。
+
+### 工作项 B：Android UDP 身份和云同步
+
+**主要 Java 参考源：**`LanSyncManager.java`、`CloudSyncClient.java`、`FamilyIdentity.java`、`ProgressSnapshot.java`。**APK 实际类：**`smali_classes3/com/supertws/dubokutv/LanSyncManager.smali`、`CloudSyncClient.smali`、`FamilyIdentity.smali`、`ProgressSnapshot.smali` 及 `LanSyncManager$*.smali`。
+
+- Java 参考源与对应 smali 按现有仓库约定手动保持同步；只有 smali 被 apktool 打入 APK，不能只复制 Java 文件。新增类路径如上，不再加其他 helper class，必要回调放入 `LanSyncManager$*.smali`。
+- `CloudSyncClient` 仅用 Android 已有 HTTP/TLS API，避免新增第三方依赖；`FamilyIdentity` 负责随机身份、偏好持久化和 UDP offer；`ProgressSnapshot` 只负责 records DTO 与 schema 验证。
+- 实现随机 `deviceId`、家庭身份持久化和 UDP `FAMILY_DISCOVER/FAMILY_OFFER`。保持现有 `REQUEST_SYNC`、progress packet、接收入库和 Room 刷新行为。
+- 实现 Worker HTTP 调用、单线程上传队列、30 秒合并窗口、事件立即上传、peer GET、重试状态与成功时间。
+- 把 UDP 和云快照都交给同一 merge helper；旧本地记录不因配对或云端首次加载而清空。
+- 在构建 patch 时覆盖 smali 树和 `AndroidManifest.xml`，不要只复制 Java 参考文件；沿用 `duboku-v7.5-patch-notes.md` 中 apktool 构建流程。
+
+## 8. 验收测试
+
+### Worker 自动化
+
+- [x] Worker 测试：`node --experimental-strip-types --test test/worker.test.mjs`，9/9 通过。
+- `POST /v1/families` 新建返回 201；相同请求重试返回 200；同 ID 换秘密返回 409；超过 IP 限额返回 429；KV 保存哈希而非明文。
+- 有效家庭秘密能创建本机快照并读取；错误秘密、其他 familyId 和篡改 path 均拒绝。
+- 不存在的对象返回空快照；错误 JSON、负数进度、21 条记录和大于 64 KiB 请求均拒绝。
+- Worker 测试断言一条 GET 只调用一次 R2 `get`、一条 PUT 只调用一次 R2 `put`，所有路由均未调用 list。
+
+### Android / 多机实测
+
+- [x] TV1 播放并上传后进入睡眠；停止 Sony app 进程并确认电视为 `Asleep` / 屏幕关闭。重启 TV2 app 后，Worker 实时日志出现成功的 R2 peer GET，Hisense 历史显示《兰香如故》第 47 集、4%，没有依赖 TV1 唤醒或播放。
+- 云端关闭/超时：TV1 与 TV2 仍通过现有 UDP 同步；恢复云端后 dirty 快照上传并合并，不出现请求风暴。
+- 首次安装两台 TV 同 LAN 时自动交换家庭身份；后续进程重启保留 identity/device roster；新设备需要至少一个已配对 peer 在线。
+- 同剧不同集、同集远端更新、意图回看旧集、重复 UDP 包、旧云快照、封面/URL 为空等冲突场景不倒退或清空有效链接。
+- [x] 检查 history UI 刷新和播放器接续功能；Sony 与 Hisense 均启动应用并显示首页，Sony 实际播放，Hisense 刷新观看记录。
+- [x] Xiaomi MiTV-AZFU0 / darkknight（Android 14）：`adb install -r` 覆盖安装，保留本地数据；首页/观看记录正常；《小城良方》第 15 集播放后由 46% 更新到 48%；系统返回后 Worker 收到成功 PUT。停止 Xiaomi app 并休眠后，Hisense 刷新时 Worker 记录成功 GET。ADB 抓屏在播放时显示黑色视频层；ExoPlayer 已初始化且进度前进，但实际视频画面未能通过抓屏独立确认。
+- 未做：Android 5.1 设备验证、故障注入/冲突全矩阵、R2 Metrics 操作计数核对。Worker 自动化测试断言 GET 单次 `get`、PUT 单次 `put` 且不执行 list。
+
+### 构建与发布检查
+
+1. Worker：运行单元测试后部署到 production。该次设备验收确实向正式家庭快照写入/读取进度，不创建测试对象。
+2. APK：在原始反编译目录覆盖 patch 文件后运行 `apktool b duboku_src -o unsigned.apk`；确认所有 DEX 成功生成，再按现有发布流程签名并双机安装。
+3. 确认 APK 中不含 R2 S3 keys、API token、familySecret 常量或 1 小时测试预签名 URL；确认浏览器创建的临时 `cleanyourtv-presign-temp` token 不作为运行凭证。
+
+## 9. 迁移和运维
+
+- 不改 Room schema；已有本地 records 保留。升级后首次启动通过 UDP/Worker 建立身份，再合并已知云快照。
+- 不从旧 UDP 广播内容导入家庭身份；仅有效的 `FAMILY_OFFER` 建立家庭绑定。
+- familySecret 丢失且无在线 peer 时无法恢复对已有家庭云对象的授权；v1 不做账号找回。设备仍可使用本地记录和 UDP，需同 LAN peer 在线重新获取身份。
+- 不配置自动删除旧对象或全桶生命周期规则；每个家庭和设备只占一个小快照。孤儿对象由后续管理工具按显式前缀清理，不在正常同步中执行删除或列表。
+- 监控 Worker 错误率、KV 与 Worker 使用量、R2 Class A/B 和 Storage；不得记录家庭秘密或剧目播放 URL。
+
+## 10. 假设和已知风险
+
+- 同一家庭内所有 Duboku TV 位于同一 UDP 广播域；同一广播域内多个独立家庭会按字典序最小 familyId 合并为一个家庭。v1 不提供手动选择或 QR 配对。
+- 通过 UDP 传递 familySecret 意味着同一 LAN 上可监听流量的设备可能加入家庭；这是无用户交互配对的安全取舍。绝不通过 UDP 传递 Cloudflare API token/R2 key。
+- 上传间隔 30 秒是费用与断点新鲜度折中；突发休眠的尾差不超过约一个上传窗口，但网络失败时可能更久。
+- 网络超时后原 Worker PUT 理论上可能晚于相同请求重试和较新快照完成，短暂覆盖较新对象；single-flight 会降低概率，下一次成功快照会修复。v1 接受此低概率窗口，不为每个 PUT 额外读取 R2 或引入 Durable Object 排序。
+- Cloudflare Worker、KV namespace、Durable Object 注册协调器和部署 URL 已在生产账户配置。R2 Metrics 的 Class A/B 实际用量仍需在 Cloudflare 控制台核对。
+
+## 参考
+
+- [Cloudflare R2 定价和操作分类](https://developers.cloudflare.com/r2/pricing/)
+- [通过 Workers 使用 R2](https://developers.cloudflare.com/r2/api/workers/workers-api-usage/)
+- [R2 Workers API 参考](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
+- [Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/)
