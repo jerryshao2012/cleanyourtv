@@ -291,7 +291,7 @@ python3 apks/patches/duboku-v7.5/wire_shim.py \
 
 # 3) 选择本补丁目录（也可指向 cleanyourtv/patches/duboku-v7.5）并覆盖文件
 PATCH_DIR=apks/patches/duboku-v7.5
-for part in smali smali_classes3 smali_classes4; do cp -R "$PATCH_DIR/$part/." "duboku_src/$part/"; done
+for part in smali smali_classes3 smali_classes4 smali_classes5; do cp -R "$PATCH_DIR/$part/." "duboku_src/$part/"; done
 cp "$PATCH_DIR/AndroidManifest.xml" "$PATCH_DIR/apktool.yml" duboku_src/
 
 # 4) 打包签名
@@ -540,3 +540,10 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - **修复**：将焦点回调改为空操作，把快进 30 秒回调绑定到 OK/触摸点击。
 - **Sony 实机验证**：Sony Bravia 4K UR3（Android 10）播放《小城良方》第 16 集时，进度停在 `00:54`，方向键移入按钮后仍为 `00:54`；按 OK 后到 `01:24`，触摸按钮后到 `01:54`。
 
+
+### 家庭设置面板焦点与启动器入口（2026-11-07）
+
+- 家庭面板按钮聚焦时使用白底黑字，移除黄色边框；未聚焦按钮保持深色底白字。
+- 从个人菜单选中“家庭”时，右侧家庭设置立即显示，菜单焦点不被面板抢走；首次使用也可从该入口直接打开配置。
+- 移除 `FamilySyncActivity` 的 MAIN/LAUNCHER 与 LEANBACK_LAUNCHER intent-filter，并设为非导出；桌面只保留 `SplashActivity` 主入口。
+- Hisense Fire TV（192.168.87.37）覆盖安装、保留家庭数据验证：家庭行显示右侧面板；菜单行白底黑字；按右进入后按钮白底黑字且无黄色边框；启动器查询只返回 `SplashActivity`。 云同步开关可关闭后再恢复为开启。三个分发 APK 与 Hisense 已安装包 SHA-256 均为 `0d7abbbcd73202f1ef5372cbd5a4d32bece9ac6d2baded0efd24657f911d4376`。

@@ -58,13 +58,7 @@
         <activity android:configChanges="orientation|screenSize|layoutDirection" android:exported="true" android:name="com.supertws.dubokutv.MainActivity" android:theme="@style/Theme.DubokuTv">
             <meta-data android:name="android.app.lib_name" android:value=""/>
         </activity>
-        <activity android:exported="true" android:label="@string/family_sync" android:name="com.supertws.dubokutv.FamilySyncActivity" android:theme="@style/Theme.DubokuTv">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
-            </intent-filter>
-        </activity>
+        <activity android:exported="false" android:label="@string/family_sync" android:name="com.supertws.dubokutv.FamilySyncActivity" android:theme="@style/Theme.DubokuTv"/>
         <service android:enabled="false" android:exported="false" android:name="androidx.appcompat.app.AppLocalesMetadataHolderService">
             <meta-data android:name="autoStoreLocales" android:value="true"/>
         </service>

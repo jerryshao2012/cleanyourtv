@@ -9,18 +9,14 @@
 # instance fields
 .field public final synthetic f$0:Lcom/supertws/dubokutv/FamilySyncActivity;
 
-.field public final synthetic f$1:Lorg/json/JSONArray;
-
 
 # direct methods
-.method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncActivity;Lorg/json/JSONArray;)V
+.method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncActivity;)V
     .locals 0
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
     iput-object p1, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda18;->f$0:Lcom/supertws/dubokutv/FamilySyncActivity;
-
-    iput-object p2, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda18;->f$1:Lorg/json/JSONArray;
 
     return-void
 .end method
@@ -28,13 +24,11 @@
 
 # virtual methods
 .method public final run()V
-    .locals 2
+    .locals 1
 
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda18;->f$0:Lcom/supertws/dubokutv/FamilySyncActivity;
 
-    iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda18;->f$1:Lorg/json/JSONArray;
-
-    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/FamilySyncActivity;->lambda$cleanUp$18$com-supertws-dubokutv-FamilySyncActivity(Lorg/json/JSONArray;)V
+    invoke-static {v0}, Lcom/supertws/dubokutv/FamilySyncActivity;->$r8$lambda$nOt4xC2WqPO7dvaH0IHFS9uscsc(Lcom/supertws/dubokutv/FamilySyncActivity;)V
 
     return-void
 .end method

@@ -40,7 +40,7 @@
 
     iget-object v2, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda0;->f$2:Ljava/lang/String;
 
-    invoke-virtual {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncActivity;->lambda$copyMerge$13$com-supertws-dubokutv-FamilySyncActivity(Lorg/json/JSONArray;Ljava/lang/String;)V
+    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncActivity;->$r8$lambda$ZcDktSCkfursTmFPzNHvNqhLxGk(Lcom/supertws/dubokutv/FamilySyncActivity;Lorg/json/JSONArray;Ljava/lang/String;)V
 
     return-void
 .end method

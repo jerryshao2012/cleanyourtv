@@ -256,13 +256,7 @@
 
     monitor-exit p0
 
-    goto :goto_3
-
-    :goto_2
     throw p1
-
-    :goto_3
-    goto :goto_2
 .end method
 
 .method public declared-synchronized adopt(Lorg/json/JSONObject;)Z
@@ -518,41 +512,41 @@
     .line 85
     const-string p1, "R2Sync"
 
-    new-instance v0, Ljava/lang/StringBuilder;
-
-    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v1, "Family offer accepted: identityChanged="
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    invoke-virtual {v0, v5}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    const-string v1, " rosterChanged="
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
     invoke-virtual {v8, v7}, Ljava/util/TreeSet;->equals(Ljava/lang/Object;)Z
 
-    move-result v1
+    move-result v0
 
-    if-nez v1, :cond_8
+    if-nez v0, :cond_8
 
-    const/4 v1, 0x1
+    const/4 v0, 0x1
 
     goto :goto_3
 
     :cond_8
-    const/4 v1, 0x0
+    const/4 v0, 0x0
 
     :goto_3
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "Family offer accepted: identityChanged="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1, v5}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    const-string v2, " rosterChanged="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
 
     move-result-object v0
 
@@ -604,13 +598,7 @@
 
     monitor-exit p0
 
-    goto :goto_6
-
-    :goto_5
     throw p1
-
-    :goto_6
-    goto :goto_5
 .end method
 
 .method public deviceId()Ljava/lang/String;
@@ -805,6 +793,23 @@
     return-object v0
 .end method
 
+.method public isCloudSyncEnabled()Z
+    .locals 3
+
+    .line 126
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
+
+    const-string v1, "cloudSyncEnabled"
+
+    const/4 v2, 0x1
+
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+
+    move-result v0
+
+    return v0
+.end method
+
 .method public declared-synchronized join(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONArray;)V
     .locals 4
 
@@ -975,13 +980,7 @@
 
     monitor-exit p0
 
-    goto :goto_3
-
-    :goto_2
     throw p1
-
-    :goto_3
-    goto :goto_2
 .end method
 
 .method public offer(Ljava/lang/String;)Lorg/json/JSONObject;
@@ -1190,11 +1189,42 @@
 
     monitor-exit p0
 
-    goto :goto_2
-
-    :goto_1
     throw v0
+.end method
 
-    :goto_2
-    goto :goto_1
+.method public declared-synchronized setCloudSyncEnabled(Z)V
+    .locals 2
+
+    monitor-enter p0
+
+    .line 130
+    :try_start_0
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
+
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+
+    move-result-object v0
+
+    const-string v1, "cloudSyncEnabled"
+
+    invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    .line 131
+    monitor-exit p0
+
+    return-void
+
+    .line 129
+    :catchall_0
+    move-exception p1
+
+    monitor-exit p0
+
+    throw p1
 .end method

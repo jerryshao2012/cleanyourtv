@@ -3,7 +3,7 @@
 .source "D8$$SyntheticClass"
 
 # interfaces
-.implements Ljava/lang/Runnable;
+.implements Landroid/content/DialogInterface$OnClickListener;
 
 
 # instance fields
@@ -23,12 +23,12 @@
 
 
 # virtual methods
-.method public final run()V
+.method public final onClick(Landroid/content/DialogInterface;I)V
     .locals 1
 
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncActivity$$ExternalSyntheticLambda10;->f$0:Lcom/supertws/dubokutv/FamilySyncActivity;
 
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilySyncActivity;->lambda$issueCode$6$com-supertws-dubokutv-FamilySyncActivity()V
+    invoke-static {v0, p1, p2}, Lcom/supertws/dubokutv/FamilySyncActivity;->$r8$lambda$5yR_GtkAXKaq36Iv1-PrlEA-DaY(Lcom/supertws/dubokutv/FamilySyncActivity;Landroid/content/DialogInterface;I)V
 
     return-void
 .end method
