@@ -15,7 +15,6 @@ function env() {
   const storage = { sql: { exec: (query, ...args) => { const statement = database.prepare(query); if (/^\s*SELECT/i.test(query)) return { toArray: () => statement.all(...args) }; statement.run(...args); return { toArray: () => [] }; } }, transactionSync: callback => { database.exec('BEGIN IMMEDIATE'); try { const result = callback(); database.exec('COMMIT'); return result; } catch (error) { database.exec('ROLLBACK'); throw error; } } };
   const coordinator = new RegistrationCoordinator({ storage });
   return { values, counts, database, coordinator, fault, JOIN_CODE_KEY: Buffer.alloc(32, 3).toString('base64url'),
-    FAMILY_AUTH: { async get(key) { return values.get(key) ?? null; }, async put(key, value) { values.set(key, value); }, async delete(key) { values.delete(key); } },
     REGISTRATION_COORDINATOR: { getByName() { return { fetch: (input, init) => { counts.coordinator++; return coordinator.fetch(new Request(input, init)); } }; } },
     R2_BUCKET: {
       async get(key) { counts.get++; const value = values.get(`r2:${key}`); return value == null ? null : { async json() { return JSON.parse(value); } }; },
@@ -35,13 +34,14 @@ async function call(e, path, { method = 'GET', body, auth = SECRET, ip = '192.0.
 async function create(e, familyId, familySecret = SECRET, ip) {
   return call(e, '/v1/families', { method: 'POST', body: { familyId, familySecret }, auth: null, ...(ip ? { ip } : {}) });
 }
-test('registers family idempotently and stores only hashes', async () => {
+test('registers family idempotently and stores its hash only in Durable Object SQL', async () => {
   const e = env();
   assert.equal((await create(e, FAMILY)).status, 201);
   for (let n = 0; n < 15; n++) assert.equal((await create(e, FAMILY)).status, 200);
   assert.equal((await create(e, FAMILY, Buffer.alloc(32, 8).toString('base64url'))).status, 409);
   assert.equal([...e.values.values()].includes(SECRET), false);
-  assert.match(e.values.get(`family:${FAMILY}`), /^[0-9a-f]{64}$/);
+  assert.match(e.database.prepare('SELECT secret_hash FROM families WHERE family_id = ?').get(FAMILY).secret_hash, /^[0-9a-f]{64}$/);
+  assert.equal('FAMILY_AUTH' in e, false);
   e.database.close();
 });
 test('serializes concurrent conflicting registrations for one family', async () => {
@@ -68,7 +68,7 @@ test('GET returns empty schema and performs exactly one R2 get', async () => {
   const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { schemaVersion: 1, familyId: FAMILY, deviceId: DEVICE, updatedAt: 0, records: [] });
-  assert.deepEqual(e.counts, { get: 1, put: 0, delete: 0, list: 0, coordinator: 1 });
+  assert.deepEqual(e.counts, { get: 1, put: 0, delete: 0, list: 0, coordinator: 2 });
   e.database.close();
 });
 test('PUT then GET round trips with one put and one get and no list', async () => {
@@ -76,7 +76,7 @@ test('PUT then GET round trips with one put and one get and no list', async () =
   assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: SNAPSHOT })).status, 204);
   const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
   assert.deepEqual(await response.json(), SNAPSHOT);
-  assert.deepEqual(e.counts, { get: 1, put: 1, delete: 0, list: 0, coordinator: 2 });
+  assert.deepEqual(e.counts, { get: 1, put: 1, delete: 0, list: 0, coordinator: 3 });
   e.database.close();
 });
 
@@ -118,7 +118,7 @@ test('refuses cleanup when the source family has no cloud snapshots to preserve'
   const cleanup = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [joinCode], confirmed: true } });
   assert.equal(cleanup.status, 409);
   assert.equal((await cleanup.json()).error, 'source_snapshot_unavailable');
-  assert.ok(e.values.has(`family:${sourceFamily}`));
+  assert.ok(e.database.prepare('SELECT family_id FROM families WHERE family_id = ?').get(sourceFamily));
   e.database.close();
 });
 test('copies every source snapshot into the canonical family and deletes source only after explicit cleanup', async () => {

@@ -6,10 +6,6 @@ compatibility_date = "2026-10-01"
 binding = "R2_BUCKET"
 bucket_name = "cleanyourtv"
 
-[[kv_namespaces]]
-binding = "FAMILY_AUTH"
-id = "3d13f681455b45fe9ee952c0d2a6082b"
-
 [[durable_objects.bindings]]
 name = "REGISTRATION_COORDINATOR"
 class_name = "RegistrationCoordinator"

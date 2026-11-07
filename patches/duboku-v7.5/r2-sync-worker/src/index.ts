@@ -8,7 +8,6 @@ const MAX_MERGE_SNAPSHOTS = 500;
 
 interface Env {
   R2_BUCKET: R2Bucket;
-  FAMILY_AUTH: KVNamespace;
   REGISTRATION_COORDINATOR: DurableObjectNamespace<RegistrationCoordinator>;
   JOIN_CODE_KEY: string;
 }
@@ -147,7 +146,6 @@ async function register(request: Request, env: Env): Promise<Response> {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ familyId, secretHash: hex(hash), ipHash: hex(await sha256(new TextEncoder().encode(ip))) })
   });
-  if (result.status === 201 || result.status === 200) await env.FAMILY_AUTH.put(`family:${familyId}`, hex(hash));
   return result.status === 201 || result.status === 200 ? json({ familyId, registered: true }, result.status) : result;
 }
 function hex(bytes: Uint8Array): string { return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(''); }
@@ -157,8 +155,14 @@ async function authorized(request: Request, familyId: string, env: Env): Promise
   const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(header);
   const secret = decodeSecret(match?.[1]);
   if (!secret) return false;
-  const stored = await env.FAMILY_AUTH.get(`family:${familyId}`);
-  return !!stored && /^[0-9a-f]{64}$/.test(stored) && equalHash(await sha256(secret), fromHex(stored));
+  return verifySecret(env, familyId, hex(await sha256(secret)));
+}
+async function verifySecret(env: Env, familyId: string, secretHash: string): Promise<boolean> {
+  const result = await coordinator(env, 'family/authorize', { familyId, secretHash });
+  if (result.status !== 200) throw new Error('family authorization unavailable');
+  const body = await result.json() as { authorized?: unknown };
+  if (typeof body.authorized !== 'boolean') throw new Error('invalid family authorization response');
+  return body.authorized;
 }
 
 export class RegistrationCoordinator {
@@ -226,10 +230,11 @@ export class RegistrationCoordinator {
       this.sql.exec('DELETE FROM join_codes WHERE family_id = ?', body.familyId);
       return json({ revoked: true });
     }
-    if (path === '/family/status') {
-      if (typeof body.familyId !== 'string' || !validId(body.familyId)) return error(400, 'invalid_request');
-      const rows = this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id = ?', body.familyId).toArray();
-      return json({ revoked: rows.length > 0 });
+    if (path === '/family/authorize') {
+      if (typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.secretHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.secretHash)) return error(400, 'invalid_request');
+      const rows = this.sql.exec<{ secret_hash: string }>('SELECT secret_hash FROM families WHERE family_id = ?', body.familyId).toArray();
+      const revoked = this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id = ?', body.familyId).toArray().length > 0;
+      return json({ authorized: !revoked && rows.length === 1 && equalHash(fromHex(rows[0].secret_hash), fromHex(body.secretHash)) });
     }
     if (path === '/family/revoke-many') {
       if (!Array.isArray(body.familyIds) || body.familyIds.length < 1 || body.familyIds.length > MAX_MERGE_FAMILIES || body.familyIds.some(id => typeof id !== 'string' || !validId(id))) return error(400, 'invalid_request');
@@ -268,9 +273,6 @@ function fromHex(value: string): Uint8Array { return Uint8Array.from(value.match
 async function familyJoinCode(request: Request, env: Env, familyId: string): Promise<Response> {
   if (!validId(familyId)) return error(400, 'invalid_path');
   if (!(await authorized(request, familyId, env))) return error(401, 'unauthorized');
-  const status = await coordinator(env, 'family/status', { familyId });
-  if (status.status !== 200) return error(503, 'internal_error');
-  if ((await status.json() as { revoked?: boolean }).revoked) return error(401, 'unauthorized');
   const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.get('authorization') ?? '');
   if (!match) return error(401, 'unauthorized');
   try {
@@ -306,9 +308,11 @@ async function redeemJoinCode(request: Request, env: Env): Promise<Response> {
   if (!lookup) return error(404, 'invalid_join_code');
   if ('status' in lookup) return error(429, 'rate_limited');
   const payload = lookup;
-  const stored = await env.FAMILY_AUTH.get(`family:${payload.familyId}`);
   const secretHash = hex(await sha256(decodeSecret(payload.familySecret)!));
-  if (!stored || !equalHash(fromHex(stored), fromHex(secretHash))) return error(404, 'invalid_join_code');
+  let payloadAuthorized: boolean;
+  try { payloadAuthorized = await verifySecret(env, payload.familyId, secretHash); }
+  catch { return error(503, 'authorization_unavailable'); }
+  if (!payloadAuthorized) return error(404, 'invalid_join_code');
   try {
     const { snapshots } = await listFamilySnapshots(env, payload.familyId);
     return json({ ...payload, deviceIds: [...new Set(snapshots.map(snapshot => snapshot.deviceId))].sort() });
@@ -379,8 +383,10 @@ async function mergeFamilies(request: Request, env: Env, targetFamilyId: string)
     if ('status' in lookup) return error(429, 'rate_limited');
     const source = lookup;
     if (source.familyId === targetFamilyId || source.familyId < targetFamilyId || sources.some(item => item.familyId === source.familyId)) return error(409, 'invalid_family_order');
-    const sourceAuth = await env.FAMILY_AUTH.get(`family:${source.familyId}`);
-    if (!sourceAuth || !equalHash(fromHex(sourceAuth), await sha256(decodeSecret(source.familySecret)!))) return error(404, 'invalid_join_code');
+    let sourceAuthorized: boolean;
+    try { sourceAuthorized = await verifySecret(env, source.familyId, hex(await sha256(decodeSecret(source.familySecret)!))); }
+    catch { return error(503, 'authorization_unavailable'); }
+    if (!sourceAuthorized) return error(404, 'invalid_join_code');
     sources.push(source);
   }
   sources.sort((a, b) => a.familyId.localeCompare(b.familyId));
@@ -432,7 +438,6 @@ async function mergeFamilies(request: Request, env: Env, targetFamilyId: string)
   }
   const revoked = await coordinator(env, 'family/revoke-many', { familyIds: sources.map(item => item.familyId) });
   if (revoked.status !== 200) return error(500, 'merge_cleanup_failed');
-  for (const source of sources) await env.FAMILY_AUTH.delete(`family:${source.familyId}`);
   const cleared = await coordinator(env, 'merge/clear', { targetFamilyId });
   if (cleared.status !== 200) return error(500, 'merge_cleanup_failed');
   return json({ cleanedFamilies: sources.map(item => item.familyId) });
@@ -456,9 +461,6 @@ async function sync(request: Request, env: Env, familyId: string, deviceId: stri
     let data: unknown;
     try { data = JSON.parse(body.text); } catch { return error(400, 'invalid_json'); }
     if (!validSnapshot(data, familyId, deviceId)) return error(400, 'invalid_snapshot');
-    const status = await coordinator(env, 'family/status', { familyId });
-    if (status.status !== 200) return error(503, 'internal_error');
-    if ((await status.json() as { revoked?: boolean }).revoked) return error(401, 'unauthorized');
     await env.R2_BUCKET.put(key, JSON.stringify(data), { httpMetadata: { contentType: 'application/json; charset=utf-8' } });
     return new Response(null, { status: 204 });
   }
