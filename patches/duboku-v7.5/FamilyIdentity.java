@@ -93,6 +93,18 @@ public final class FamilyIdentity {
         prefs.edit().putString(PEERS, saved.toString()).apply();
     }
 
+    public synchronized void join(String family, String secret, JSONArray devices) {
+        if (!validId(family) || !validSecret(secret)) throw new IllegalArgumentException("Invalid family credentials");
+        TreeSet<String> roster = new TreeSet<>();
+        if (devices != null) for (int i = 0; i < devices.length(); i++) {
+            String id = devices.optString(i, "");
+            if (validId(id) && !id.equals(deviceId())) roster.add(id);
+        }
+        JSONArray saved = new JSONArray(); for (String id : roster) saved.put(id);
+        prefs.edit().putString(FAMILY, family).putString(SECRET, secret).putString(PEERS, saved.toString())
+                .putLong("familyCreatedAt", System.currentTimeMillis()).remove("cloudAuthRejected").apply();
+    }
+
     public JSONObject offer(String nonce) throws Exception {
         JSONArray devices = new JSONArray();
         devices.put(deviceId()); for (String peer : peers()) devices.put(peer);

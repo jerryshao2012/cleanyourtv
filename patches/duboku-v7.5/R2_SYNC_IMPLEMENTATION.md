@@ -4,7 +4,7 @@
 
 > **验收结果：**Sony 播放并上传《兰香如故》第 47 集、4% 后休眠并停止 app 进程。Sony 报告 `Asleep` 且屏幕关闭时，重启 Hisense app；Worker 实时日志记录成功的 peer snapshot GET，Hisense 观看记录仍显示该剧第 47 集、4%（记录时间 2026-11-05 22:22:34）。随后在 Xiaomi MiTV-AZFU0（Android 14）保留数据覆盖安装，首页、历史及播放器可用，播放《小城良方》第 15 集时进度由 46% 前进到 48%，返回系统首页后 Worker 记录成功 PUT；停止 Xiaomi app 并让设备休眠后，Hisense 重启并再次读取快照。没有清除应用数据或卸载重装。
 
-> **部署：**Worker `https://cleantv-r2-sync.jerry-shao.workers.dev`，2026-11-05 部署版本 `511a0c02-cbee-4430-b9d6-87b2ea549918`。生产环境使用私有 R2 bucket `cleanyourtv`、Workers KV 与 Durable Object 注册协调器。
+> **部署：**Worker `https://cleantv-r2-sync.jerry-shao.workers.dev`，2026-11-07 部署版本 `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`（加入码/家庭合并路由）；生产环境使用私有 R2 bucket `cleanyourtv`、Workers KV 与 Durable Object 注册协调器。此前 2026-11-05 进度同步版本为 `511a0c02-cbee-4430-b9d6-87b2ea549918`。
 
 **目标：**让一台电视休眠时，另一台仍能读取最近一次已上传的播放进度；Cloudflare 暂时不可用时继续使用现有 UDP 同步。
 
@@ -140,7 +140,7 @@ Request:
 
 ### `PUT /v1/sync/{familyId}/{deviceId}`
 
-用本机完整快照覆盖本机对象。请求体格式与 GET 返回结构相同。要求 `familyId/deviceId` 与路径完全相同、`schemaVersion=1`、记录数不超过 20、总正文不超过 64 KiB、进度和时长非负、URL 字段长度受限。Worker 验证通过后一次 R2 `put`（Class A），返回 `204 No Content`。每台设备只写自己的 key。
+用本机完整快照覆盖本机对象。请求体格式与 GET 返回结构相同。要求 `familyId/deviceId` 与路径完全相同、`schemaVersion=1`、记录数不超过 20、总正文不超过 64 KiB、进度和时长非负、URL 字段长度受限。Worker 验证通过后检查 Durable Object 中的撤销标记，再一次 R2 `put`（Class A），返回 `204 No Content`。每台设备只写自己的 key。家庭清理会写入不可逆 familyId tombstone；旧电视即使保留旧 secret 也不能重新注册或重建快照。
 
 客户端对每个 device key 使用 single-flight 串行上传：任一时刻最多一个 PUT；超时后先重试完全相同的幂等快照，成功后才发送期间合并出的最新快照。Worker 不为 PUT 额外 GET R2，因此不会产生额外 Class B；revision 不作为并发控制字段。
 
@@ -201,9 +201,9 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 ### 工作项 B：Android UDP 身份和云同步
 
-**主要 Java 参考源：**`LanSyncManager.java`、`CloudSyncClient.java`、`FamilyIdentity.java`、`ProgressSnapshot.java`。**APK 实际类：**`smali_classes3/com/supertws/dubokutv/LanSyncManager.smali`、`CloudSyncClient.smali`、`FamilyIdentity.smali`、`ProgressSnapshot.smali` 及 `LanSyncManager$*.smali`。
+**主要 Java 参考源：**`LanSyncManager.java`、`CloudSyncClient.java`、`FamilyIdentity.java`、`ProgressSnapshot.java`。**APK 实际类：**`smali_classes3/com/supertws/dubokutv/LanSyncManager.smali`、`FamilyIdentity.smali`、`ProgressSnapshot.smali` 及 `LanSyncManager$*.smali`；`CloudSyncClient` 与新增家庭同步页在 `smali_classes4`。
 
-- Java 参考源与对应 smali 按现有仓库约定手动保持同步；只有 smali 被 apktool 打入 APK，不能只复制 Java 文件。新增类路径如上，不再加其他 helper class，必要回调放入 `LanSyncManager$*.smali`。
+- Java 参考源与对应 smali 按现有仓库约定手动保持同步；只有 smali 被 apktool 打入 APK，不能只复制 Java 文件。家庭加入 UI 由独立 `FamilySyncActivity` 承载；同步身份/播放器回调仍放在现有同步类中。
 - `CloudSyncClient` 仅用 Android 已有 HTTP/TLS API，避免新增第三方依赖；`FamilyIdentity` 负责随机身份、偏好持久化和 UDP offer；`ProgressSnapshot` 只负责 records DTO 与 schema 验证。
 - 实现随机 `deviceId`、家庭身份持久化和 UDP `FAMILY_DISCOVER/FAMILY_OFFER`。保持现有 `REQUEST_SYNC`、progress packet、接收入库和 Room 刷新行为。
 - 实现 Worker HTTP 调用、单线程上传队列、30 秒合并窗口、事件立即上传、peer GET、重试状态与成功时间。
@@ -214,7 +214,7 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 ### Worker 自动化
 
-- [x] Worker 测试：`node --experimental-strip-types --test test/worker.test.mjs`，9/9 通过。
+- [x] Worker 测试：`node --experimental-strip-types --test test/worker.test.mjs`，本地 13/13 通过（含加入码兑换/限流、快照复制读回校验、无快照拒绝清理、清理后 familyId tombstone）。
 - `POST /v1/families` 新建返回 201；相同请求重试返回 200；同 ID 换秘密返回 409；超过 IP 限额返回 429；KV 保存哈希而非明文。
 - 有效家庭秘密能创建本机快照并读取；错误秘密、其他 familyId 和篡改 path 均拒绝。
 - 不存在的对象返回空快照；错误 JSON、负数进度、21 条记录和大于 64 KiB 请求均拒绝。
@@ -248,6 +248,38 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 - 同一家庭内所有 Duboku TV 位于同一 UDP 广播域；同一广播域内多个独立家庭会按字典序最小 familyId 合并为一个家庭。v1 不提供手动选择或 QR 配对。
 - 通过 UDP 传递 familySecret 意味着同一 LAN 上可监听流量的设备可能加入家庭；这是无用户交互配对的安全取舍。绝不通过 UDP 传递 Cloudflare API token/R2 key。
+
+## 11. 电视加入码与多家庭合并
+
+**部署与实机验证（2026-11-07）：**Worker 已设置随机 32-byte `JOIN_CODE_KEY` 并部署为 `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`。Sony Bravia 4K UR3、Hisense Fire TV 和 Xiaomi MiTV-AZFU0 均以匹配现有证书的覆盖安装保留应用数据；三台设备“家庭同步”页均显示目标 familyId `214cbca3-5707-46cf-b305-1c4aa924773d`，Hisense 与小米的云端读取和本机上传日志均成功。执行时在 Hisense 误点了轮换加入码，故最初提供的加入码已失效；Hisense 随后成功兑换了新生成的同家庭加入码。小米在兑换前已持有目标 familyId 和可用云端凭据，无需重加。未执行 family merge 或清理。原 Hisense 截图保存在执行环境 `/private/tmp/hisense-family-joined.png`。
+
+**家庭页误触修复：**“家庭同步”可从电视应用列表单独打开。页面默认焦点位于“加入并同步家庭进度”，按钮采用高对比焦点描边与白字；生成/更换按钮明确提示旧码会立即失效，点击后需在确认框再次选择“确认更换”。同步 Java 参考源和 `smali_classes4`；APK 以设备匹配证书重新组装和签名，覆盖安装到 Sony、Hisense、小米并保留应用数据。Sony 实机验证默认焦点正确、首次确认只显示警告、按返回取消后仍未生成新码；Hisense 与小米默认焦点也验证正确。最新 APK 位于 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`。
+
+### 11.1 单个已有家庭：显示并记下加入码
+
+1. 在已加入家庭的电视应用列表打开独立的 **家庭同步** 入口。
+2. 选择 **生成 / 更换加入码（旧码立即失效）**，再在确认框选择 **确认更换**。Worker 用该电视现有 familySecret 认证，生成 80-bit 随机码；屏幕显示 `XXXX-XXXX-XXXX-XXXX` 格式，可手抄到新电视。按返回或选择取消不会更换加入码。
+3. 加入码可以复用，直到再次生成新码或显式清理源家庭；重新生成会立刻让旧码失效。每家庭每小时最多生成 10 次。
+4. 新电视在相同入口输入加入码。Worker 验证后返回 familyId、familySecret 和家庭已有快照设备 ID；新电视保留自身本地 records，改为该家庭身份，然后先读取家庭 peer 快照再合并/上传。
+
+Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索引，凭据以 AES-GCM 加密保存；解密密钥 `JOIN_CODE_KEY` 必须作为 Worker Secret 配置，不能写入仓库、APK 或日志。兑换按 IP 每小时最多 30 次。加入码是可手抄的 bearer credential，获得它的人可以加入该家庭；需要撤销时在原电视重新生成新码。已经部署的旧 Worker 没有这些 API，必须先部署兼容版本才可用。
+
+### 11.2 重复创建 familyId：复制、核验、再清理
+
+1. 先在将保留的 **最小字典序 familyId** 电视打开家庭同步页。向每个待合并家庭的设备生成并手抄加入码，再逐行输入到保留电视。
+2. 选择 **预览旧家庭记录**。Worker 只列出这些明确输入的源 `v1/<familyId>/` 前缀，报告源家庭、快照、记录和设备数量；普通上传/下载仍不执行 LIST。
+3. 选择 **复制记录到当前家庭**。Worker 逐设备合并源与目标快照，保留每剧时间较新记录（同时间比较集数、进度），只写目标前缀并逐个读回验证；TV roster 随后加入这些 peer 设备供正常云读取。
+4. 检查新家庭进度，只有确认复制结果可用后才选择 **确认清理旧 familyId 和快照**，并在二次确认框确认。Worker 会重新读取源快照指纹；复制后有变更则拒绝删除并要求重新复制。成功后只删除明确列出的源家庭对象、撤销源 family auth 与加入码，保留目标对象。
+5. 清理中途失败可用同一加入码重试；目标快照已经复制，不会因此删除。若源家庭从未有云端快照，Worker 拒绝清理，先让旧家庭设备联网并上传本地记录。旧电视仍保存旧身份时，必须输入保留家庭的加入码重新加入；旧凭据被撤销后不再能云同步。
+
+目标必须是所有参与家庭中 ID 最小者，和现有 UDP 自动选择规则一致。若当前电视不是最小 ID，先让保留 ID 的电视加入其他家庭，再由它执行合并。单次最多 8 个源家庭、每个源最多 500 个快照；超过上限时分批合并到同一个最小 ID 目标。并发设备可能在“读指纹”和 R2 删除之间继续写源快照；若设备仍活跃，先停止其播放/同步，再执行最终清理，清理后将它重新加入目标家庭。
+
+### 11.3 代码入口
+
+- `FamilySyncActivity.java` 与 `smali_classes4/com/supertws/dubokutv/FamilySyncActivity*.smali`：电视遥控器可操作的独立启动页。
+- `FamilyIdentity.java` / `FamilyIdentity.smali`：加入后保存云端返回的家庭凭据及已知设备 roster，保留本机 deviceId 和记录。
+- `CloudSyncClient.java` / `smali_classes4/com/supertws/dubokutv/CloudSyncClient*.smali`：签发、兑换加入码与 preview/copy/cleanup HTTP 调用。新类放到 classes4 以避免继续增加接近 DEX method-reference 上限的 classes3。
+- `r2-sync-worker/src/index.ts`：单码轮换/兑换及显式家庭快照迁移、复制读回、源身份撤销。
 - 上传间隔 30 秒是费用与断点新鲜度折中；突发休眠的尾差不超过约一个上传窗口，但网络失败时可能更久。
 - 网络超时后原 Worker PUT 理论上可能晚于相同请求重试和较新快照完成，短暂覆盖较新对象；single-flight 会降低概率，下一次成功快照会修复。v1 接受此低概率窗口，不为每个 PUT 额外读取 R2 或引入 Durable Object 排序。
 - Cloudflare Worker、KV namespace、Durable Object 注册协调器和部署 URL 已在生产账户配置。R2 Metrics 的 Class A/B 实际用量仍需在 Cloudflare 控制台核对。

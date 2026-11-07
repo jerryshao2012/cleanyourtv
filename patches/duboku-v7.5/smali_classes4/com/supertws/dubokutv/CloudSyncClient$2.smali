@@ -1032,5 +1032,11 @@
     :try_end_19
     .catchall {:try_start_19 .. :try_end_19} :catchall_a
 
+    goto :goto_10
+
+    :goto_f
     throw v1
+
+    :goto_10
+    goto :goto_f
 .end method

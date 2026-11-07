@@ -9,17 +9,23 @@ const SECRET = Buffer.alloc(32, 7).toString('base64url');
 const SNAPSHOT = { schemaVersion: 1, familyId: FAMILY, deviceId: DEVICE, updatedAt: 1700000000000, records: [] };
 function env() {
   const values = new Map();
-  const counts = { get: 0, put: 0, list: 0, coordinator: 0 };
+  const counts = { get: 0, put: 0, delete: 0, list: 0, coordinator: 0 };
+  const fault = { failDeleteAfter: null };
   const database = new DatabaseSync(':memory:');
   const storage = { sql: { exec: (query, ...args) => { const statement = database.prepare(query); if (/^\s*SELECT/i.test(query)) return { toArray: () => statement.all(...args) }; statement.run(...args); return { toArray: () => [] }; } }, transactionSync: callback => { database.exec('BEGIN IMMEDIATE'); try { const result = callback(); database.exec('COMMIT'); return result; } catch (error) { database.exec('ROLLBACK'); throw error; } } };
   const coordinator = new RegistrationCoordinator({ storage });
-  return { values, counts, database, coordinator,
-    FAMILY_AUTH: { async get(key) { return values.get(key) ?? null; }, async put(key, value) { values.set(key, value); } },
+  return { values, counts, database, coordinator, fault, JOIN_CODE_KEY: Buffer.alloc(32, 3).toString('base64url'),
+    FAMILY_AUTH: { async get(key) { return values.get(key) ?? null; }, async put(key, value) { values.set(key, value); }, async delete(key) { values.delete(key); } },
     REGISTRATION_COORDINATOR: { getByName() { return { fetch: (input, init) => { counts.coordinator++; return coordinator.fetch(new Request(input, init)); } }; } },
     R2_BUCKET: {
       async get(key) { counts.get++; const value = values.get(`r2:${key}`); return value == null ? null : { async json() { return JSON.parse(value); } }; },
       async put(key, value) { counts.put++; values.set(`r2:${key}`, await new Response(value).text()); },
-      async list() { counts.list++; throw new Error('list must not be called'); }
+      async delete(key) { counts.delete++; if (fault.failDeleteAfter === 0) { fault.failDeleteAfter = null; throw new Error('injected delete failure'); } if (fault.failDeleteAfter !== null) fault.failDeleteAfter--; values.delete(`r2:${key}`); },
+      async list({ prefix, cursor } = {}) {
+        counts.list++;
+        const objects = [...values.keys()].filter(key => key.startsWith(`r2:${prefix}`)).sort().map(key => ({ key: key.slice(3), etag: 'test-etag' }));
+        return { objects, truncated: false, cursor: undefined };
+      }
     }
   };
 }
@@ -62,7 +68,7 @@ test('GET returns empty schema and performs exactly one R2 get', async () => {
   const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { schemaVersion: 1, familyId: FAMILY, deviceId: DEVICE, updatedAt: 0, records: [] });
-  assert.deepEqual(e.counts, { get: 1, put: 0, list: 0, coordinator: 1 });
+  assert.deepEqual(e.counts, { get: 1, put: 0, delete: 0, list: 0, coordinator: 1 });
   e.database.close();
 });
 test('PUT then GET round trips with one put and one get and no list', async () => {
@@ -70,7 +76,86 @@ test('PUT then GET round trips with one put and one get and no list', async () =
   assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: SNAPSHOT })).status, 204);
   const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
   assert.deepEqual(await response.json(), SNAPSHOT);
-  assert.deepEqual(e.counts, { get: 1, put: 1, list: 0, coordinator: 1 });
+  assert.deepEqual(e.counts, { get: 1, put: 1, delete: 0, list: 0, coordinator: 2 });
+  e.database.close();
+});
+
+test('creates reusable family join code, redeems it, and rotation revokes the old code', async () => {
+  const e = env(); await create(e, FAMILY);
+  const issued = await call(e, `/v1/families/${FAMILY}/join-code`, { method: 'POST' });
+  assert.equal(issued.status, 201);
+  const { joinCode } = await issued.json();
+  assert.match(joinCode, /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ-]{19}$/);
+  assert.equal(e.database.prepare('SELECT encrypted_payload FROM join_codes WHERE family_id = ?').get(FAMILY).encrypted_payload.includes(SECRET), false);
+  assert.equal([...e.values.values()].includes(joinCode), false);
+  const redeemed = await call(e, '/v1/families/join', { method: 'POST', body: { joinCode }, auth: null });
+  assert.equal(redeemed.status, 200);
+  assert.deepEqual(await redeemed.json(), { familyId: FAMILY, familySecret: SECRET, deviceIds: [] });
+  const rotated = await call(e, `/v1/families/${FAMILY}/join-code`, { method: 'POST' });
+  assert.equal(rotated.status, 201);
+  assert.notEqual((await rotated.json()).joinCode, joinCode);
+  assert.equal((await call(e, '/v1/families/join', { method: 'POST', body: { joinCode }, auth: null })).status, 404);
+  e.database.close();
+});
+test('preserves join lookup rate limiting instead of reporting throttling as a bad code', async () => {
+  const e = env(); await create(e, FAMILY);
+  const issued = await call(e, `/v1/families/${FAMILY}/join-code`, { method: 'POST' });
+  const { joinCode } = await issued.json();
+  for (let i = 0; i < 30; i++) assert.equal((await call(e, '/v1/families/join', { method: 'POST', body: { joinCode: '2222-2222-2222-2222' }, auth: null })).status, 404);
+  assert.equal((await call(e, '/v1/families/join', { method: 'POST', body: { joinCode }, auth: null })).status, 429);
+  e.database.close();
+});
+
+test('refuses cleanup when the source family has no cloud snapshots to preserve', async () => {
+  const e = env();
+  const sourceFamily = '323e4567-e89b-42d3-a456-426614174010';
+  const sourceSecret = Buffer.alloc(32, 8).toString('base64url');
+  assert.equal((await create(e, FAMILY)).status, 201);
+  assert.equal((await create(e, sourceFamily, sourceSecret)).status, 201);
+  const issued = await call(e, `/v1/families/${sourceFamily}/join-code`, { method: 'POST', auth: sourceSecret });
+  const { joinCode } = await issued.json();
+  assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'copy', sourceCodes: [joinCode] } })).status, 200);
+  const cleanup = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [joinCode], confirmed: true } });
+  assert.equal(cleanup.status, 409);
+  assert.equal((await cleanup.json()).error, 'source_snapshot_unavailable');
+  assert.ok(e.values.has(`family:${sourceFamily}`));
+  e.database.close();
+});
+test('copies every source snapshot into the canonical family and deletes source only after explicit cleanup', async () => {
+  const e = env();
+  const sourceFamily = '323e4567-e89b-42d3-a456-426614174010';
+  const sourceSecret = Buffer.alloc(32, 8).toString('base64url');
+  const sourceDevice = '423e4567-e89b-42d3-a456-426614174010';
+  const sourceDevice2 = '523e4567-e89b-42d3-a456-426614174010';
+  assert.equal((await create(e, FAMILY)).status, 201);
+  assert.equal((await create(e, sourceFamily, sourceSecret)).status, 201);
+  const codeResponse = await call(e, `/v1/families/${sourceFamily}/join-code`, { method: 'POST', auth: sourceSecret });
+  const sourceCode = (await codeResponse.json()).joinCode;
+  const sourceSnapshot = { ...SNAPSHOT, familyId: sourceFamily, deviceId: sourceDevice, records: [{ id: 'show-1', name: 'Test Show', episode: '第5集', progressInMillis: 2000, durationInMillis: 10000, createdAt: 1, modifiedAt: 5, videoPageUrl: '', detailPageUrl: '', posterUrl: '' }] };
+  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', body: sourceSnapshot, auth: sourceSecret })).status, 204);
+  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice2}`, { method: 'PUT', body: { ...sourceSnapshot, deviceId: sourceDevice2, records: [{ ...sourceSnapshot.records[0], id: 'show-2', name: 'Other Show' }] }, auth: sourceSecret })).status, 204);
+  const joined = await call(e, '/v1/families/join', { method: 'POST', body: { joinCode: sourceCode }, auth: null });
+  assert.deepEqual((await joined.json()).deviceIds, [sourceDevice, sourceDevice2].sort());
+  const preview = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'preview', sourceCodes: [sourceCode] } });
+  assert.equal(preview.status, 200);
+  assert.deepEqual(await preview.json(), { families: 1, snapshots: 2, records: 2, deviceIds: [sourceDevice, sourceDevice2] });
+  assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 409);
+  const copied = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'copy', sourceCodes: [sourceCode] } });
+  assert.equal(copied.status, 200);
+  const mergedSnapshot = await call(e, `/v1/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET });
+  assert.equal(mergedSnapshot.status, 200);
+  assert.equal((await mergedSnapshot.json()).records[0].episode, '第5集');
+  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 200);
+  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', auth: sourceSecret, body: { ...sourceSnapshot, records: [{ ...sourceSnapshot.records[0], progressInMillis: 3000, modifiedAt: 6 }] } })).status, 204);
+  assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 409);
+  assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'copy', sourceCodes: [sourceCode] } })).status, 200);
+  e.fault.failDeleteAfter = 1;
+  assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 500);
+  const cleaned = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } });
+  assert.equal(cleaned.status, 200);
+  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 401);
+  assert.equal((await create(e, sourceFamily, sourceSecret)).status, 410);
+  assert.equal((await call(e, `/v1/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET })).status, 200);
   e.database.close();
 });
 test('rejects invalid stored R2 schema and path identity', async () => {

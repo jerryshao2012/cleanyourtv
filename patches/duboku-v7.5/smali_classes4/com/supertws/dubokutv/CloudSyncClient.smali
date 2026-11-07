@@ -804,7 +804,128 @@
     invoke-virtual {v2}, Landroid/database/sqlite/SQLiteDatabase;->close()V
 
     :cond_a
+    goto :goto_6
+
+    :goto_5
     throw p0
+
+    :goto_6
+    goto :goto_5
+.end method
+
+.method public static createJoinCode()Ljava/lang/String;
+    .locals 3
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 363
+    sget-object v0, Lcom/supertws/dubokutv/CloudSyncClient;->appContext:Landroid/content/Context;
+
+    invoke-static {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
+
+    move-result-object v0
+
+    .line 364
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familySecret()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-static {v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->registerFamily(Ljava/lang/String;Ljava/lang/String;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    .line 365
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "/v1/families/"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->enc(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    const-string v2, "/join-code"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familySecret()Ljava/lang/String;
+
+    move-result-object v0
+
+    new-instance v2, Lorg/json/JSONObject;
+
+    invoke-direct {v2}, Lorg/json/JSONObject;-><init>()V
+
+    invoke-static {v1, v0, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->postJson(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONObject;)Lorg/json/JSONObject;
+
+    move-result-object v0
+
+    .line 366
+    const-string v1, "joinCode"
+
+    const-string v2, ""
+
+    invoke-virtual {v0, v1, v2}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    .line 367
+    invoke-virtual {v0}, Ljava/lang/String;->isEmpty()Z
+
+    move-result v1
+
+    if-nez v1, :cond_0
+
+    .line 368
+    return-object v0
+
+    .line 367
+    :cond_0
+    new-instance v0, Ljava/lang/IllegalStateException;
+
+    const-string v1, "join_code_unavailable"
+
+    invoke-direct {v0, v1}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
+
+    throw v0
+
+    .line 364
+    :cond_1
+    new-instance v0, Ljava/lang/IllegalStateException;
+
+    const-string v1, "family_unavailable"
+
+    invoke-direct {v0, v1}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
+
+    throw v0
 .end method
 
 .method private static dirtyPrefs()Landroid/content/SharedPreferences;
@@ -832,7 +953,7 @@
         }
     .end annotation
 
-    .line 475
+    .line 506
     const-string v0, "UTF-8"
 
     invoke-static {p0, v0}, Ljava/net/URLEncoder;->encode(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
@@ -1146,14 +1267,14 @@
 .end method
 
 .method private static fitPayload(Lorg/json/JSONObject;)Z
-    .locals 12
+    .locals 13
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 392
+    .line 421
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->payloadBytes(Lorg/json/JSONObject;)I
 
     move-result v0
@@ -1166,7 +1287,7 @@
 
     return v1
 
-    .line 393
+    .line 422
     :cond_0
     const-string v0, "records"
 
@@ -1174,128 +1295,134 @@
 
     move-result-object v0
 
-    .line 394
+    .line 423
     const/4 v3, 0x0
 
     if-nez v0, :cond_1
 
     return v3
 
-    .line 395
+    .line 424
     :cond_1
-    const-string v4, "detailPageUrl"
+    const/4 v4, 0x3
 
-    const-string v5, "videoPageUrl"
+    new-array v5, v4, [Ljava/lang/String;
 
     const-string v6, "posterUrl"
 
-    filled-new-array {v6, v4, v5}, [Ljava/lang/String;
+    aput-object v6, v5, v3
 
-    move-result-object v4
+    const-string v6, "detailPageUrl"
 
-    .line 396
-    const/4 v5, 0x0
+    aput-object v6, v5, v1
+
+    const/4 v6, 0x2
+
+    const-string v7, "videoPageUrl"
+
+    aput-object v7, v5, v6
+
+    .line 425
+    const/4 v6, 0x0
 
     :goto_0
-    const/4 v6, 0x3
+    if-ge v6, v4, :cond_7
 
-    if-ge v5, v6, :cond_7
+    aget-object v7, v5, v6
 
-    aget-object v6, v4, v5
-
-    .line 397
+    .line 426
     :goto_1
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->payloadBytes(Lorg/json/JSONObject;)I
 
-    move-result v7
+    move-result v8
 
-    if-le v7, v2, :cond_6
+    if-le v8, v2, :cond_6
 
-    .line 398
+    .line 427
     nop
 
-    .line 399
+    .line 428
     nop
 
-    .line 400
-    const/4 v7, -0x1
-
-    const/4 v8, 0x0
+    .line 429
+    const/4 v8, -0x1
 
     const/4 v9, 0x0
+
+    const/4 v10, 0x0
 
     :goto_2
     invoke-virtual {v0}, Lorg/json/JSONArray;->length()I
 
-    move-result v10
+    move-result v11
 
-    const-string v11, ""
+    const-string v12, ""
 
-    if-ge v8, v10, :cond_4
+    if-ge v9, v11, :cond_4
 
-    .line 401
-    invoke-virtual {v0, v8}, Lorg/json/JSONArray;->optJSONObject(I)Lorg/json/JSONObject;
+    .line 430
+    invoke-virtual {v0, v9}, Lorg/json/JSONArray;->optJSONObject(I)Lorg/json/JSONObject;
 
-    move-result-object v10
+    move-result-object v11
 
-    .line 402
-    if-nez v10, :cond_2
+    .line 431
+    if-nez v11, :cond_2
 
     goto :goto_3
 
-    .line 403
+    .line 432
     :cond_2
-    invoke-virtual {v10, v6, v11}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    invoke-virtual {v11, v7, v12}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    move-result-object v10
+    move-result-object v11
 
-    .line 404
-    invoke-virtual {v10}, Ljava/lang/String;->length()I
+    .line 433
+    invoke-virtual {v11}, Ljava/lang/String;->length()I
 
-    move-result v11
+    move-result v12
 
-    if-le v11, v9, :cond_3
+    if-le v12, v10, :cond_3
 
-    .line 405
-    invoke-virtual {v10}, Ljava/lang/String;->length()I
+    .line 434
+    invoke-virtual {v11}, Ljava/lang/String;->length()I
 
-    move-result v9
+    move-result v10
 
-    .line 406
-    move v7, v8
+    .line 435
+    move v8, v9
 
-    .line 400
+    .line 429
     :cond_3
     :goto_3
-    add-int/lit8 v8, v8, 0x1
+    add-int/lit8 v9, v9, 0x1
 
     goto :goto_2
 
-    .line 409
+    .line 438
     :cond_4
-    if-gez v7, :cond_5
+    if-gez v8, :cond_5
 
     goto :goto_4
 
-    .line 410
+    .line 439
     :cond_5
-    invoke-virtual {v0, v7}, Lorg/json/JSONArray;->getJSONObject(I)Lorg/json/JSONObject;
+    invoke-virtual {v0, v8}, Lorg/json/JSONArray;->getJSONObject(I)Lorg/json/JSONObject;
 
-    move-result-object v7
+    move-result-object v8
 
-    invoke-virtual {v7, v6, v11}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+    invoke-virtual {v8, v7, v12}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
-    .line 411
+    .line 440
     goto :goto_1
 
-    .line 396
+    .line 425
     :cond_6
     :goto_4
-    add-int/lit8 v5, v5, 0x1
+    add-int/lit8 v6, v6, 0x1
 
     goto :goto_0
 
-    .line 413
+    .line 442
     :cond_7
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->payloadBytes(Lorg/json/JSONObject;)I
 
@@ -1320,10 +1447,10 @@
         }
     .end annotation
 
-    .line 363
+    .line 392
     nop
 
-    .line 365
+    .line 394
     const/4 v0, 0x0
 
     :try_start_0
@@ -1369,17 +1496,17 @@
 
     move-result-object v0
 
-    .line 366
+    .line 395
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->getResponseCode()I
 
     move-result p0
 
-    .line 367
+    .line 396
     const/16 p1, 0xc8
 
     if-ne p0, p1, :cond_1
 
-    .line 371
+    .line 400
     new-instance p0, Lorg/json/JSONObject;
 
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
@@ -1394,16 +1521,16 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 372
+    .line 401
     if-eqz v0, :cond_0
 
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 371
+    .line 400
     :cond_0
     return-object p0
 
-    .line 368
+    .line 397
     :cond_1
     :try_start_1
     const-string p1, "R2Sync"
@@ -1428,7 +1555,7 @@
 
     invoke-static {p1, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 369
+    .line 398
     new-instance p0, Ljava/lang/IllegalStateException;
 
     const-string p1, "Cloud read failed"
@@ -1439,7 +1566,7 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 372
+    .line 401
     :catchall_0
     move-exception p0
 
@@ -1466,6 +1593,81 @@
     .line 53
     :cond_0
     return-void
+.end method
+
+.method public static mergeFamilies(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONArray;Z)Lorg/json/JSONObject;
+    .locals 2
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 377
+    new-instance v0, Lorg/json/JSONObject;
+
+    invoke-direct {v0}, Lorg/json/JSONObject;-><init>()V
+
+    const-string v1, "action"
+
+    invoke-virtual {v0, v1, p2}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    move-result-object v0
+
+    const-string v1, "sourceCodes"
+
+    invoke-virtual {v0, v1, p3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    move-result-object p3
+
+    .line 378
+    const-string v0, "cleanup"
+
+    invoke-virtual {v0, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result p2
+
+    if-eqz p2, :cond_0
+
+    const-string p2, "confirmed"
+
+    invoke-virtual {p3, p2, p4}, Lorg/json/JSONObject;->put(Ljava/lang/String;Z)Lorg/json/JSONObject;
+
+    .line 379
+    :cond_0
+    new-instance p2, Ljava/lang/StringBuilder;
+
+    invoke-direct {p2}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string p4, "/v1/families/"
+
+    invoke-virtual {p2, p4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p2
+
+    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->enc(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object p0
+
+    invoke-virtual {p2, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p0
+
+    const-string p2, "/merge"
+
+    invoke-virtual {p0, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p0
+
+    invoke-virtual {p0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object p0
+
+    invoke-static {p0, p1, p3}, Lcom/supertws/dubokutv/CloudSyncClient;->postJson(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONObject;)Lorg/json/JSONObject;
+
+    move-result-object p0
+
+    return-object p0
 .end method
 
 .method private static nextBackoff()J
@@ -1682,7 +1884,7 @@
         }
     .end annotation
 
-    .line 466
+    .line 497
     new-instance v0, Ljava/net/URL;
 
     new-instance v1, Ljava/lang/StringBuilder;
@@ -1705,14 +1907,14 @@
 
     invoke-direct {v0, p1}, Ljava/net/URL;-><init>(Ljava/lang/String;)V
 
-    .line 467
+    .line 498
     invoke-virtual {v0}, Ljava/net/URL;->openConnection()Ljava/net/URLConnection;
 
     move-result-object p1
 
     check-cast p1, Ljava/net/HttpURLConnection;
 
-    .line 468
+    .line 499
     invoke-virtual {p1, p0}, Ljava/net/HttpURLConnection;->setRequestMethod(Ljava/lang/String;)V
 
     const/16 v0, 0xfa0
@@ -1723,14 +1925,14 @@
 
     invoke-virtual {p1, v0}, Ljava/net/HttpURLConnection;->setReadTimeout(I)V
 
-    .line 469
+    .line 500
     const-string v0, "Accept"
 
     const-string v1, "application/json"
 
     invoke-virtual {p1, v0, v1}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 470
+    .line 501
     if-eqz p2, :cond_0
 
     new-instance v0, Ljava/lang/StringBuilder;
@@ -1755,7 +1957,7 @@
 
     invoke-virtual {p1, v0, p2}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 471
+    .line 502
     :cond_0
     const-string p2, "POST"
 
@@ -1780,7 +1982,7 @@
 
     invoke-virtual {p1, p0, p2}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 472
+    .line 503
     :cond_2
     return-object p1
 .end method
@@ -1793,7 +1995,7 @@
         }
     .end annotation
 
-    .line 417
+    .line 446
     invoke-virtual {p0}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
 
     move-result-object p0
@@ -1821,10 +2023,79 @@
     return-wide p0
 .end method
 
+.method private static postJson(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONObject;)Lorg/json/JSONObject;
+    .locals 1
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 383
+    const-string v0, "POST"
+
+    invoke-virtual {p2}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
+    move-result-object p2
+
+    invoke-static {v0, p0, p1, p2}, Lcom/supertws/dubokutv/CloudSyncClient;->requestDetailed(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;
+
+    move-result-object p0
+
+    .line 384
+    iget p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->code:I
+
+    const/16 p2, 0xc8
+
+    if-lt p1, p2, :cond_0
+
+    iget p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->code:I
+
+    const/16 p2, 0x12c
+
+    if-ge p1, p2, :cond_0
+
+    .line 388
+    new-instance p1, Lorg/json/JSONObject;
+
+    iget-object p0, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->errorBody:Ljava/lang/String;
+
+    invoke-direct {p1, p0}, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+
+    return-object p1
+
+    .line 385
+    :cond_0
+    iget-object p0, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->errorBody:Ljava/lang/String;
+
+    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->safeWorkerErrorBody(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object p0
+
+    .line 386
+    new-instance p1, Ljava/lang/IllegalStateException;
+
+    new-instance p2, Lorg/json/JSONObject;
+
+    invoke-direct {p2, p0}, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+
+    const-string p0, "error"
+
+    const-string v0, "request_failed"
+
+    invoke-virtual {p2, p0, v0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object p0
+
+    invoke-direct {p1, p0}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
+
+    throw p1
+.end method
+
 .method public static put(Lcom/supertws/dubokutv/ProgressSnapshot;Ljava/lang/String;)Z
     .locals 6
 
-    .line 377
+    .line 406
     const-string v0, "R2Sync"
 
     const/4 v1, 0x0
@@ -1834,28 +2105,28 @@
 
     move-result-object v2
 
-    .line 378
+    .line 407
     invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->fitPayload(Lorg/json/JSONObject;)Z
 
     move-result v3
 
     if-nez v3, :cond_0
 
-    .line 379
+    .line 408
     const-string p0, "Snapshot upload HTTP 413 body={\"error\":\"payload_too_large\"}"
 
     invoke-static {v0, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 380
+    .line 409
     return v1
 
-    .line 382
+    .line 411
     :cond_0
     invoke-virtual {v2}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 383
+    .line 412
     const-string v3, "PUT"
 
     new-instance v4, Ljava/lang/StringBuilder;
@@ -1902,7 +2173,7 @@
 
     move-result-object p0
 
-    .line 384
+    .line 413
     iget p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->code:I
 
     const/16 v2, 0xcc
@@ -1913,7 +2184,7 @@
 
     return p0
 
-    .line 385
+    .line 414
     :cond_1
     new-instance p1, Ljava/lang/StringBuilder;
 
@@ -1955,7 +2226,7 @@
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 386
+    .line 415
     goto :goto_0
 
     :catch_0
@@ -1989,7 +2260,7 @@
 
     invoke-static {v0, p0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 387
+    .line 416
     :goto_0
     return v1
 .end method
@@ -2002,7 +2273,7 @@
         }
     .end annotation
 
-    .line 477
+    .line 508
     new-instance v0, Ljava/io/ByteArrayOutputStream;
 
     invoke-direct {v0}, Ljava/io/ByteArrayOutputStream;-><init>()V
@@ -2011,7 +2282,7 @@
 
     new-array v1, v1, [B
 
-    .line 478
+    .line 509
     :goto_0
     invoke-virtual {p0, v1}, Ljava/io/InputStream;->read([B)I
 
@@ -2027,13 +2298,43 @@
 
     goto :goto_0
 
-    .line 479
+    .line 510
     :cond_0
     invoke-virtual {p0}, Ljava/io/InputStream;->close()V
 
     const-string p0, "UTF-8"
 
     invoke-virtual {v0, p0}, Ljava/io/ByteArrayOutputStream;->toString(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object p0
+
+    return-object p0
+.end method
+
+.method public static redeemJoinCode(Ljava/lang/String;)Lorg/json/JSONObject;
+    .locals 2
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 372
+    new-instance v0, Lorg/json/JSONObject;
+
+    invoke-direct {v0}, Lorg/json/JSONObject;-><init>()V
+
+    const-string v1, "joinCode"
+
+    invoke-virtual {v0, v1, p0}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    move-result-object p0
+
+    const-string v0, "/v1/families/join"
+
+    const/4 v1, 0x0
+
+    invoke-static {v0, v1, p0}, Lcom/supertws/dubokutv/CloudSyncClient;->postJson(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONObject;)Lorg/json/JSONObject;
 
     move-result-object p0
 
@@ -2309,7 +2610,7 @@
         }
     .end annotation
 
-    .line 421
+    .line 450
     invoke-static {p0, p1, p2, p3}, Lcom/supertws/dubokutv/CloudSyncClient;->requestDetailed(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;
 
     move-result-object p0
@@ -2327,10 +2628,10 @@
         }
     .end annotation
 
-    .line 431
+    .line 460
     nop
 
-    .line 433
+    .line 462
     :try_start_0
     invoke-static {p0, p1, p2}, Lcom/supertws/dubokutv/CloudSyncClient;->open(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/net/HttpURLConnection;
 
@@ -2338,23 +2639,23 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 434
+    .line 463
     if-eqz p3, :cond_0
 
-    .line 435
+    .line 464
     const/4 p1, 0x1
 
     :try_start_1
     invoke-virtual {p0, p1}, Ljava/net/HttpURLConnection;->setDoOutput(Z)V
 
-    .line 436
+    .line 465
     const-string p1, "UTF-8"
 
     invoke-virtual {p3, p1}, Ljava/lang/String;->getBytes(Ljava/lang/String;)[B
 
     move-result-object p1
 
-    .line 437
+    .line 466
     invoke-virtual {p0}, Ljava/net/HttpURLConnection;->getOutputStream()Ljava/io/OutputStream;
 
     move-result-object p2
@@ -2363,92 +2664,99 @@
 
     invoke-virtual {p2}, Ljava/io/OutputStream;->close()V
 
-    .line 439
+    .line 468
     :cond_0
     invoke-virtual {p0}, Ljava/net/HttpURLConnection;->getResponseCode()I
 
     move-result p1
 
-    .line 440
-    const-string p2, ""
+    .line 469
+    const/16 p2, 0x190
 
-    .line 441
-    const/16 p3, 0x190
+    if-lt p1, p2, :cond_1
 
-    if-lt p1, p3, :cond_1
-
-    .line 442
     invoke-virtual {p0}, Ljava/net/HttpURLConnection;->getErrorStream()Ljava/io/InputStream;
 
-    move-result-object p3
+    move-result-object p2
+
+    goto :goto_0
+
+    :cond_1
+    invoke-virtual {p0}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
+
+    move-result-object p2
+
+    .line 470
+    :goto_0
+    const-string p3, ""
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_1
 
-    .line 443
-    if-eqz p3, :cond_1
+    .line 471
+    if-eqz p2, :cond_2
 
-    .line 444
+    .line 472
     :try_start_2
-    invoke-static {p3}, Lcom/supertws/dubokutv/CloudSyncClient;->read(Ljava/io/InputStream;)Ljava/lang/String;
+    invoke-static {p2}, Lcom/supertws/dubokutv/CloudSyncClient;->read(Ljava/io/InputStream;)Ljava/lang/String;
 
-    move-result-object p2
+    move-result-object p3
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_0
 
     :try_start_3
-    invoke-virtual {p3}, Ljava/io/InputStream;->close()V
+    invoke-virtual {p2}, Ljava/io/InputStream;->close()V
 
-    goto :goto_0
+    goto :goto_1
 
     :catchall_0
     move-exception p1
 
-    invoke-virtual {p3}, Ljava/io/InputStream;->close()V
+    invoke-virtual {p2}, Ljava/io/InputStream;->close()V
 
     throw p1
 
-    .line 447
-    :cond_1
-    :goto_0
-    new-instance p3, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;
+    .line 474
+    :cond_2
+    :goto_1
+    new-instance p2, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;
 
-    invoke-direct {p3, p1, p2}, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;-><init>(ILjava/lang/String;)V
+    invoke-direct {p2, p1, p3}, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;-><init>(ILjava/lang/String;)V
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_1
 
-    .line 448
-    if-eqz p0, :cond_2
+    .line 475
+    if-eqz p0, :cond_3
 
     invoke-virtual {p0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 447
-    :cond_2
-    return-object p3
+    .line 474
+    :cond_3
+    return-object p2
 
-    .line 448
+    .line 475
     :catchall_1
     move-exception p1
 
-    goto :goto_1
+    goto :goto_2
 
     :catchall_2
     move-exception p1
 
     const/4 p0, 0x0
 
-    :goto_1
-    if-eqz p0, :cond_3
+    :goto_2
+    if-eqz p0, :cond_4
 
     invoke-virtual {p0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    :cond_3
+    :cond_4
     throw p1
 .end method
 
 .method private static safeWorkerErrorBody(Ljava/lang/String;)Ljava/lang/String;
     .locals 3
 
-    .line 452
+    .line 479
     const-string v0, "{\"error\":\"unknown\"}"
 
     if-eqz p0, :cond_2
@@ -2463,7 +2771,7 @@
 
     goto/16 :goto_3
 
-    .line 454
+    .line 481
     :cond_0
     :try_start_0
     new-instance v1, Lorg/json/JSONObject;
@@ -2478,7 +2786,7 @@
 
     move-result-object p0
 
-    .line 455
+    .line 482
     invoke-virtual {p0}, Ljava/lang/String;->hashCode()I
 
     move-result v1
@@ -2499,9 +2807,22 @@
 
     const/4 v1, 0x0
 
-    goto :goto_1
+    goto/16 :goto_1
 
     :sswitch_1
+    const-string v1, "invalid_join_code"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xa
+
+    goto/16 :goto_1
+
+    :sswitch_2
     const-string v1, "payload_too_large"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2512,9 +2833,9 @@
 
     const/4 v1, 0x3
 
-    goto :goto_1
+    goto/16 :goto_1
 
-    :sswitch_2
+    :sswitch_3
     const-string v1, "invalid_snapshot"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2525,9 +2846,22 @@
 
     const/4 v1, 0x2
 
-    goto :goto_1
+    goto/16 :goto_1
 
-    :sswitch_3
+    :sswitch_4
+    const-string v1, "family_read_failed"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0x12
+
+    goto/16 :goto_1
+
+    :sswitch_5
     const-string v1, "not_found"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2538,9 +2872,22 @@
 
     const/16 v1, 0x9
 
-    goto :goto_1
+    goto/16 :goto_1
 
-    :sswitch_4
+    :sswitch_6
+    const-string v1, "source_snapshot_unavailable"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xd
+
+    goto/16 :goto_1
+
+    :sswitch_7
     const-string v1, "family_conflict"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2551,9 +2898,9 @@
 
     const/4 v1, 0x6
 
-    goto :goto_1
+    goto/16 :goto_1
 
-    :sswitch_5
+    :sswitch_8
     const-string v1, "internal_error"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2564,9 +2911,22 @@
 
     const/16 v1, 0x8
 
-    goto :goto_1
+    goto/16 :goto_1
 
-    :sswitch_6
+    :sswitch_9
+    const-string v1, "merge_copy_required"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xf
+
+    goto/16 :goto_1
+
+    :sswitch_a
     const-string v1, "unauthorized"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2579,7 +2939,7 @@
 
     goto :goto_1
 
-    :sswitch_7
+    :sswitch_b
     const-string v1, "invalid_path"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2592,7 +2952,7 @@
 
     goto :goto_1
 
-    :sswitch_8
+    :sswitch_c
     const-string v1, "invalid_json"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2605,7 +2965,59 @@
 
     goto :goto_1
 
-    :sswitch_9
+    :sswitch_d
+    const-string v1, "invalid_family_order"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xb
+
+    goto :goto_1
+
+    :sswitch_e
+    const-string v1, "merge_cleanup_failed"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0x11
+
+    goto :goto_1
+
+    :sswitch_f
+    const-string v1, "merge_copy_failed"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0x10
+
+    goto :goto_1
+
+    :sswitch_10
+    const-string v1, "join_code_unavailable"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0x13
+
+    goto :goto_1
+
+    :sswitch_11
     const-string v1, "rate_limited"
 
     invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2618,16 +3030,42 @@
 
     goto :goto_1
 
+    :sswitch_12
+    const-string v1, "source_changed_recopy_required"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xe
+
+    goto :goto_1
+
+    :sswitch_13
+    const-string v1, "duplicate_source"
+
+    invoke-virtual {p0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    const/16 v1, 0xc
+
+    goto :goto_1
+
     :goto_0
     const/4 v1, -0x1
 
     :goto_1
     packed-switch v1, :pswitch_data_0
 
-    .line 460
+    .line 491
     goto :goto_2
 
-    .line 459
+    .line 490
     :pswitch_0
     new-instance v1, Ljava/lang/StringBuilder;
 
@@ -2657,17 +3095,17 @@
 
     return-object p0
 
-    .line 460
+    .line 491
     :goto_2
     return-object v0
 
-    .line 462
+    .line 493
     :catch_0
     move-exception p0
 
     return-object v0
 
-    .line 452
+    .line 479
     :cond_2
     :goto_3
     const-string p0, "{\"error\":\"unavailable\"}"
@@ -2678,20 +3116,40 @@
 
     :sswitch_data_0
     .sparse-switch
-        -0x60e696c5 -> :sswitch_9
-        0x1f685630 -> :sswitch_8
-        0x1f6acd6d -> :sswitch_7
-        0x250258f4 -> :sswitch_6
-        0x2e6e3a06 -> :sswitch_5
-        0x4220924d -> :sswitch_4
-        0x604afb16 -> :sswitch_3
-        0x70cb5b0c -> :sswitch_2
-        0x7c47531f -> :sswitch_1
+        -0x7e739a31 -> :sswitch_13
+        -0x6b3f85d9 -> :sswitch_12
+        -0x60e696c5 -> :sswitch_11
+        -0x5fc1588d -> :sswitch_10
+        -0x3e20d40 -> :sswitch_f
+        0x6920d1f -> :sswitch_e
+        0x1901cbfb -> :sswitch_d
+        0x1f685630 -> :sswitch_c
+        0x1f6acd6d -> :sswitch_b
+        0x250258f4 -> :sswitch_a
+        0x2cbaf562 -> :sswitch_9
+        0x2e6e3a06 -> :sswitch_8
+        0x4220924d -> :sswitch_7
+        0x5e14e7f9 -> :sswitch_6
+        0x604afb16 -> :sswitch_5
+        0x6ebe26ab -> :sswitch_4
+        0x70cb5b0c -> :sswitch_3
+        0x7c47531f -> :sswitch_2
+        0x7cc5579a -> :sswitch_1
         0x7e34a447 -> :sswitch_0
     .end sparse-switch
 
     :pswitch_data_0
     .packed-switch 0x0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
+        :pswitch_0
         :pswitch_0
         :pswitch_0
         :pswitch_0

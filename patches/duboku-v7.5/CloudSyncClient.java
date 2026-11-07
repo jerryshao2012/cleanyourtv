@@ -359,6 +359,35 @@ public final class CloudSyncClient {
         return false;
     }
 
+    public static String createJoinCode() throws Exception {
+        FamilyIdentity identity = FamilyIdentity.get(appContext);
+        if (!registerFamily(identity.familyId(), identity.familySecret())) throw new IllegalStateException("family_unavailable");
+        JSONObject result = postJson("/v1/families/" + enc(identity.familyId()) + "/join-code", identity.familySecret(), new JSONObject());
+        String code = result.optString("joinCode", "");
+        if (code.isEmpty()) throw new IllegalStateException("join_code_unavailable");
+        return code;
+    }
+
+    public static JSONObject redeemJoinCode(String code) throws Exception {
+        return postJson("/v1/families/join", null, new JSONObject().put("joinCode", code));
+    }
+
+    public static JSONObject mergeFamilies(String targetFamilyId, String targetSecret, String action,
+                                             org.json.JSONArray sourceCodes, boolean confirmed) throws Exception {
+        JSONObject body = new JSONObject().put("action", action).put("sourceCodes", sourceCodes);
+        if ("cleanup".equals(action)) body.put("confirmed", confirmed);
+        return postJson("/v1/families/" + enc(targetFamilyId) + "/merge", targetSecret, body);
+    }
+
+    private static JSONObject postJson(String path, String secret, JSONObject body) throws Exception {
+        RequestResult result = requestDetailed("POST", path, secret, body.toString());
+        if (result.code < 200 || result.code >= 300) {
+            String error = safeWorkerErrorBody(result.errorBody);
+            throw new IllegalStateException(new JSONObject(error).optString("error", "request_failed"));
+        }
+        return new JSONObject(result.errorBody);
+    }
+
     public static JSONObject get(String familyId, String deviceId, String secret) throws Exception {
         int code = 0; HttpURLConnection c = null;
         try {
@@ -437,14 +466,12 @@ public final class CloudSyncClient {
                 OutputStream out = c.getOutputStream(); out.write(bytes); out.close();
             }
             int code = c.getResponseCode();
-            String errorBody = "";
-            if (code >= 400) {
-                InputStream error = c.getErrorStream();
-                if (error != null) {
-                    try { errorBody = read(error); } finally { error.close(); }
-                }
+            InputStream response = code >= 400 ? c.getErrorStream() : c.getInputStream();
+            String responseBody = "";
+            if (response != null) {
+                try { responseBody = read(response); } finally { response.close(); }
             }
-            return new RequestResult(code, errorBody);
+            return new RequestResult(code, responseBody);
         } finally { if (c != null) c.disconnect(); }
     }
 
@@ -456,7 +483,11 @@ public final class CloudSyncClient {
                 case "invalid_request": case "invalid_json": case "invalid_snapshot":
                 case "payload_too_large": case "unauthorized": case "invalid_path":
                 case "family_conflict": case "rate_limited": case "internal_error":
-                case "not_found": return "{\"error\":\"" + code + "\"}";
+                case "not_found": case "invalid_join_code":
+                case "invalid_family_order": case "duplicate_source": case "source_snapshot_unavailable":
+                case "source_changed_recopy_required": case "merge_copy_required":
+                case "merge_copy_failed": case "merge_cleanup_failed": case "family_read_failed":
+                case "join_code_unavailable": return "{\"error\":\"" + code + "\"}";
                 default: return "{\"error\":\"unknown\"}";
             }
         } catch (Exception ignored) { return "{\"error\":\"unknown\"}"; }

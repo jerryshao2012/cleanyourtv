@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="family_sync">家庭同步</string>
     <string name="CronetProviderClassName">com.google.android.gms.net.PlayServicesCronetProvider</string>
     <string name="DownloadDone">下载完成</string>
     <string name="DownloadFailed">下载失败：%1$s</string>
