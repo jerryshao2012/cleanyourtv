@@ -448,7 +448,13 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
+    goto :goto_8
+
+    :goto_7
     throw v0
+
+    :goto_8
+    goto :goto_7
 
     nop
 

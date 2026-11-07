@@ -130,5 +130,11 @@
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_1
 
+    goto :goto_2
+
+    :goto_1
     throw v1
+
+    :goto_2
+    goto :goto_1
 .end method

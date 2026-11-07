@@ -74,7 +74,7 @@
 .method public static validId(Ljava/lang/String;)Z
     .locals 2
 
-    .line 104
+    .line 116
     const/4 v0, 0x0
 
     if-eqz p0, :cond_0
@@ -100,13 +100,13 @@
 
     goto :goto_0
 
-    .line 105
+    .line 117
     :catch_0
     move-exception p0
 
     return v0
 
-    .line 104
+    .line 116
     :cond_0
     :goto_0
     return v0
@@ -115,7 +115,7 @@
 .method public static validSecret(Ljava/lang/String;)Z
     .locals 2
 
-    .line 109
+    .line 121
     const/4 v0, 0x0
 
     if-eqz p0, :cond_0
@@ -139,13 +139,13 @@
 
     goto :goto_0
 
-    .line 110
+    .line 122
     :catch_0
     move-exception p0
 
     return v0
 
-    .line 109
+    .line 121
     :cond_0
     :goto_0
     return v0
@@ -256,7 +256,13 @@
 
     monitor-exit p0
 
+    goto :goto_3
+
+    :goto_2
     throw p1
+
+    :goto_3
+    goto :goto_2
 .end method
 
 .method public declared-synchronized adopt(Lorg/json/JSONObject;)Z
@@ -598,7 +604,13 @@
 
     monitor-exit p0
 
+    goto :goto_6
+
+    :goto_5
     throw p1
+
+    :goto_6
+    goto :goto_5
 .end method
 
 .method public deviceId()Ljava/lang/String;
@@ -793,6 +805,185 @@
     return-object v0
 .end method
 
+.method public declared-synchronized join(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONArray;)V
+    .locals 4
+
+    monitor-enter p0
+
+    .line 97
+    :try_start_0
+    invoke-static {p1}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_3
+
+    invoke-static {p2}, Lcom/supertws/dubokutv/FamilyIdentity;->validSecret(Ljava/lang/String;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_3
+
+    .line 98
+    new-instance v0, Ljava/util/TreeSet;
+
+    invoke-direct {v0}, Ljava/util/TreeSet;-><init>()V
+
+    .line 99
+    if-eqz p3, :cond_1
+
+    const/4 v1, 0x0
+
+    :goto_0
+    invoke-virtual {p3}, Lorg/json/JSONArray;->length()I
+
+    move-result v2
+
+    if-ge v1, v2, :cond_1
+
+    .line 100
+    const-string v2, ""
+
+    invoke-virtual {p3, v1, v2}, Lorg/json/JSONArray;->optString(ILjava/lang/String;)Ljava/lang/String;
+
+    move-result-object v2
+
+    .line 101
+    invoke-static {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+
+    move-result v3
+
+    if-eqz v3, :cond_0
+
+    invoke-virtual {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->deviceId()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v2, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v3
+
+    if-nez v3, :cond_0
+
+    invoke-virtual {v0, v2}, Ljava/util/TreeSet;->add(Ljava/lang/Object;)Z
+
+    .line 99
+    :cond_0
+    add-int/lit8 v1, v1, 0x1
+
+    goto :goto_0
+
+    .line 103
+    :cond_1
+    new-instance p3, Lorg/json/JSONArray;
+
+    invoke-direct {p3}, Lorg/json/JSONArray;-><init>()V
+
+    invoke-virtual {v0}, Ljava/util/TreeSet;->iterator()Ljava/util/Iterator;
+
+    move-result-object v0
+
+    :goto_1
+    invoke-interface {v0}, Ljava/util/Iterator;->hasNext()Z
+
+    move-result v1
+
+    if-eqz v1, :cond_2
+
+    invoke-interface {v0}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+
+    move-result-object v1
+
+    check-cast v1, Ljava/lang/String;
+
+    invoke-virtual {p3, v1}, Lorg/json/JSONArray;->put(Ljava/lang/Object;)Lorg/json/JSONArray;
+
+    goto :goto_1
+
+    .line 104
+    :cond_2
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
+
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+
+    move-result-object v0
+
+    const-string v1, "familyId"
+
+    invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    const-string v0, "familySecret"
+
+    invoke-interface {p1, v0, p2}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    const-string p2, "peers"
+
+    invoke-virtual {p3}, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+
+    move-result-object p3
+
+    invoke-interface {p1, p2, p3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    const-string p2, "familyCreatedAt"
+
+    .line 105
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    invoke-interface {p1, p2, v0, v1}, Landroid/content/SharedPreferences$Editor;->putLong(Ljava/lang/String;J)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    const-string p2, "cloudAuthRejected"
+
+    invoke-interface {p1, p2}, Landroid/content/SharedPreferences$Editor;->remove(Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object p1
+
+    invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    .line 106
+    monitor-exit p0
+
+    return-void
+
+    .line 97
+    :cond_3
+    :try_start_1
+    new-instance p1, Ljava/lang/IllegalArgumentException;
+
+    const-string p2, "Invalid family credentials"
+
+    invoke-direct {p1, p2}, Ljava/lang/IllegalArgumentException;-><init>(Ljava/lang/String;)V
+
+    throw p1
+    :try_end_1
+    .catchall {:try_start_1 .. :try_end_1} :catchall_0
+
+    .line 96
+    :catchall_0
+    move-exception p1
+
+    monitor-exit p0
+
+    goto :goto_3
+
+    :goto_2
+    throw p1
+
+    :goto_3
+    goto :goto_2
+.end method
+
 .method public offer(Ljava/lang/String;)Lorg/json/JSONObject;
     .locals 4
     .annotation system Ldalvik/annotation/Throws;
@@ -801,12 +992,12 @@
         }
     .end annotation
 
-    .line 97
+    .line 109
     new-instance v0, Lorg/json/JSONArray;
 
     invoke-direct {v0}, Lorg/json/JSONArray;-><init>()V
 
-    .line 98
+    .line 110
     invoke-virtual {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->deviceId()Ljava/lang/String;
 
     move-result-object v1
@@ -838,7 +1029,7 @@
 
     goto :goto_0
 
-    .line 99
+    .line 111
     :cond_0
     new-instance v1, Lorg/json/JSONObject;
 
@@ -862,7 +1053,7 @@
 
     move-result-object v1
 
-    .line 100
+    .line 112
     const-string v2, "nonce"
 
     invoke-virtual {v1, v2, p1}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
@@ -895,7 +1086,7 @@
 
     move-result-object p1
 
-    .line 99
+    .line 111
     return-object p1
 .end method
 
@@ -999,5 +1190,11 @@
 
     monitor-exit p0
 
+    goto :goto_2
+
+    :goto_1
     throw v0
+
+    :goto_2
+    goto :goto_1
 .end method

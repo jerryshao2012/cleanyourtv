@@ -518,6 +518,14 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - Xiaomi MiTV-AZFU0 / darkknight（Android 14）覆盖安装 v7.5，保留应用数据；首页和历史正常，播放《小城良方》第 15 集后进度由 46% 增到 48%，系统返回后 Worker 收到成功 PUT。停止 Xiaomi app 并休眠后，Hisense 再次刷新时 Worker 收到成功 GET。ADB 抓屏播放画面为黑色，ExoPlayer 初始化和进度推进正常，但画面渲染未能通过抓屏独立确认。
 - 实施、接口、限额策略和未覆盖验证项见 [R2_SYNC_IMPLEMENTATION.md](R2_SYNC_IMPLEMENTATION.md)。
 
+### 家庭加入码与重复 familyId 合并（2026-11-07）
+
+- 新增独立 `家庭同步` TV launcher 入口，可为当前已配对家庭显示/轮换可手抄加入码，并支持新设备输入加入码；凭据写入 app-private identity，读取已有设备快照后再同步本机数据。
+- 新增多家庭预览、按设备复制快照并读回校验、二次确认清理源前缀/撤销源 family auth 与加入码。Worker 普通同步不执行 R2 LIST；只在明确的 merge 操作中列举输入的源家庭前缀。
+- 新 Worker API 配置随机 Worker secret `JOIN_CODE_KEY`，版本 `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0` 已部署。Sony Bravia 4K UR3、Hisense Fire TV、Xiaomi MiTV-AZFU0 匹配签名覆盖安装并保留数据；三台页面均显示 `214cbca3-5707-46cf-b305-1c4aa924773d`。Hisense 与小米读取已知设备快照并上传成功。Hisense 上误触轮换导致最初加入码失效，随后在 Hisense 兑换新生成的同家庭码成功；小米原先已在目标家庭，无需再次兑换。未执行家庭合并/清理。细节见 [R2_SYNC_IMPLEMENTATION.md §11](R2_SYNC_IMPLEMENTATION.md)。
+- 家庭同步页默认焦点移至“加入并同步家庭进度”，所有按钮添加高对比焦点描边与白字；更换加入码按钮明确标注旧码失效，并增加二次确认。Sony、Hisense、小米均已保留数据覆盖安装；Sony 实测首次确认只打开警告，按返回不生成新码；三台默认焦点均为“加入并同步家庭进度”。最新 APK：`devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`。
+- APK overlay 要包含 `smali_classes4` 新页面与同步客户端 classes、`smali_classes3/FamilyIdentity.smali` 更新、AndroidManifest 和 `res/values/strings.xml`；必须从原包完整解码后增量覆盖，不能只复制 Java 参考源。
+
 ### 跳过片头按钮仅在点击时快进（2026-11-05）
 
 - **问题**：方向键将焦点移到“跳过片头”时就前进 30 秒；按 OK 时反而调用了原有回退回调。
