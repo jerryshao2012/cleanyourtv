@@ -22,7 +22,7 @@ public final class FamilySyncActivity extends Activity {
     private final ExecutorService work = Executors.newSingleThreadExecutor();
     private TextView status, currentFamily, codeDisplay;
     private EditText joinCode, sourceCodes;
-    private Button cleanup;
+    private Button cleanup, cloudSyncToggle;
     private String previewedCodes = "";
     private String copiedCodes = "";
     private boolean previewed;
@@ -33,6 +33,16 @@ public final class FamilySyncActivity extends Activity {
         LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setPadding(36, 24, 36, 24); page.setBackgroundColor(Color.rgb(20, 20, 24));
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true); scroll.addView(page);
         TextView title = text("家庭同步与合并", 30, true); page.addView(title);
+        cloudSyncToggle = button("");
+        updateCloudSyncToggle();
+        cloudSyncToggle.setOnClickListener(v -> {
+            FamilyIdentity id = FamilyIdentity.get(this);
+            boolean next = !id.isCloudSyncEnabled();
+            id.setCloudSyncEnabled(next);
+            updateCloudSyncToggle();
+            busy(next ? "已开启家庭云端同步" : "已关闭云端同步（仅保留局域网同步）");
+        });
+        page.addView(cloudSyncToggle);
         page.addView(text("在已加入的电视生成加入码；新电视可输入加入。多个家庭合并时，先复制核验，再明确确认清理旧家庭。", 18, false));
         currentFamily = text("当前家庭：" + FamilyIdentity.get(this).familyId(), 16, false); page.addView(currentFamily);
         Button issue = button("生成 / 更换加入码（旧码立即失效）"); page.addView(issue); issue.setOnClickListener(v -> confirmIssueCode());
@@ -136,5 +146,10 @@ public final class FamilySyncActivity extends Activity {
     private void showError(String action, Exception error) {
         String kind = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
         runOnUiThread(() -> busy(action + "失败：" + kind + "。检查网络、Worker 部署状态和加入码后重试。"));
+    }
+
+    private void updateCloudSyncToggle() {
+        boolean enabled = FamilyIdentity.get(this).isCloudSyncEnabled();
+        cloudSyncToggle.setText("云端同步设置：[" + (enabled ? "已开启" : "已关闭") + "] （点击切换，关闭后仅局域网同步）");
     }
 }

@@ -21,7 +21,7 @@
 .method constructor <init>()V
     .locals 0
 
-    .line 293
+    .line 296
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
     return-void
@@ -32,8 +32,8 @@
 .method public run()V
     .locals 15
 
-    .line 295
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$700()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 298
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v0
 
@@ -41,8 +41,8 @@
 
     move-result-wide v0
 
-    .line 296
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Landroid/content/Context;
+    .line 299
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetappContext()Landroid/content/Context;
 
     move-result-object v2
 
@@ -52,12 +52,12 @@
 
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->ensure()V
 
-    .line 297
+    .line 300
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->familySecret()Ljava/lang/String;
 
     move-result-object v3
 
-    .line 298
+    .line 301
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
 
     move-result-object v4
@@ -66,18 +66,18 @@
 
     move-result v4
 
-    .line 299
+    .line 302
     nop
 
-    .line 300
+    .line 303
     nop
 
-    .line 301
+    .line 304
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->peers()Ljava/util/Set;
 
     move-result-object v5
 
-    .line 302
+    .line 305
     const/4 v6, 0x0
 
     if-eqz v4, :cond_1
@@ -105,10 +105,10 @@
 
     check-cast v11, Ljava/lang/String;
 
-    .line 303
+    .line 306
     add-int/lit8 v9, v9, 0x1
 
-    .line 305
+    .line 308
     :try_start_0
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
 
@@ -118,7 +118,7 @@
 
     move-result-object v12
 
-    .line 306
+    .line 309
     invoke-virtual {v2}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
 
     move-result-object v13
@@ -137,7 +137,7 @@
 
     const-string v13, "deviceId"
 
-    .line 307
+    .line 310
     invoke-virtual {v12, v13}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v13
@@ -148,14 +148,14 @@
 
     if-eqz v13, :cond_0
 
-    .line 308
+    .line 311
     invoke-static {v12}, Lcom/supertws/dubokutv/ProgressSnapshot;->valid(Lorg/json/JSONObject;)Z
 
     move-result v13
 
     if-eqz v13, :cond_0
 
-    .line 309
+    .line 312
     invoke-static {v12, v11}, Lcom/supertws/dubokutv/LanSyncManager;->mergeCloudSnapshot(Lorg/json/JSONObject;Ljava/lang/String;)Z
 
     move-result v11
@@ -166,11 +166,11 @@
 
     goto :goto_1
 
-    .line 310
+    .line 313
     :cond_0
     add-int/lit8 v10, v10, 0x1
 
-    .line 312
+    .line 315
     :goto_1
     goto :goto_2
 
@@ -180,6 +180,14 @@
     add-int/lit8 v10, v10, 0x1
 
     const-string v12, "R2Sync"
+
+    invoke-virtual {v11}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
+
+    move-result-object v11
+
+    invoke-virtual {v11}, Ljava/lang/Class;->getSimpleName()Ljava/lang/String;
+
+    move-result-object v11
 
     new-instance v13, Ljava/lang/StringBuilder;
 
@@ -191,14 +199,6 @@
 
     move-result-object v13
 
-    invoke-virtual {v11}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
-
-    move-result-object v11
-
-    invoke-virtual {v11}, Ljava/lang/Class;->getSimpleName()Ljava/lang/String;
-
-    move-result-object v11
-
     invoke-virtual {v13, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v11
@@ -209,11 +209,11 @@
 
     invoke-static {v12, v11}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 313
+    .line 316
     :goto_2
     goto :goto_0
 
-    .line 302
+    .line 305
     :cond_1
     const/4 v8, 0x0
 
@@ -221,7 +221,7 @@
 
     const/4 v10, 0x0
 
-    .line 314
+    .line 317
     :cond_2
     const/4 v2, 0x1
 
@@ -237,8 +237,12 @@
     :goto_3
     and-int/2addr v3, v4
 
-    .line 315
+    .line 318
     const-string v4, "R2Sync"
+
+    invoke-interface {v5}, Ljava/util/Set;->size()I
+
+    move-result v5
 
     new-instance v7, Ljava/lang/StringBuilder;
 
@@ -249,10 +253,6 @@
     invoke-virtual {v7, v11}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v7
-
-    invoke-interface {v5}, Ljava/util/Set;->size()I
-
-    move-result v5
 
     invoke-virtual {v7, v5}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
 
@@ -304,32 +304,32 @@
 
     invoke-static {v4, v5}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 316
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$700()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 319
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v4
 
     invoke-virtual {v4, v0, v1, v3}, Lcom/supertws/dubokutv/CloudSyncGate;->completeRead(JZ)V
 
-    .line 317
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
+    .line 320
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
 
     move-result-object v4
 
     monitor-enter v4
 
-    .line 318
+    .line 321
     :try_start_1
     invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
 
     move-result-wide v7
 
-    invoke-static {v7, v8}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(J)J
+    invoke-static {v7, v8}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlastReadFinishedAt(J)V
 
-    .line 319
+    .line 322
     if-eqz v3, :cond_5
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$700()Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v5
 
@@ -339,49 +339,49 @@
 
     if-eqz v5, :cond_5
 
-    .line 320
-    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2002(Z)Z
-
-    .line 321
-    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2102(I)I
-
-    .line 322
-    const/4 v0, 0x0
-
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$902(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
-
     .line 323
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$802(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputreadScheduled(Z)V
 
     .line 324
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputreadRetryCount(I)V
+
+    .line 325
+    const/4 v0, 0x0
+
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+
+    .line 326
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+
+    .line 327
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetscheduledDrain()Ljava/util/concurrent/ScheduledFuture;
 
     move-result-object v1
 
     if-eqz v1, :cond_4
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetscheduledDrain()Ljava/util/concurrent/ScheduledFuture;
 
     move-result-object v1
 
     invoke-interface {v1, v6}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
 
-    .line 325
-    :cond_4
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$502(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
-
-    .line 326
-    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1602(Z)Z
-
-    .line 327
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1702(Ljava/lang/Runnable;)Ljava/lang/Runnable;
-
     .line 328
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2200(Z)V
+    :cond_4
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+
+    .line 329
+    invoke-static {v6}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+
+    .line 330
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+
+    .line 331
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smonCommittedSave(Z)V
 
     goto :goto_6
 
-    .line 330
+    .line 333
     :cond_5
     const/4 v2, 0x4
 
@@ -389,10 +389,10 @@
 
     fill-array-data v2, :array_0
 
-    .line 331
+    .line 334
     if-nez v3, :cond_7
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$700()Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v3
 
@@ -405,9 +405,13 @@
     goto :goto_4
 
     :cond_6
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2108()I
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetreadRetryCount()I
 
     move-result v0
+
+    add-int/lit8 v1, v0, 0x1
+
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputreadRetryCount(I)V
 
     const/4 v1, 0x3
 
@@ -423,9 +427,9 @@
     :goto_4
     const-wide/16 v0, 0x0
 
-    .line 332
+    .line 335
     :goto_5
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2300()Ljava/util/concurrent/ScheduledExecutorService;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetQUEUE()Ljava/util/concurrent/ScheduledExecutorService;
 
     move-result-object v2
 
@@ -433,14 +437,14 @@
 
     invoke-interface {v2, p0, v0, v1, v3}, Ljava/util/concurrent/ScheduledExecutorService;->schedule(Ljava/lang/Runnable;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 334
+    .line 337
     :goto_6
     monitor-exit v4
 
-    .line 335
+    .line 338
     return-void
 
-    .line 334
+    .line 337
     :catchall_0
     move-exception v0
 
@@ -448,15 +452,7 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    goto :goto_8
-
-    :goto_7
     throw v0
-
-    :goto_8
-    goto :goto_7
-
-    nop
 
     :array_0
     .array-data 8

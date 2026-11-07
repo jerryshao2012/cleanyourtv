@@ -68,6 +68,7 @@ public final class CloudSyncClient {
         if (context == null) context = LanSyncManager.getAppContext();
         if (context == null) return;
         initialize(context);
+        if (!FamilyIdentity.get(context).isCloudSyncEnabled()) return;
         dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
         final Context captureContext = context.getApplicationContext();
         synchronized (LOCK) {
@@ -135,6 +136,7 @@ public final class CloudSyncClient {
     /** Coalesces progress updates while preserving serial PUTs. Event saves bypass the window. */
     public static void enqueueUpload(Context context, ProgressSnapshot snapshot, boolean immediate) {
         initialize(context);
+        if (context != null && !FamilyIdentity.get(context).isCloudSyncEnabled()) return;
         if (snapshot == null) return;
         synchronized (LOCK) {
             latest = snapshot;
@@ -280,6 +282,7 @@ public final class CloudSyncClient {
 
     private static void fetchKnownPeers(Context context, String reason) {
         initialize(context);
+        if (context != null && !FamilyIdentity.get(context).isCloudSyncEnabled()) return;
         Log.i(TAG, "Cloud read requested: " + reason);
         final long delay;
         synchronized (LOCK) {

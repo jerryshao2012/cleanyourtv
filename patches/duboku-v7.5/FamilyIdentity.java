@@ -121,4 +121,12 @@ public final class FamilyIdentity {
         try { return value != null && Base64.decode(value, Base64.URL_SAFE | Base64.NO_WRAP).length == 32; }
         catch (Exception ignored) { return false; }
     }
+
+    public boolean isCloudSyncEnabled() {
+        return prefs.getBoolean("cloudSyncEnabled", true);
+    }
+
+    public synchronized void setCloudSyncEnabled(boolean enabled) {
+        prefs.edit().putBoolean("cloudSyncEnabled", enabled).apply();
+    }
 }
