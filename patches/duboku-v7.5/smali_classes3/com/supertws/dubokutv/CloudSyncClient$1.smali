@@ -30,7 +30,7 @@
         }
     .end annotation
 
-    .line 74
+    .line 79
     iput-object p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$1;->val$captureContext:Landroid/content/Context;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -43,7 +43,7 @@
 .method public run()V
     .locals 7
 
-    .line 79
+    .line 84
     nop
 
     :goto_0
@@ -53,40 +53,40 @@
 
     monitor-enter v0
 
-    .line 80
+    .line 85
     :try_start_0
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$100()J
 
     move-result-wide v1
 
-    .line 81
+    .line 86
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$200()Z
 
     move-result v3
 
-    .line 82
+    .line 87
     const/4 v4, 0x0
 
     invoke-static {v4}, Lcom/supertws/dubokutv/CloudSyncClient;->access$202(Z)Z
 
-    .line 83
+    .line 88
     monitor-exit v0
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_1
 
-    .line 84
+    .line 89
     iget-object v0, p0, Lcom/supertws/dubokutv/CloudSyncClient$1;->val$captureContext:Landroid/content/Context;
 
     invoke-static {v0, v3}, Lcom/supertws/dubokutv/CloudSyncClient;->access$300(Landroid/content/Context;Z)V
 
-    .line 85
+    .line 90
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v3
 
     monitor-enter v3
 
-    .line 86
+    .line 91
     :try_start_1
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$100()J
 
@@ -96,22 +96,22 @@
 
     if-nez v0, :cond_0
 
-    .line 87
+    .line 92
     invoke-static {v4}, Lcom/supertws/dubokutv/CloudSyncClient;->access$402(Z)Z
 
-    .line 88
+    .line 93
     monitor-exit v3
 
     return-void
 
-    .line 90
+    .line 95
     :cond_0
     monitor-exit v3
 
-    .line 91
+    .line 96
     goto :goto_0
 
-    .line 90
+    .line 95
     :catchall_0
     move-exception v0
 
@@ -121,7 +121,7 @@
 
     throw v0
 
-    .line 83
+    .line 88
     :catchall_1
     move-exception v1
 

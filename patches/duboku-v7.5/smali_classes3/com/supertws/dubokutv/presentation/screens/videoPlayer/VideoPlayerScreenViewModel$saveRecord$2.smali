@@ -91,8 +91,6 @@
     .line 5
     iget-object v1, p0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;->$record:Lpa/c;
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->broadcastProgress(Ljava/lang/Object;)V
-
     .line 6
     .line 7
     invoke-direct {p1, v0, v1, p2}, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;-><init>(Lcom/supertws/dubokutv/presentation/screens/videoPlayer/u1;Lpa/c;Lkotlin/coroutines/c;)V
@@ -217,6 +215,13 @@
     :cond_2
     invoke-static {p1}, Lkotlin/l;->b(Ljava/lang/Object;)V
 
+    iget-object v1, p0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;->$record:Lpa/c;
+    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->skipUnchangedPlaybackSave(Ljava/lang/Object;)Z
+    move-result v5
+    if-eqz v5, :save_changed_record
+    return-object v3
+    :save_changed_record
+
     .line 32
     .line 33
     .line 34
@@ -229,8 +234,6 @@
     .line 37
     .line 38
     iget-object v1, p0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;->$record:Lpa/c;
-
-    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->broadcastProgress(Ljava/lang/Object;)V
 
     .line 39
     .line 40
@@ -303,6 +306,8 @@
     .line 69
     :cond_5
     :goto_2
+    iget-object v1, p0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;->$record:Lpa/c;
+    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->onPlaybackSaveCommitted(Ljava/lang/Object;)V
     iget-object p1, p0, Lcom/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2;->this$0:Lcom/supertws/dubokutv/presentation/screens/videoPlayer/u1;
 
     .line 70
@@ -348,6 +353,5 @@
 
     .line 88
     :cond_7
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave()V
     return-object v3
 .end method

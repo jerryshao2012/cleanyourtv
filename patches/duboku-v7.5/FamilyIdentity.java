@@ -3,6 +3,7 @@ package com.supertws.dubokutv;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -58,8 +59,13 @@ public final class FamilyIdentity {
         String family = offer.optString("familyId", "");
         String secret = offer.optString("familySecret", "");
         String from = offer.optString("from", "");
-        if (!validId(family) || !validId(from) || !validSecret(secret)) return false;
+        if (!validId(family) || !validId(from) || !validSecret(secret)) {
+            Log.w("R2Sync", "Family offer rejected: invalid fields");
+            return false;
+        }
         String current = familyId();
+        boolean identityChanged = family.compareTo(current) <= 0
+                && (!family.equals(current) || !secret.equals(familySecret()));
         TreeSet<String> oldRoster = new TreeSet<>(peers());
         TreeSet<String> roster = new TreeSet<>(oldRoster);
         JSONArray devices = offer.optJSONArray("devices");
@@ -69,9 +75,15 @@ public final class FamilyIdentity {
         roster.add(from);
         JSONArray saved = new JSONArray(); for (String id : roster) saved.put(id);
         SharedPreferences.Editor edit = prefs.edit().putString(PEERS, saved.toString());
-        if (family.compareTo(current) <= 0) edit.putString(FAMILY, family).putString(SECRET, secret);
+        if (family.compareTo(current) <= 0) {
+            if (identityChanged) {
+                edit.remove("cloudAuthRejected").putLong("familyCreatedAt", System.currentTimeMillis());
+            }
+            edit.putString(FAMILY, family).putString(SECRET, secret);
+        }
         edit.apply();
-        return family.compareTo(current) < 0 || !roster.equals(oldRoster);
+        Log.i("R2Sync", "Family offer accepted: identityChanged=" + identityChanged + " rosterChanged=" + !roster.equals(oldRoster));
+        return identityChanged || !roster.equals(oldRoster);
     }
 
     public synchronized void addPeer(String id) {

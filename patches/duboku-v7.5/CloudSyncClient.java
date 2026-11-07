@@ -27,6 +27,10 @@ public final class CloudSyncClient {
     private static final int MAX_BODY_BYTES = 65_536;
     private static final ScheduledExecutorService QUEUE = Executors.newSingleThreadScheduledExecutor();
     private static final Object LOCK = new Object();
+    private static final CloudSyncGate READ_GATE = new CloudSyncGate();
+    private static boolean readScheduled;
+    private static int readRetryCount;
+    private static long lastReadFinishedAt;
     private static volatile Context appContext;
     private static volatile ProgressSnapshot latest;
     private static volatile ProgressSnapshot retrySnapshot;
@@ -34,7 +38,6 @@ public final class CloudSyncClient {
     private static volatile boolean latestImmediate;
     private static volatile int retryCount;
     private static volatile long lastUploadAt;
-    private static volatile long lastCloudReadAt;
     private static volatile long pauseUrgentUntilMs;
     private static long captureVersion;
     private static boolean capturePending;
@@ -64,6 +67,8 @@ public final class CloudSyncClient {
         Context context = appContext;
         if (context == null) context = LanSyncManager.getAppContext();
         if (context == null) return;
+        initialize(context);
+        dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
         final Context captureContext = context.getApplicationContext();
         synchronized (LOCK) {
             captureVersion++;
@@ -152,14 +157,17 @@ public final class CloudSyncClient {
                     long deferMs = 0;
                     try {
                         while (true) {
+                            if (!READ_GATE.mayUpload()) break;
                             ProgressSnapshot current;
                             boolean urgent;
+                            long sentVersion;
                             synchronized (LOCK) {
                                 boolean retrying = retrySnapshot != null;
                                 current = retrying ? retrySnapshot : latest;
                                 if (retrying) retrySnapshot = null; else latest = null;
                                 urgent = latestImmediate;
                                 if (!retrying || latest == null) latestImmediate = false;
+                                sentVersion = captureVersion;
                             }
                             if (current == null) break;
                             long wait = 30_000L - (SystemClock.elapsedRealtime() - lastUploadAt);
@@ -190,10 +198,19 @@ public final class CloudSyncClient {
                                 }
                                 break;
                             }
+                            if (!READ_GATE.mayUpload()) {
+                                synchronized (LOCK) { if (latest == null) latest = current; }
+                                break;
+                            }
                             if (put(current, secret)) {
+                                Log.i(TAG, "Cloud upload succeeded");
                                 retryCount = 0;
                                 lastUploadAt = SystemClock.elapsedRealtime();
-                                dirtyPrefs().edit().putBoolean("cloudDirty", false).apply();
+                                synchronized (LOCK) {
+                                    if (sentVersion == captureVersion && !capturePending && latest == null && retrySnapshot == null && READ_GATE.mayUpload()) {
+                                        dirtyPrefs().edit().putBoolean("cloudDirty", false).apply();
+                                    }
+                                }
                             } else {
                                 dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
                                 synchronized (LOCK) { retrySnapshot = current; }
@@ -204,12 +221,16 @@ public final class CloudSyncClient {
                     } catch (Exception e) { Log.w(TAG, "Upload deferred: " + e.getClass().getSimpleName()); }
                     finally {
                         synchronized (LOCK) {
-                            if (retrySnapshot != null) {
+                            if (!READ_GATE.mayUpload()) {
+                                draining = false;
+                                drainRunnable = null;
+                            } else if (retrySnapshot != null) {
                                 draining = true;
                                 scheduleDrainLocked(deferMs > 0 ? deferMs : nextBackoff(), true);
                             } else if (latest != null) {
                                 draining = true;
-                                scheduleDrainLocked(pendingDrainDelay(deferMs, latestImmediate), false);
+                                if (READ_GATE.mayUpload()) scheduleDrainLocked(pendingDrainDelay(deferMs, latestImmediate), false);
+                                else { draining = false; drainRunnable = null; }
                             } else {
                                 draining = false;
                                 drainRunnable = null;
@@ -251,29 +272,68 @@ public final class CloudSyncClient {
 
     /** Fetches each known peer once per resume; callers merge returned snapshots locally. */
     public static void fetchKnownPeers(Context context) {
+        fetchKnownPeers(context, "peer");
+    }
+    public static void fetchOnStartup(Context context) { fetchKnownPeers(context, "startup"); }
+    public static void fetchOnResume(Context context) { fetchKnownPeers(context, "resume"); }
+    public static void fetchOnHistory(Context context) { fetchKnownPeers(context, "history"); }
+
+    private static void fetchKnownPeers(Context context, String reason) {
         initialize(context);
-        long now = System.currentTimeMillis();
-        synchronized (LOCK) { if (now - lastCloudReadAt < 2_000L) return; lastCloudReadAt = now; }
-        final FamilyIdentity identity = FamilyIdentity.get(appContext); identity.ensure();
-        QUEUE.execute(new Runnable() {
+        Log.i(TAG, "Cloud read requested: " + reason);
+        final long delay;
+        synchronized (LOCK) {
+            if (readScheduled && !"peer".equals(reason)) return;
+            READ_GATE.requestRead();
+            if (readScheduled) return;
+            readScheduled = true;
+            long throttle = lastReadFinishedAt == 0 ? 0 : Math.max(0, 2000L - (SystemClock.elapsedRealtime() - lastReadFinishedAt));
+            delay = Math.max(throttle, "startup".equals(reason) ? 2000L : 0L);
+        }
+        QUEUE.schedule(new Runnable() {
             @Override public void run() {
+                final long generation = READ_GATE.beginRead();
+                final FamilyIdentity identity = FamilyIdentity.get(appContext); identity.ensure();
                 String secret = identity.familySecret();
-                if (!registerFamily(identity.familyId(), secret)) return;
+                boolean success = registerFamily(identity.familyId(), secret);
                 boolean changed = false;
-                for (String peer : identity.peers()) {
+                int count = 0, failed = 0;
+                java.util.Set<String> peers = identity.peers();
+                if (success) for (String peer : peers) {
+                    count++;
                     try {
                         JSONObject response = get(identity.familyId(), peer, secret);
                         if (identity.familyId().equals(response.optString("familyId"))
                                 && peer.equals(response.optString("deviceId"))
                                 && ProgressSnapshot.valid(response)) {
                             changed |= LanSyncManager.mergeCloudSnapshot(response, peer);
-                        }
+                        } else { failed++; }
                     }
-                    catch (Exception e) { Log.w(TAG, "Peer read deferred: " + e.getClass().getSimpleName()); }
+                    catch (Exception e) { failed++; Log.w(TAG, "Peer read failed: " + e.getClass().getSimpleName()); }
                 }
-                if (changed || dirtyPrefs().getBoolean("cloudDirty", false)) LanSyncManager.onRecordSaved();
+                success &= failed == 0;
+                Log.i(TAG, "Cloud read result peers=" + peers.size() + " attempted=" + count + " failed=" + failed + " merged=" + changed + " success=" + success);
+                READ_GATE.completeRead(generation, success);
+                synchronized (LOCK) {
+                    lastReadFinishedAt = SystemClock.elapsedRealtime();
+                    if (success && READ_GATE.mayUpload()) {
+                        readScheduled = false;
+                        readRetryCount = 0;
+                        latest = null;
+                        retrySnapshot = null;
+                        if (scheduledDrain != null) scheduledDrain.cancel(false);
+                        scheduledDrain = null;
+                        draining = false;
+                        drainRunnable = null;
+                        onCommittedSave(true);
+                    } else {
+                        long[] delays = {60_000L, 120_000L, 300_000L, 900_000L};
+                        long delay = success || !READ_GATE.isCurrent(generation) ? 0L : delays[Math.min(readRetryCount++, delays.length - 1)];
+                        QUEUE.schedule(this, delay, TimeUnit.MILLISECONDS);
+                    }
+                }
             }
-        });
+        }, delay, TimeUnit.MILLISECONDS);
     }
 
     private static SharedPreferences dirtyPrefs() {
@@ -304,7 +364,10 @@ public final class CloudSyncClient {
         try {
             c = open("GET", "/v1/sync/" + enc(familyId) + "/" + enc(deviceId), secret);
             code = c.getResponseCode();
-            if (code != 200) throw new IllegalStateException("HTTP " + code);
+            if (code != 200) {
+                Log.w(TAG, "Cloud read HTTP " + code);
+                throw new IllegalStateException("Cloud read failed");
+            }
             return new JSONObject(read(c.getInputStream()));
         } finally { if (c != null) c.disconnect(); }
     }

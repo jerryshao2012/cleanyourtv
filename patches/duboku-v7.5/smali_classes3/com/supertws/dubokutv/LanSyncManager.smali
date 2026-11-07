@@ -18,11 +18,15 @@
 
 .field public static volatile sActiveVideoAddress:Ljava/lang/Object;
 
+.field public static volatile sCloudMergeChanged:Z
+
 .field private static sCurrentDeviceId:Ljava/lang/String;
 
 .field private static final sHandoff:Lcom/supertws/dubokutv/HandoffProgress;
 
 .field private static volatile sInstance:Lcom/supertws/dubokutv/LanSyncManager;
+
+.field private static volatile sLastRequestSyncTime:J
 
 .field private static volatile sLastSentEpisode:Ljava/lang/String;
 
@@ -30,15 +34,11 @@
 
 .field private static volatile sLastSentProgressMs:J
 
-.field private static volatile sLastRequestSyncTime:J
-
 .field private static sPendingHandoff:Lcom/supertws/dubokutv/HandoffProgress$Record;
 
 .field private static sPendingHandoffName:Ljava/lang/String;
 
 .field public static sRoomDb:Ljava/lang/Object;
-
-.field public static volatile sCloudMergeChanged:Z
 
 .field public static final sSyncVersionFlow:Lkotlinx/coroutines/flow/r2;
 
@@ -679,6 +679,13 @@
 
     check-cast v1, Lqa/f0;
 
+    sget-object v2, Lcom/supertws/dubokutv/PlaybackSaveGuard;->INSTANCE:Lcom/supertws/dubokutv/PlaybackSaveGuard;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v3
+    invoke-virtual {v2, v3}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialize(Landroid/content/Context;)V
+    iget-object v3, v1, Lqa/f0;->b:Ljava/lang/String;
+    invoke-virtual {v2, v3}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->onUserPlay(Ljava/lang/String;)V
+
     .line 392
     check-cast p0, Landroidx/media3/exoplayer/h0;
 
@@ -1205,44 +1212,69 @@
     move-object v6, v5
 
     const-string v7, "FAMILY_DISCOVER"
+
     invoke-virtual {v7, v6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
     move-result v7
-    if-eqz v7, :cond_family_offer
+
+    if-eqz v7, :cond_1
 
     invoke-static/range {p0 .. p0}, Lcom/supertws/dubokutv/LanSyncManager;->access$300(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
+
     move-result-object v7
+
     invoke-static {v7}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
+
     move-result-object v8
+
     const-string v9, "nonce"
+
     invoke-virtual {v3, v9, v2}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
     move-result-object v9
+
     invoke-virtual {v8, v9}, Lcom/supertws/dubokutv/FamilyIdentity;->offer(Ljava/lang/String;)Lorg/json/JSONObject;
+
     move-result-object v8
+
     invoke-virtual {v8}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
     move-result-object v8
+
     invoke-static {v8, v0}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
+
     return-void
 
-    :cond_family_offer
+    :cond_1
     const-string v7, "FAMILY_OFFER"
+
     invoke-virtual {v7, v6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
     move-result v7
-    if-eqz v7, :cond_request_sync
+
+    if-eqz v7, :cond_3
 
     invoke-static/range {p0 .. p0}, Lcom/supertws/dubokutv/LanSyncManager;->access$300(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
-    move-result-object v7
-    invoke-static {v7}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
-    move-result-object v8
-    invoke-virtual {v8, v3}, Lcom/supertws/dubokutv/FamilyIdentity;->adopt(Lorg/json/JSONObject;)Z
-    move-result v9
-    if-eqz v9, :cond_offer_done
-    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchKnownPeers(Landroid/content/Context;)V
-    :cond_offer_done
-    return-void
 
-    :cond_request_sync
+    move-result-object v7
+
+    invoke-static {v7}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
+
+    move-result-object v8
+
+    invoke-virtual {v8, v3}, Lcom/supertws/dubokutv/FamilyIdentity;->adopt(Lorg/json/JSONObject;)Z
+
+    move-result v9
+
+    if-eqz v9, :cond_2
+
+    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchKnownPeers(Landroid/content/Context;)V
+
+    :cond_2
+    return-void
 
     .line 120
+    :cond_3
     const-string v7, "REQUEST_SYNC"
 
     invoke-virtual {v7, v6}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -1251,7 +1283,7 @@
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_1
 
-    if-eqz v5, :cond_1
+    if-eqz v5, :cond_4
 
     .line 121
     :try_start_1
@@ -1311,7 +1343,7 @@
     goto :goto_0
 
     .line 126
-    :cond_1
+    :cond_4
     move-object/from16 v15, p0
 
     const-string v0, "name"
@@ -1325,12 +1357,12 @@
 
     move-result v0
 
-    if-eqz v0, :cond_2
+    if-eqz v0, :cond_5
 
     return-void
 
     .line 129
-    :cond_2
+    :cond_5
     const-string v0, "id"
 
     invoke-virtual {v3, v0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
@@ -1448,110 +1480,17 @@
     return-void
 .end method
 
-
 .method public static mergeCloudSnapshot(Lorg/json/JSONObject;Ljava/lang/String;)Z
-    .locals 20
-    const/16 v19, 0x0
-    if-eqz p0, :merge_done
-    move-object/from16 v4, p0
-    const-string v0, "records"
-    invoke-virtual {v4, v0}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
-    move-result-object v0
-    if-eqz v0, :merge_done
-    move-object/from16 v16, v0
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
-    move-result-object v1
-    if-eqz v1, :merge_done
-    const/16 v17, 0x0
-    move-object/from16 v0, v16
-    invoke-virtual {v0}, Lorg/json/JSONArray;->length()I
-    move-result v18
-    :merge_loop
-    move-object/from16 v0, v16
-    move/from16 v2, v17
-    move/from16 v3, v18
-    if-ge v2, v3, :merge_done
-    invoke-virtual {v0, v2}, Lorg/json/JSONArray;->optJSONObject(I)Lorg/json/JSONObject;
-    move-result-object v4
-    if-eqz v4, :merge_next
-    const-string v2, "name"
-    const-string v3, ""
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v5
-    invoke-virtual {v5}, Ljava/lang/String;->isEmpty()Z
-    move-result v2
-    if-nez v2, :merge_next
-    const-string v2, "detailPageUrl"
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v6
-    const-string v2, "episode"
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v7
-    const-string v2, "progressInMillis"
-    invoke-virtual {v4, v2}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;)J
-    move-result-wide v8
-    const-string v2, "modifiedAt"
-    invoke-virtual {v4, v2}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;)J
-    move-result-wide v10
-    const-string v2, "id"
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v12
-    const-string v2, "durationInMillis"
-    invoke-virtual {v4, v2}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;)J
-    move-result-wide v13
-    const-string v2, "videoPageUrl"
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v15
-    const-string v2, "posterUrl"
-    invoke-virtual {v4, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v0
-    move-object v2, v5
-    move-object v3, v6
-    move-object v4, v7
-    move-wide v5, v8
-    move-wide v7, v10
-    move-object v9, v12
-    move-wide v10, v13
-    move-object v12, v15
-    move-object v13, v0
-    move-object/from16 v14, p1
-    const/4 v0, 0x0
-    sput-boolean v0, Lcom/supertws/dubokutv/LanSyncManager;->sCloudMergeChanged:Z
-    invoke-static/range {v1 .. v14}, Lcom/supertws/dubokutv/LanSyncManagerPatch;->runSync(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
-    sget-boolean v0, Lcom/supertws/dubokutv/LanSyncManager;->sCloudMergeChanged:Z
-    if-eqz v0, :merge_next
-    const/16 v19, 0x1
-    :merge_next
-    add-int/lit8 v17, v17, 0x1
-    goto :merge_loop
-    :merge_done
-    move/from16 v0, v19
+    .locals 1
+    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSnapshotMerger;->merge(Lorg/json/JSONObject;)Z
+    move-result v0
     return v0
 .end method
 
-.method public static requestSyncDebounced()V
-    .locals 6
+.method public static onActivityPause(Landroid/app/Activity;)V
+    .locals 0
 
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
-
-    move-result-wide v0
-
-    sget-wide v2, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
-
-    sub-long v2, v0, v2
-
-    const-wide/16 v4, 0xbb8
-
-    cmp-long v2, v2, v4
-
-    if-gez v2, :cond_0
-
-    return-void
-
-    :cond_0
-    sput-wide v0, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
-
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncFromLan()V
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onActivityPause()V
 
     return-void
 .end method
@@ -1567,25 +1506,9 @@
 
     invoke-virtual {p0}, Landroid/app/Activity;->getApplicationContext()Landroid/content/Context;
     move-result-object v0
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchKnownPeers(Landroid/content/Context;)V
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchOnResume(Landroid/content/Context;)V
 
     .line 541
-    return-void
-.end method
-
-.method public static onActivityPause(Landroid/app/Activity;)V
-    .locals 0
-
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onActivityPause()V
-
-    return-void
-.end method
-
-.method public static onRecordSaved()V
-    .locals 0
-
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave()V
-
     return-void
 .end method
 
@@ -1602,7 +1525,7 @@
     move-result-object v1
     sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sCurrentDeviceId:Ljava/lang/String;
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->initialize(Landroid/content/Context;)V
-    invoke-static {p0}, Lcom/supertws/dubokutv/LanSyncManager;->sendFamilyDiscover(Landroid/content/Context;)V
+    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchOnStartup(Landroid/content/Context;)V
     new-instance v0, Ljava/lang/Thread;
     new-instance v1, Lcom/supertws/dubokutv/LanSyncManager$7;
     invoke-direct {v1, p0}, Lcom/supertws/dubokutv/LanSyncManager$7;-><init>(Landroid/content/Context;)V
@@ -1616,67 +1539,11 @@
     return-void
 .end method
 
-.method public static sendFamilyDiscover(Landroid/content/Context;)V
-    .locals 4
-    :try_start_discover
-    invoke-static {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
-    move-result-object v0
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->ensure()V
-    new-instance v1, Lorg/json/JSONObject;
-    invoke-direct {v1}, Lorg/json/JSONObject;-><init>()V
-    const-string v2, "action"
-    const-string v3, "FAMILY_DISCOVER"
-    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
-    const-string v2, "from"
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->deviceId()Ljava/lang/String;
-    move-result-object v3
-    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
-    const-string v2, "nonce"
-    invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
-    move-result-object v3
-    invoke-virtual {v3}, Ljava/util/UUID;->toString()Ljava/lang/String;
-    move-result-object v3
-    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
-    invoke-virtual {v1}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
-    move-result-object v1
-    const/4 v2, 0x0
-    invoke-static {v1, v2}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
-    :try_end_discover
-    .catch Ljava/lang/Exception; {:try_start_discover .. :try_end_discover} :catch_discover
-    goto :discover_done
-    :catch_discover
-    move-exception v0
-    :discover_done
-    return-void
-.end method
+.method public static onRecordSaved()V
+    .locals 0
 
-.method public static sendFamilyOffer(Landroid/content/Context;)V
-    .locals 4
-    :try_start_offer
-    invoke-static {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
-    move-result-object v0
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->ensure()V
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
-    move-result-object v1
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familySecret()Ljava/lang/String;
-    move-result-object v2
-    invoke-static {v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->registerFamily(Ljava/lang/String;Ljava/lang/String;)Z
-    invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
-    move-result-object v1
-    invoke-virtual {v1}, Ljava/util/UUID;->toString()Ljava/lang/String;
-    move-result-object v1
-    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/FamilyIdentity;->offer(Ljava/lang/String;)Lorg/json/JSONObject;
-    move-result-object v1
-    invoke-virtual {v1}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
-    move-result-object v1
-    const/4 v2, 0x0
-    invoke-static {v1, v2}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
-    :try_end_offer
-    .catch Ljava/lang/Exception; {:try_start_offer .. :try_end_offer} :catch_offer
-    goto :offer_done
-    :catch_offer
-    move-exception v0
-    :offer_done
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave()V
+
     return-void
 .end method
 
@@ -1933,6 +1800,33 @@
     nop
 
     .line 386
+    return-void
+.end method
+
+.method public static requestSyncDebounced()V
+    .locals 6
+
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    sget-wide v2, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
+
+    sub-long v2, v0, v2
+
+    const-wide/16 v4, 0xbb8
+
+    cmp-long v2, v2, v4
+
+    if-gez v2, :cond_0
+
+    return-void
+
+    :cond_0
+    sput-wide v0, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
+
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncFromLan()V
+
     return-void
 .end method
 
@@ -2456,6 +2350,116 @@
     return-void
 .end method
 
+.method public static sendFamilyDiscover(Landroid/content/Context;)V
+    .locals 4
+
+    :try_start_0
+    invoke-static {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->ensure()V
+
+    new-instance v1, Lorg/json/JSONObject;
+
+    invoke-direct {v1}, Lorg/json/JSONObject;-><init>()V
+
+    const-string v2, "action"
+
+    const-string v3, "FAMILY_DISCOVER"
+
+    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    const-string v2, "from"
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->deviceId()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    const-string v2, "nonce"
+
+    invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Ljava/util/UUID;->toString()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-virtual {v1, v2, v3}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
+
+    invoke-virtual {v1}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    const/4 v2, 0x0
+
+    invoke-static {v1, v2}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    goto :goto_0
+
+    :catch_0
+    move-exception v0
+
+    :goto_0
+    return-void
+.end method
+
+.method public static sendFamilyOffer(Landroid/content/Context;)V
+    .locals 4
+
+    :try_start_0
+    invoke-static {p0}, Lcom/supertws/dubokutv/FamilyIdentity;->get(Landroid/content/Context;)Lcom/supertws/dubokutv/FamilyIdentity;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->ensure()V
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familyId()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilyIdentity;->familySecret()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-static {v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->registerFamily(Ljava/lang/String;Ljava/lang/String;)Z
+
+    invoke-static {}, Ljava/util/UUID;->randomUUID()Ljava/util/UUID;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Ljava/util/UUID;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/FamilyIdentity;->offer(Ljava/lang/String;)Lorg/json/JSONObject;
+
+    move-result-object v1
+
+    invoke-virtual {v1}, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    const/4 v2, 0x0
+
+    invoke-static {v1, v2}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    goto :goto_0
+
+    :catch_0
+    move-exception v0
+
+    :goto_0
+    return-void
+.end method
+
 .method private static sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
     .locals 7
 
@@ -2866,4 +2870,102 @@
     monitor-exit p0
 
     throw v0
+.end method
+
+
+.method public static offerCloudHandoff(Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;J)V
+    .locals 1
+    invoke-static {p0, p5, p6}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
+    sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sHandoff:Lcom/supertws/dubokutv/HandoffProgress;
+    invoke-virtual/range {v0 .. p6}, Lcom/supertws/dubokutv/HandoffProgress;->offer(Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;J)V
+    return-void
+.end method
+
+
+.method public static onHistoryOpened()V
+    .locals 1
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v0
+    if-eqz v0, :done_history_sync
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->fetchOnHistory(Landroid/content/Context;)V
+    :done_history_sync
+    return-void
+.end method
+
+
+.method public static skipUnchangedPlaybackSave(Ljava/lang/Object;)Z
+    .locals 6
+    check-cast p0, Lpa/c;
+    sget-object v0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->INSTANCE:Lcom/supertws/dubokutv/PlaybackSaveGuard;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v1
+    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialize(Landroid/content/Context;)V
+    const/4 v5, 0x0
+    :try_start_playback_state
+    sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sActiveExoPlayer:Ljava/lang/Object;
+    if-eqz v1, :playback_state_ready
+    check-cast v1, Landroidx/compose/foundation/layout/s0;
+    invoke-virtual {v1}, Landroidx/compose/foundation/layout/s0;->m()Z
+    move-result v5
+    :playback_state_ready
+    :try_end_playback_state
+    .catch Ljava/lang/Throwable; {:try_start_playback_state .. :try_end_playback_state} :catch_playback_state
+    goto :playback_state_done
+    :catch_playback_state
+    move-exception v1
+    :playback_state_done
+    iget-object v1, p0, Lpa/c;->b:Ljava/lang/String;
+    iget-object v2, p0, Lpa/c;->c:Ljava/lang/String;
+    iget-wide v3, p0, Lpa/c;->d:J
+    invoke-virtual/range {v0 .. v5}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->shouldSkip(Ljava/lang/String;Ljava/lang/String;JZ)Z
+    move-result v0
+    return v0
+.end method
+
+
+.method public static onPlaybackSaveCommitted(Ljava/lang/Object;)V
+    .locals 7
+    check-cast p0, Lpa/c;
+    sget-object v0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->INSTANCE:Lcom/supertws/dubokutv/PlaybackSaveGuard;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v1
+    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialize(Landroid/content/Context;)V
+    iget-object v1, p0, Lpa/c;->b:Ljava/lang/String;
+    iget-object v2, p0, Lpa/c;->c:Ljava/lang/String;
+    iget-wide v3, p0, Lpa/c;->d:J
+    iget-wide v5, p0, Lpa/c;->g:J
+    invoke-virtual/range {v0 .. v6}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->committedIfCurrent(Ljava/lang/String;Ljava/lang/String;JJ)Z
+    move-result v0
+    if-eqz v0, :playback_commit_done
+    invoke-static {p0}, Lcom/supertws/dubokutv/LanSyncManager;->broadcastProgress(Ljava/lang/Object;)V
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave()V
+    :playback_commit_done
+    return-void
+.end method
+
+
+.method public static onRemoteProgress(Ljava/lang/String;J)V
+    .locals 2
+    if-eqz p0, :remote_progress_done
+    :try_start_remote_progress
+    sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveVideoAddress:Ljava/lang/Object;
+    if-eqz v0, :remote_progress_done
+    check-cast v0, Lqa/f0;
+    iget-object v0, v0, Lqa/f0;->b:Ljava/lang/String;
+    invoke-virtual {p0, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :remote_progress_done
+    sget-object v0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->INSTANCE:Lcom/supertws/dubokutv/PlaybackSaveGuard;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v1
+    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialize(Landroid/content/Context;)V
+    invoke-virtual {v0, p0, p1, p2}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->remoteUpdated(Ljava/lang/String;J)V
+    :try_end_remote_progress
+    .catch Ljava/lang/Throwable; {:try_start_remote_progress .. :try_end_remote_progress} :catch_remote_progress
+    :remote_progress_done
+    return-void
+    :catch_remote_progress
+    move-exception v0
+    return-void
 .end method

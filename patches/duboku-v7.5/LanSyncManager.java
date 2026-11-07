@@ -234,6 +234,7 @@ public class LanSyncManager {
                             cv.put("videoPageUrl", finalVideo);
                             cv.put("detailPageUrl", finalDetail);
                             cv.put("posterUrl", finalPoster);
+                            onRemoteProgress(name, remoteModifiedAt);
                             db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
                             sHandoff.offer(name, episode, progressInMillis, finalVideo, remoteModifiedAt);
 
@@ -412,7 +413,7 @@ public class LanSyncManager {
                     json.put("episode", rec.c);
                     json.put("progressInMillis", rec.d);
                     json.put("durationInMillis", rec.e);
-                    json.put("modifiedAt", System.currentTimeMillis());
+                    json.put("modifiedAt", rec.g);
                     json.put("videoPageUrl", rec.h);
                     json.put("detailPageUrl", rec.i);
                     json.put("posterUrl", rec.j);
@@ -454,6 +455,8 @@ public class LanSyncManager {
         try {
             if (playerObj == null || sActiveVideoAddress == null) return false;
             qa.f0 current = (qa.f0) sActiveVideoAddress;
+            PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
+            PlaybackSaveGuard.INSTANCE.onUserPlay(current.b);
             androidx.media3.exoplayer.h0 player = (androidx.media3.exoplayer.h0) playerObj;
             HandoffProgress.Record remote = sHandoff.select(current.b, current.c, player.M());
             if (remote == null) return false;
@@ -601,13 +604,14 @@ public class LanSyncManager {
         identity.ensure();
         sCurrentDeviceId = identity.deviceId();
         CloudSyncClient.initialize(manager.mContext);
-        try {
-            JSONObject discover = new JSONObject().put("action", "FAMILY_DISCOVER").put("from", sCurrentDeviceId)
-                    .put("nonce", java.util.UUID.randomUUID().toString());
-            sendUdpPacket(discover.toString(), null);
-        } catch (Exception ignored) { }
+        CloudSyncClient.fetchOnStartup(manager.mContext);
         new Thread(new Runnable() {
             @Override public void run() {
+                try {
+                    JSONObject discover = new JSONObject().put("action", "FAMILY_DISCOVER").put("from", sCurrentDeviceId)
+                            .put("nonce", java.util.UUID.randomUUID().toString());
+                    sendUdpPacket(discover.toString(), null);
+                } catch (Exception e) { Log.w(TAG, "Family discovery deferred: " + e.getClass().getSimpleName()); }
                 try { Thread.sleep(2000L); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                 FamilyIdentity current = FamilyIdentity.get(manager.mContext);
                 CloudSyncClient.registerFamily(current.familyId(), current.familySecret());
@@ -621,61 +625,53 @@ public class LanSyncManager {
     public static void onActivityResume(Activity activity) {
         sActiveActivity = activity;
         requestSyncDebounced();
-        CloudSyncClient.fetchKnownPeers(activity.getApplicationContext());
+        CloudSyncClient.fetchOnResume(activity.getApplicationContext());
     }
 
     public static void onActivityPause(Activity activity) {
         CloudSyncClient.onActivityPause();
     }
 
+    public static void onHistoryOpened() {
+        requestSyncDebounced();
+        Context context = getAppContext();
+        if (context != null) CloudSyncClient.fetchOnHistory(context);
+    }
+
+    public static boolean skipUnchangedPlaybackSave(Object record) {
+        pa.c rec = (pa.c) record;
+        PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
+        boolean playing = false;
+        try { playing = sActiveExoPlayer != null && ((androidx.compose.foundation.layout.s0) sActiveExoPlayer).m(); }
+        catch (Throwable ignored) { }
+        return PlaybackSaveGuard.INSTANCE.shouldSkip(rec.b, rec.c, rec.d, playing);
+    }
+
+    public static void onRemoteProgress(String name, long modified) {
+        try {
+            if (name != null && sActiveVideoAddress != null && name.equals(((qa.f0) sActiveVideoAddress).b)) {
+                PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
+                PlaybackSaveGuard.INSTANCE.remoteUpdated(name, modified);
+            }
+        } catch (Throwable ignored) { }
+    }
+
+    public static void onPlaybackSaveCommitted(Object record) {
+        pa.c rec = (pa.c) record;
+        PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
+        if (!PlaybackSaveGuard.INSTANCE.committedIfCurrent(rec.b, rec.c, rec.d, rec.g)) return;
+        broadcastProgress(record);
+        CloudSyncClient.onCommittedSave();
+    }
+
     /** Merges one validated peer snapshot in place; stale rows never trigger any delete. */
     public static boolean mergeCloudSnapshot(JSONObject snapshot, String peerId) {
-        org.json.JSONArray records = snapshot.optJSONArray("records");
-        Context context = getAppContext();
-        if (records == null || context == null) return false;
-        boolean changed = false;
-        SQLiteDatabase db = null;
-        try {
-            db = context.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
-            db.beginTransaction();
-            for (int i = 0; i < records.length(); i++) {
-                JSONObject row = records.optJSONObject(i);
-                if (row == null) continue;
-                String name = row.optString("name", ""), detail = row.optString("detailPageUrl", "");
-                String video = row.optString("videoPageUrl", ""), episode = row.optString("episode", "");
-                long progress = row.optLong("progressInMillis", -1), duration = row.optLong("durationInMillis", -1);
-                long modified = row.optLong("modifiedAt", -1), created = row.optLong("createdAt", 0);
-                if (name.isEmpty() || progress < 0 || duration < 0 || modified < 0
-                        || detail.contains("example.com") || video.contains("example.com")) continue;
-                Cursor c = db.rawQuery("SELECT id,episode,progressInMillis,modifiedAt,durationInMillis,videoPageUrl,detailPageUrl,posterUrl,createdAt FROM records WHERE name = ? OR (detailPageUrl != '' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1", new String[]{name, detail});
-                String id = null, oldEpisode = null, oldVideo = null, oldDetail = null, oldPoster = null;
-                long oldProgress = 0, oldModified = 0, oldDuration = 0, oldCreated = 0;
-                if (c.moveToFirst()) {
-                    id = c.getString(0); oldEpisode = c.getString(1); oldProgress = c.getLong(2); oldModified = c.getLong(3);
-                    oldDuration = c.getLong(4); oldVideo = c.getString(5); oldDetail = c.getString(6); oldPoster = c.getString(7); oldCreated = c.getLong(8);
-                }
-                c.close();
-                boolean accept = id == null || modified > oldModified
-                        || (modified == oldModified && ProgressSnapshot.winsEqualTimestamp(parseEpisodeNum(episode), parseEpisodeNum(oldEpisode), progress, oldProgress));
-                if (!accept) continue;
-                String poster = row.optString("posterUrl", "");
-                if (!poster.startsWith("http://") && !poster.startsWith("https://")) poster = oldPoster == null ? "" : oldPoster;
-                if (detail.isEmpty()) detail = oldDetail == null ? "" : oldDetail;
-                if (video.isEmpty()) video = oldVideo == null ? "" : oldVideo;
-                String finalId = id != null && !id.isEmpty() ? id : row.optString("id", name);
-                ContentValues values = new ContentValues();
-                values.put("id", finalId); values.put("name", name); values.put("episode", episode);
-                values.put("progressInMillis", progress); values.put("durationInMillis", duration > 0 ? duration : oldDuration);
-                values.put("createdAt", oldCreated > 0 ? oldCreated : (created > 0 ? created : System.currentTimeMillis()));
-                values.put("modifiedAt", modified); values.put("videoPageUrl", video); values.put("detailPageUrl", detail); values.put("posterUrl", poster);
-                db.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE);
-                changed = true;
-            }
-            db.setTransactionSuccessful();
-        } catch (Exception e) { Log.w(TAG, "Cloud merge deferred: " + e.getClass().getSimpleName()); }
-        finally { if (db != null) { try { db.endTransaction(); } catch (Exception ignored) { } db.close(); } }
-        if (changed) bumpSyncVersion();
-        return changed;
+        return CloudSnapshotMerger.merge(snapshot);
+    }
+
+    public static void offerCloudHandoff(String name, String episode, long position, String url, long modified) {
+        onRemoteProgress(name, modified);
+        sHandoff.offer(name, episode, position, url, modified);
     }
 
     /** Called only after the Room save coroutine has completed successfully. */

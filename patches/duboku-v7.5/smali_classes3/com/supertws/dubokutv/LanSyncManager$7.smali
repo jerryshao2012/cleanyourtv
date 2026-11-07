@@ -13,6 +13,8 @@
 
 .method public run()V
     .locals 2
+    iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$7;->val$context:Landroid/content/Context;
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->sendFamilyDiscover(Landroid/content/Context;)V
     const-wide/16 v0, 0x7d0
     invoke-static {v0, v1}, Ljava/lang/Thread;->sleep(J)V
     iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$7;->val$context:Landroid/content/Context;
