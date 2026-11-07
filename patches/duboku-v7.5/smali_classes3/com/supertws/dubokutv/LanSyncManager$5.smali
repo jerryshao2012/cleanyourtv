@@ -168,9 +168,7 @@
     .line 350
     const-string v7, "modifiedAt"
 
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
-
-    move-result-wide v8
+    iget-wide v8, v1, Lpa/c;->g:J
 
     invoke-virtual {v6, v7, v8, v9}, Lorg/json/JSONObject;->put(Ljava/lang/String;J)Lorg/json/JSONObject;
 

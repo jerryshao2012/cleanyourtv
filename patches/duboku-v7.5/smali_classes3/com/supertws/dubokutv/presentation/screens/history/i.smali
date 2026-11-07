@@ -1531,7 +1531,7 @@
 
     .line 177
     .line 178
-    const v15, 0x5a98e8a6    # 2.1519998E16f
+    const v15, 0x5a98e8a6
 
     .line 179
     .line 180
@@ -1791,7 +1791,7 @@
     .line 310
     .line 311
     .line 312
-    const v8, -0x6985efe2    # -2.0199925E-25f
+    const v8, -0x6985efe2
 
     .line 313
     .line 314
@@ -3290,7 +3290,7 @@
     move-result-object v1
 
     .line 108
-    const v7, 0x4d78c7c7    # 2.6086514E8f
+    const v7, 0x4d78c7c7    # 2.60865136E8f
 
     .line 109
     .line 110
@@ -3485,7 +3485,7 @@
     move-result-object v7
 
     .line 208
-    const v10, 0x4d78fdc9    # 2.6108635E8f
+    const v10, 0x4d78fdc9    # 2.61086352E8f
 
     .line 209
     .line 210
@@ -3876,7 +3876,7 @@
 
     int-to-float v4, v4
 
-    const v11, 0x3e28f5c3    # 0.165f
+    const v11, 0x3e28f5c3
 
     mul-float/2addr v4, v11
 
@@ -4491,7 +4491,7 @@
     move-result-object v1
 
     .line 95
-    if-eqz v1, :cond_f
+    if-eqz v1, :cond_10
 
     .line 96
     .line 97
@@ -4585,13 +4585,15 @@
     invoke-static {v14, v2, v5, v1, v3}, Lmc/d;->a(ZLrb/a;Landroidx/compose/runtime/k;II)V
 
     iget-boolean v1, v5, Landroidx/compose/runtime/p;->S:Z
-    if-eqz v1, :cond_sync_init_g
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
-    :cond_sync_init_g
+
+    if-eqz v1, :cond_7
+
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->onHistoryOpened()V
 
     .line 138
     .line 139
     .line 140
+    :cond_7
     iget-object v1, v13, Lcom/supertws/dubokutv/presentation/screens/history/o;->c:Ljava/lang/Object;
 
     .line 141
@@ -4620,7 +4622,7 @@
 
     .line 153
     .line 154
-    if-eqz v3, :cond_7
+    if-eqz v3, :cond_8
 
     .line 155
     .line 156
@@ -4667,7 +4669,7 @@
 
     .line 176
     .line 177
-    :cond_7
+    :cond_8
     move-object v7, v5
 
     .line 178
@@ -4675,7 +4677,7 @@
 
     .line 179
     .line 180
-    if-eqz v3, :cond_8
+    if-eqz v3, :cond_9
 
     .line 181
     .line 182
@@ -4742,12 +4744,12 @@
     goto :goto_6
 
     .line 211
-    :cond_8
+    :cond_9
     instance-of v3, v1, Lcom/supertws/dubokutv/presentation/screens/history/j;
 
     .line 212
     .line 213
-    if-eqz v3, :cond_e
+    if-eqz v3, :cond_f
 
     .line 214
     .line 215
@@ -4799,15 +4801,15 @@
 
     .line 240
     .line 241
-    if-nez v3, :cond_9
+    if-nez v3, :cond_a
 
     .line 242
     .line 243
-    if-ne v4, v5, :cond_a
+    if-ne v4, v5, :cond_b
 
     .line 244
     .line 245
-    :cond_9
+    :cond_a
     new-instance v4, Lcom/supertws/dubokutv/presentation/screens/history/HistoryScreenKt$HistoryScreen$1$1;
 
     .line 246
@@ -4822,7 +4824,7 @@
     .line 251
     .line 252
     .line 253
-    :cond_a
+    :cond_b
     check-cast v4, Lkotlin/reflect/e;
 
     .line 254
@@ -4858,15 +4860,15 @@
     move-result-object v6
 
     .line 272
-    if-nez v3, :cond_b
+    if-nez v3, :cond_c
 
     .line 273
     .line 274
-    if-ne v6, v5, :cond_c
+    if-ne v6, v5, :cond_d
 
     .line 275
     .line 276
-    :cond_b
+    :cond_c
     new-instance v6, Lcom/supertws/dubokutv/presentation/screens/history/HistoryScreenKt$HistoryScreen$2$1;
 
     .line 277
@@ -4881,7 +4883,7 @@
     .line 282
     .line 283
     .line 284
-    :cond_c
+    :cond_d
     check-cast v6, Lkotlin/reflect/e;
 
     .line 285
@@ -4967,7 +4969,7 @@
     move-result-object v6
 
     .line 323
-    if-eqz v6, :cond_d
+    if-eqz v6, :cond_e
 
     .line 324
     .line 325
@@ -4998,11 +5000,11 @@
 
     .line 337
     .line 338
-    :cond_d
+    :cond_e
     return-void
 
     .line 339
-    :cond_e
+    :cond_f
     const p0, 0x71b31fc6
 
     .line 340
@@ -5030,7 +5032,7 @@
     throw p0
 
     .line 354
-    :cond_f
+    :cond_10
     new-instance p0, Ljava/lang/IllegalStateException;
 
     .line 355
@@ -6414,7 +6416,7 @@
 
     .line 317
     .line 318
-    const v3, 0x3f19999a    # 0.6f
+    const v3, 0x3f19999a
 
     .line 319
     .line 320
@@ -7381,7 +7383,7 @@
     .line 336
     .line 337
     .line 338
-    const v3, 0x3f19999a    # 0.6f
+    const v3, 0x3f19999a
 
     .line 339
     .line 340
@@ -8039,7 +8041,7 @@
     move-result-object v3
 
     .line 111
-    if-eqz v3, :cond_c
+    if-eqz v3, :cond_d
 
     .line 112
     .line 113
@@ -8126,13 +8128,15 @@
     invoke-virtual {v11}, Landroidx/compose/runtime/p;->q()V
 
     iget-boolean v4, v11, Landroidx/compose/runtime/p;->S:Z
-    if-eqz v4, :cond_sync_init_k
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncDebounced()V
-    :cond_sync_init_k
+
+    if-eqz v4, :cond_8
+
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->onHistoryOpened()V
 
     .line 151
     .line 152
     .line 153
+    :cond_8
     iget-object v4, v0, Lcom/supertws/dubokutv/presentation/screens/history/o;->c:Ljava/lang/Object;
 
     .line 154
@@ -8180,7 +8184,7 @@
 
     .line 175
     .line 176
-    if-eqz v5, :cond_8
+    if-eqz v5, :cond_9
 
     .line 177
     .line 178
@@ -8227,12 +8231,12 @@
     goto :goto_8
 
     .line 198
-    :cond_8
+    :cond_9
     instance-of v5, v4, Lcom/supertws/dubokutv/presentation/screens/history/k;
 
     .line 199
     .line 200
-    if-eqz v5, :cond_9
+    if-eqz v5, :cond_a
 
     .line 201
     .line 202
@@ -8305,7 +8309,7 @@
     goto :goto_7
 
     .line 233
-    :cond_9
+    :cond_a
     move v5, v14
 
     .line 234
@@ -8313,7 +8317,7 @@
 
     .line 235
     .line 236
-    if-eqz v7, :cond_b
+    if-eqz v7, :cond_c
 
     .line 237
     .line 238
@@ -8398,7 +8402,7 @@
     move-result-object v7
 
     .line 275
-    if-eqz v7, :cond_a
+    if-eqz v7, :cond_b
 
     .line 276
     .line 277
@@ -8430,11 +8434,11 @@
 
     .line 290
     .line 291
-    :cond_a
+    :cond_b
     return-void
 
     .line 292
-    :cond_b
+    :cond_c
     move v8, v5
 
     .line 293
@@ -8465,7 +8469,7 @@
     throw v0
 
     .line 308
-    :cond_c
+    :cond_d
     new-instance v0, Ljava/lang/IllegalStateException;
 
     .line 309

@@ -10,6 +10,8 @@
 
 ## 2. 核心系统架构 (System Architecture)
 
+云端快照的先读取、合并再上传流程及验收状态见 [R2 跨电视进度同步实施与验收](R2_SYNC_IMPLEMENTATION.md)。下图描述局域网通道。
+
 ```mermaid
 flowchart TD
     subgraph Device_A ["Hisense 播放端"]

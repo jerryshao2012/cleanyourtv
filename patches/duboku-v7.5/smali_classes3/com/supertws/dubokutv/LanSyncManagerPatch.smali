@@ -473,8 +473,11 @@
     move-object v6, v2
 
     .line 78
-    :goto_9
     .line 80
+    :goto_9
+    move-object/from16 v2, p1
+    move-wide/from16 v3, p6
+    invoke-static {v2, v3, v4}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
     new-instance v2, Landroid/content/ContentValues;
 
     invoke-direct {v2}, Landroid/content/ContentValues;-><init>()V
@@ -482,39 +485,38 @@
     .line 81
     const-string v3, "id"
 
-    if-eqz v12, :cond_use_remote_id
+    if-eqz v12, :cond_11
 
     move-object v4, v12
+
     goto :goto_a
 
-    :cond_use_remote_id
-
-    if-eqz p8, :cond_fallback_name
+    :cond_11
+    if-eqz p8, :cond_12
 
     invoke-virtual/range {p8 .. p8}, Ljava/lang/String;->isEmpty()Z
 
     move-result v4
 
-    if-nez v4, :cond_fallback_name
+    if-nez v4, :cond_12
 
     move-object/from16 v4, p8
 
     goto :goto_a
 
-    :cond_use_local_id
-    if-eqz v12, :cond_fallback_name
+    if-eqz v12, :cond_12
 
     invoke-virtual {v12}, Ljava/lang/String;->isEmpty()Z
 
     move-result v4
 
-    if-nez v4, :cond_fallback_name
+    if-nez v4, :cond_12
 
     move-object v4, v12
 
     goto :goto_a
 
-    :cond_fallback_name
+    :cond_12
     move-object v4, v9
 
     :goto_a
@@ -544,13 +546,13 @@
 
     cmp-long v4, p9, v16
 
-    if-lez v4, :cond_12
+    if-lez v4, :cond_13
 
     move-wide/from16 v4, p9
 
     goto :goto_b
 
-    :cond_12
+    :cond_13
     move-wide/from16 v4, v22
 
     :goto_b
@@ -578,13 +580,13 @@
 
     cmp-long v4, p6, v16
 
-    if-lez v4, :cond_13
+    if-lez v4, :cond_14
 
     move-wide/from16 v4, p6
 
     goto :goto_c
 
-    :cond_13
+    :cond_14
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
     move-result-wide v4
@@ -620,7 +622,9 @@
 
     invoke-virtual {v14, v0, v8, v2, v1}, Landroid/database/sqlite/SQLiteDatabase;->insertWithOnConflict(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;I)J
 
+
     const/4 v0, 0x1
+
     sput-boolean v0, Lcom/supertws/dubokutv/LanSyncManager;->sCloudMergeChanged:Z
 
     .line 93
@@ -668,29 +672,29 @@
     nop
 
     .line 101
-    if-eqz v12, :cond_15
+    if-eqz v12, :cond_16
 
-    if-eqz v10, :cond_15
+    if-eqz v10, :cond_16
 
     :try_start_9
     invoke-virtual {v10, v13}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_15
+    if-eqz v0, :cond_16
 
     .line 102
     cmp-long v0, p9, v16
 
-    if-lez v0, :cond_14
+    if-lez v0, :cond_15
 
     move-wide/from16 v22, p9
 
     .line 103
-    :cond_14
+    :cond_15
     cmp-long v0, v22, v16
 
-    if-lez v0, :cond_15
+    if-lez v0, :cond_16
 
     .line 104
     const-wide/16 v0, 0x64
@@ -709,7 +713,7 @@
     long-to-int v1, v0
 
     .line 106
-    if-ne v3, v1, :cond_15
+    if-ne v3, v1, :cond_16
 
     .line 107
     const/4 v13, 0x0
@@ -717,17 +721,17 @@
     goto :goto_e
 
     .line 112
-    :cond_15
+    :cond_16
     const/4 v13, 0x1
 
     :goto_e
-    if-eqz v13, :cond_16
+    if-eqz v13, :cond_17
 
     .line 113
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->bumpSyncVersion()V
 
     .line 115
-    :cond_16
+    :cond_17
     const-string v0, "LanSyncManager"
 
     const-wide/16 v1, 0x3e8
@@ -806,7 +810,7 @@
     .catchall {:try_start_9 .. :try_end_9} :catchall_1
 
     .line 119
-    if-eqz v21, :cond_17
+    if-eqz v21, :cond_18
 
     .line 120
     :try_start_a
@@ -896,7 +900,7 @@
     .catchall {:try_start_b .. :try_end_b} :catchall_3
 
     .line 119
-    if-eqz v12, :cond_17
+    if-eqz v12, :cond_18
 
     .line 120
     :try_start_c
@@ -906,7 +910,7 @@
     .catchall {:try_start_c .. :try_end_c} :catchall_4
 
     .line 123
-    :cond_17
+    :cond_18
     :goto_11
     :try_start_d
     monitor-exit v11
@@ -923,7 +927,7 @@
     goto :goto_f
 
     :goto_12
-    if-eqz v12, :cond_18
+    if-eqz v12, :cond_19
 
     .line 120
     :try_start_e
@@ -938,7 +942,7 @@
     move-exception v0
 
     .line 122
-    :cond_18
+    :cond_19
     :goto_13
     :try_start_f
     throw v1

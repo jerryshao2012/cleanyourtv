@@ -24,7 +24,7 @@
 .method constructor <init>(ILjava/lang/String;)V
     .locals 0
 
-    .line 364
+    .line 427
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
     iput p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$RequestResult;->code:I
