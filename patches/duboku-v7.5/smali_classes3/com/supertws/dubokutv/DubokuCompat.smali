@@ -469,7 +469,7 @@
 
     if-eqz p0, :cond_0
 
-    const-string v0, "https://pic.dbokutv.com"
+    const-string v0, "https://"
 
     invoke-virtual {p0, v0}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
 

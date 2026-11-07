@@ -255,6 +255,10 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 **家庭页误触修复：**“家庭同步”可从电视应用列表单独打开。页面默认焦点位于“加入并同步家庭进度”，按钮采用高对比焦点描边与白字；生成/更换按钮明确提示旧码会立即失效，点击后需在确认框再次选择“确认更换”。同步 Java 参考源和 `smali_classes4`；APK 以设备匹配证书重新组装和签名，覆盖安装到 Sony、Hisense、小米并保留应用数据。Sony 实机验证默认焦点正确、首次确认只显示警告、按返回取消后仍未生成新码；Hisense 与小米默认焦点也验证正确。最新 APK 位于 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`。
 
+**通用 APK 构建基线：**统一使用 `apks/common/Updated独播库TV_v7.5.apk`（`minSdk=22`，含 Xiaomi 3 Android 5.1.1 的 native/API 兼容补丁）作为解码基包，再叠加本目录补丁；不要用 Sony 或其他设备当前安装包作为基包。Coil 图片请求在 API<26 时将任意 HTTPS 图片 URL 改为 HTTP，覆盖云端快照可能带来的非 `pic.dbokutv.com` 图片域名。
+
+**封面回退与通用包复核（2026-11-07）：**旧 `fixImageUrl` 只把 `https://pic.dbokutv.com` 改成 HTTP；Android 5.1.1 上其他 HTTPS 海报域名仍会走失败路径并显示占位 D。现已对 API<26 的 Coil 图片 URL 统一降级为 HTTP（现代设备仍使用 HTTPS）。新版以 Xiaomi 3 API 22 兼容基包构建，并叠加同步/家庭 UI 补丁；`apks/common/Updated独播库TV_v7.5.apk`、`apks/common/独播库TV_v7.5.apk` 与 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk` SHA-256 均为 `bd2bfef563e3956a1589f569a4802c96a5006a24b5a309acdaccf54123cce384`。Sony 和 Hisense 覆盖安装成功；小米 5 Max ADB 暂时离线，小米盒子 3 (`192.168.87.47`) 的 ADB 连接被拒，故两台小米尚未安装/实机核验此构建。
+
 ### 11.1 单个已有家庭：显示并记下加入码
 
 1. 在已加入家庭的电视应用列表打开独立的 **家庭同步** 入口。

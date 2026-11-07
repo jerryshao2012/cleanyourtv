@@ -83,7 +83,7 @@ public final class DubokuCompat {
     }
 
     public static String fixImageUrl(String url) {
-        if (Build.VERSION.SDK_INT < 26 && url != null && url.startsWith("https://pic.dbokutv.com")) {
+        if (Build.VERSION.SDK_INT < 26 && url != null && url.startsWith("https://")) {
             return "http://" + url.substring(8);
         }
         return url;
