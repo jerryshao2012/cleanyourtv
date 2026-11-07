@@ -1,6 +1,8 @@
 # CleanTV R2 sync Worker
 
-Implements family registration and per-device snapshots, reusable TV join codes, and explicit multi-family snapshot migration. Ordinary sync only accesses known snapshot keys; the one-time merge API lists only the explicitly supplied source family prefixes. Worker stores family-secret hashes in KV and encrypted join-code payloads plus registration, rate-limit, and revoked-family state in one SQLite-backed Durable Object. Snapshot PUTs check the tombstone so a cleaned family cannot recreate its objects or re-register its old identity.
+Implements family registration and per-device snapshots, reusable TV join codes, and explicit multi-family snapshot migration. Ordinary sync only accesses known snapshot keys; the one-time merge API lists only explicitly supplied source-family prefixes. Family-secret hashes, encrypted join-code payloads, registration, rate limits, merge manifests, and revoked-family state live in one SQLite-backed Durable Object. Each authenticated request asks that Durable Object to validate the secret hash and revocation state. The Worker uses no Workers KV binding or KV operations. Snapshot PUTs check the tombstone so a cleaned family cannot recreate its objects or re-register its old identity.
+
+This is the local source configuration. Production deployment `8c506743-98f7-4e74-b3d3-afedc0157ee6` is deployed without a KV binding. The old namespace is intentionally retained while account-level usage is monitored.
 
 ## Local tests
 
@@ -12,11 +14,11 @@ node --experimental-strip-types --test test/worker.test.mjs
 
 ## Configure Wrangler
 
-The config binds the existing private `cleanyourtv` bucket. Wrangler requires a real KV namespace ID. After logging in to the intended account, this command finds or creates `FAMILY_AUTH` and writes its actual ID into `wrangler.toml`:
+The config binds the existing private `cleanyourtv` bucket and the SQLite-backed Durable Object. No KV namespace is needed. For a new environment, log in to the intended account and deploy the Worker:
 
 ```sh
 npx wrangler@latest login
-node scripts/configure-kv.mjs
+npx wrangler@latest deploy
 ```
 
 For local development, run:
@@ -44,13 +46,16 @@ Merge uses R2 LIST/GET/PUT/DELETE only after the user explicitly starts the oper
 Production deployment:
 
 - Worker URL: `https://cleantv-r2-sync.jerry-shao.workers.dev`
-- 2026-11-07 deployed version (join codes / family merge): `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`
+- 2026-11-07 deployed version (KV-free family authorization): `8c506743-98f7-4e74-b3d3-afedc0157ee6`
+- Previous version (join codes / family merge): `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`
 - Previous progress-sync version (2026-11-05): `511a0c02-cbee-4430-b9d6-87b2ea549918`
 - Bound private bucket: `cleanyourtv`
-- Registration, join-code, merge manifest and revoked-family coordinator: SQLite-backed Durable Object
+- Registration, family-secret hashes, authorization, join-code, merge manifest and revoked-family coordinator: SQLite-backed Durable Object
+- Workers KV: not bound or used
+- Post-deploy smoke: existing Hisense family registration returned 200, snapshot GET returned 200, snapshot PUT returned 204, Durable Object authorization returned 200; no Worker exceptions observed.
 - Sony Bravia 4K UR3 installed the matching-signature APK by `adb install -r`; code generation displayed successfully on 2026-11-07.
 
-For a later deployment, confirm the configured bucket and namespace belong to the intended account, then run:
+For a later deployment, confirm the configured bucket belongs to the intended account, then run:
 
 ```sh
 npx wrangler@latest deploy
