@@ -901,6 +901,9 @@
     .line 6
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
+    const/16 v1, 0x17
+    if-lt v0, v1, :cond_legacy
+
     .line 7
     .line 8
     const/16 v1, 0x18
@@ -947,6 +950,10 @@
     move-result p1
 
     .line 29
+    return p1
+
+    :cond_legacy
+    const/4 p1, 0x1
     return p1
 .end method
 
