@@ -1,5 +1,11 @@
 # 独播库TV (com.supertws.dubokutv v7.5 / versionCode 33) Android 5.1 兼容补丁 — 全程记录
 
+## 2026-11-07 API 22 网络策略崩溃诊断与修复
+
+小米 3 的临时诊断 APK 收到重复的 `JAVA_CRASH thread=z Dispatcher`，堆栈指向 `mc.c.h`，异常类型为 `NoClassDefFoundError`，cause 为 `ClassNotFoundException`。检查该方法发现 API<24 分支无条件调用 `android.security.NetworkSecurityPolicy.getInstance()`；此类从 API 23 才存在，因此 Android 5.1/API 22 请求线程在 OkHttp 的明文策略检查中失败，主列表数据请求无法正常完成。修复是在调用该类之前增加 SDK 23 守卫：API<23 返回 `true`（沿用 Android 5 默认允许明文的策略），API 23+ 路径不变。
+
+增加 `tests/test_android22_cleartext_policy.py` 防止 API 22 分支回归。修复后从 API 22 通用基包重建了干净 APK，移除临时网络上报诊断类，保留 minSdk 22、原签名和应用数据兼容性。三份交付包 SHA-256：`51c83a7960b3723a9baa15c938770646e7c4681186a89e96ca9acbc7f5bfd677`。小米 3 本机 ADB 不可用，补丁已构建和静态验证，实机回归待用户安装确认。
+
 目标设备：**国行小米盒子 3（64 位 build，Amlogic S905，Android 5.1 / API 22 / arm64-v8a 用户态）**，局域网 IP `192.168.87.47`（MAC `00:9e:c8:31:32:ea`，OUI=Xiaomi Communications ✓）。
 工作机：MacBook Pro，`192.168.87.39`，同网段。
 状态：**已完成全链路修复并通过实机验证**（启动、首页、全部分类节目列表加载、视频解码渲染、音频播放与音画同步、退出流程均在小米盒子 3 Android 5.1 实机验证正常；`Dbg` 后台心跳与网络信标已在最终版归零为 no-op）。

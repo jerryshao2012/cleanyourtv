@@ -36,6 +36,22 @@ flowchart TD
 
 两台设备的角色可以互换；App 启动时也会直接请求同步。接收端按记录分别启动写入线程，查询、删除与插入没有显式事务，因此图中的时间戳裁决不保证并发包按顺序写入。页面进入时的请求与界面刷新路径已注入 smali，实际效果仍需在目标电视验证。
 
+家庭凭据的手动加入和重复 familyId 合并另见 [R2 跨电视进度同步实施与验收 §11](R2_SYNC_IMPLEMENTATION.md)。新电视可从电视应用列表进入“家庭同步”，手动输入另一台电视显示的加入码；合并只操作用户明确提供的源家庭前缀，先复制并读回校验，再二次确认删除旧快照和撤销旧身份。正常云同步不列举 R2 对象。
+
+```mermaid
+flowchart TD
+    A[已加入电视：家庭同步入口] --> B[使用当前 familySecret 生成 / 轮换加入码]
+    B --> C[电视显示手抄码]
+    C --> D[新电视输入加入码]
+    D --> E[Worker 验证并返回家庭凭据与设备列表]
+    E --> F[保存 familyId，读取已有设备快照]
+    G[合并时：输入各旧家庭加入码] --> H[预览源家庭快照]
+    H --> I[复制到最小 familyId 并读回核验]
+    I --> J{用户二次确认清理?}
+    J -->|是| K[删除源前缀并撤销源凭据]
+    J -->|否| L[保留源家庭和加入码]
+```
+
 
 ---
 
@@ -116,6 +132,7 @@ flowchart TD
 | `smali_classes3/com/supertws/dubokutv/e.smali` | 拦截 `RecordDatabase` 构造并在 `LanSyncManager.sRoomDb` 暂存实例句柄 |
 | `smali_classes3/com/supertws/dubokutv/DubokuTvApplication.smali` | Application 启动入口调用 `LanSyncManager.onAppCreate(Context)` |
 | `smali_classes3/com/supertws/dubokutv/MainActivity.smali` | Activity 进入前台调用 `LanSyncManager.onActivityResume(Activity)` |
+| `FamilySyncActivity.java` + `smali_classes3/com/supertws/dubokutv/FamilySyncActivity*.smali` | TV 启动器中的家庭同步页：显示/轮换加入码、输入加入码、预览/复制/确认清理旧 familyId |
 
 ---
 
