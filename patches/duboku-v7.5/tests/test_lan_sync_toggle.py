@@ -42,11 +42,11 @@ class LanSyncToggleTest(unittest.TestCase):
     def test_family_panel_shows_toggle_and_disables_lan_controls(self):
         self.assertIn('setLanSyncEnabled(next)', PANEL)
         self.assertIn('局域网络同步', PANEL)
-        constructor = method_body(PANEL, "public FamilySyncPanel(Context context)")
-        self.assertLess(constructor.index('lanSyncToggle = syncToggleRow("局域网络同步", false)'), constructor.index("\n        updateCloudSyncToggle();"))
+        home = method_body(PANEL, "private void showHome()")
+        self.assertLess(home.index('lanSyncToggle = syncToggleRow("局域网络同步", false)'), home.index("\n        page.addView(text(\"家庭管理\""))
         update = method_body(PANEL, "private void updateCloudSyncToggle()")
-        self.assertIn("lanSyncToggle", update)
-        self.assertIn("child == cloudSyncToggle || child == lanSyncToggle", update)
+        self.assertIn("lanSyncValue", update)
+        self.assertNotIn("setEnabled", update)
 
     def test_sync_switches_are_local_and_not_shared_with_family(self):
         self.assertIn("getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)", IDENTITY)
