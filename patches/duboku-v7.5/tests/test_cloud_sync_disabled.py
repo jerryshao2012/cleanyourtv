@@ -39,10 +39,17 @@ class CloudSyncDisabledTest(unittest.TestCase):
                           method_body(CLIENT, method))
 
     def test_cloud_controls_follow_sync_toggle_but_leave_toggle_enabled(self):
-        update = method_body(PANEL, "private void updateCloudSyncToggle()")
-        self.assertIn("if (child == cloudSyncToggle || child == lanSyncToggle) continue", update)
-        self.assertIn("child.setEnabled(enabled &&", update)
-        self.assertIn("child.setEnabled(enabled)", update)
+        home = method_body(PANEL, "private void showHome()")
+        join = method_body(PANEL, "private void showJoin()")
+        merge = method_body(PANEL, "private void showMerge()")
+        controls = method_body(PANEL, "private void updateMergeControls()")
+        for action in ("code", "join", "merge"):
+            self.assertIn(f"{action}.setEnabled(enabled)", home)
+        self.assertIn("joinCode.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled())", join)
+        self.assertIn("sourceCodes.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled())", merge)
+        self.assertIn("mergePreview.setEnabled(enabled)", controls)
+        self.assertIn("mergeCopy.setEnabled(enabled &&", controls)
+        self.assertNotIn("setEnabled", method_body(PANEL, "private void updateCloudSyncToggle()"))
 
 
 if __name__ == "__main__":
