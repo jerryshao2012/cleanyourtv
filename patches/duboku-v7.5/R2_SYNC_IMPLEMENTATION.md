@@ -266,6 +266,8 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 **封面回退与通用包复核（2026-11-07）：**旧 `fixImageUrl` 只把 `https://pic.dbokutv.com` 改成 HTTP；Android 5.1.1 上其他 HTTPS 海报域名仍会走失败路径并显示占位 D。现已对 API<26 的 Coil 图片 URL 统一降级为 HTTP（现代设备仍使用 HTTPS）。后续 API 22 cleartext 策略修复已并入通用包；三份 APK 的最新 SHA-256 见上条。Sony 和 Hisense 已覆盖安装，最新构建尚未在小米盒子 3 上实机回归。
 
+**封面 D 再现修复与兼容构建防遗漏（2026-11-08）：**复核发现 `cleanyourtv/patches` 已按任意 HTTPS 降级，但发行目录 `apks/patches` 仍是旧的 host-only 代码；构建时用旧镜像覆盖 API 22 基底里的新逻辑，导致其他海报域名在 Xiaomi 3 上回退到 D 占位。现已同步 Java/Smali，并将 API<26 URL 改写为匹配通用 `https://` scheme；API 26+ 不改 URL。新增 `tests/test_legacy_image_urls.py` 锁定 Java 与 Smali 行为。之后分发 APK 必须用 `apks/patches/duboku-v7.5/build_universal_apks.sh` 构建：除固定 API 22 兼容基底、native shim、API 22 补丁、签名和库校验外，还会拒绝发行目录与 `cleanyourtv/patches` 的关键图片补丁源发生漂移，并同步更新三份 APK。当前三份包 SHA-256：`9037b4804ed4e41873d1159118184f72046ddb6e255d7b4d2869887933eb8ff1`。Sony、Hisense、Xiaomi Mi Box 5 Max 覆盖安装启动成功；Xiaomi 3 ADB 暂不可用，封面实机结果待设备重新连接确认。
+
 ### 11.1 单个已有家庭：显示并记下加入码
 
 1. 在已加入家庭的电视个人菜单选择 **家庭**（位于设置下方）。

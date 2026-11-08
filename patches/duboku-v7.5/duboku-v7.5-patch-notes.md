@@ -565,3 +565,10 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - 家庭面板与同步开关补丁从 `apks/common/Updated独播库TV_v7.5.apk`（minSdk 22，保留 Xiaomi 3 native/API 兼容层）重新构建；未使用 Sony 安装包作分发基底。
 - 同一成品已替换 `apks/common/独播库TV_v7.5.apk`、`apks/common/Updated独播库TV_v7.5.apk`、`devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`，SHA-256：`74a2512e57f91b448fdc6f7d6e54e1de9fc4249e1846393917c896ad8ee2a8e5`。三份文件逐字节一致；包名、versionCode 33、minSdk 22 和 Debug 签名校验通过。
 - 此兼容版在 Sony Bravia UR3、Hisense Fire TV 和 Xiaomi Mi Box 5 Max 覆盖安装并启动成功，保留应用数据。小米盒子 3 Android 5.1.1 未连接实机验证；其兼容性以 API 22 基底与保留的 native/API 补丁为依据。
+
+### 修复小米 3 非主图域名封面占位并固定通用包构建（2026-11-08）
+
+- **根因**：`cleanyourtv/patches` 中 Java 与 Smali 已将 API<26 的任意 HTTPS 海报 URL 改为 HTTP，但发行目录 `apks/patches` 的镜像仍只处理 `https://pic.dbokutv.com`。从 API 22 基底构建时，旧镜像覆盖了新逻辑；其他 HTTPS 海报域名在 Android 5.1 上失败并显示 D 占位图，列表数据和播放不受影响。
+- **修复**：Java 与 Smali 一致改为 API<26 检查通用 `https://` scheme 并降级为 `http://`；API 26+ URL 保持不变。新增 `tests/test_legacy_image_urls.py` 防止 Java/Smali 再次分叉。
+- **防遗漏构建**：新增 `build_universal_apks.sh`，只从 `apks/common/Updated独播库TV_v7.5.apk` 解码；校验 minSdk 22、两种 ABI 的 Xiaomi 3 shim、封面及 API 22 网络补丁，并比较发行源与 `cleanyourtv/patches` 的关键图片 Java/Smali 文件；打包后校验签名、minSdk 和 native 库逐字节未变，再同步三份发行包。未来不要从 Sony/Hisense APK 重建通用发布包。
+- **发行包**：三份 APK SHA-256 为 `9037b4804ed4e41873d1159118184f72046ddb6e255d7b4d2869887933eb8ff1`。Sony、Hisense、Xiaomi Mi Box 5 Max 覆盖安装并启动通过。小米盒子 3 ADB 当前未连接，仍需实机确认各域名封面加载。
