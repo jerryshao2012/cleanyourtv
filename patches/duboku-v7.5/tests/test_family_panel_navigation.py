@@ -31,14 +31,21 @@ class FamilyPanelNavigationTest(unittest.TestCase):
         for label in ("管理家庭加入码", "新电视加入家庭", "合并旧家庭记录"):
             self.assertIn(label, source)
 
-    def test_family_android_view_uses_native_descendant_focus(self):
+    def test_family_panel_waits_for_right_key_before_native_focus(self):
         source = SOURCE.read_text()
         route = ROUTE.read_text()
         smali = SMALI.read_text()
         self.assertIn("setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS)", source)
         self.assertIn("setFocusable(true)", source)
-        self.assertIn("post(() ->", source)
+        self.assertIn("onRequestFocusInDescendants(int direction, Rect previouslyFocusedRect)", source)
+        self.assertIn("cloudSyncToggle.requestFocus(direction, previouslyFocusedRect)", source)
+        self.assertIn("onRequestFocusInDescendants(ILandroid/graphics/Rect;)Z", smali)
+        self.assertIn("cloudSyncToggle", smali)
+        home = source.split("private void showHome()", 1)[1].split("private void showCode()", 1)[0]
+        self.assertNotIn("requestFocus", home)
+        self.assertNotIn("post(() ->", home)
         self.assertIn("Landroidx/compose/foundation/i;->l", route)
+        self.assertNotIn("ExternalSyntheticLambda11", smali)
         self.assertNotIn("CloudSyncClient;->initialize(Landroid/app/Activity;)V", smali)
         self.assertNotIn("CloudSyncClient;->fetchOnHistory(Landroid/app/Activity;)V", smali)
 
