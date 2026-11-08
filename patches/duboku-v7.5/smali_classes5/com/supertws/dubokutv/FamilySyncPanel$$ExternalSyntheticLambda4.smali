@@ -34,7 +34,7 @@
 
     iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda4;->f$1:Landroid/widget/TextView;
 
-    invoke-static {v0, v1, p1, p2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$syncToggleRow$7(Landroid/widget/TextView;Landroid/widget/TextView;Landroid/view/View;Z)V
+    invoke-static {v0, v1, p1, p2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$syncToggleRow$0(Landroid/widget/TextView;Landroid/widget/TextView;Landroid/view/View;Z)V
 
     return-void
 .end method

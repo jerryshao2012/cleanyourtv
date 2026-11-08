@@ -256,7 +256,7 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 **部署与实机验证（2026-11-07）：**Worker 已设置随机 32-byte `JOIN_CODE_KEY` 并部署为 `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`。Sony Bravia 4K UR3、Hisense Fire TV 和 Xiaomi MiTV-AZFU0 均以匹配现有证书的覆盖安装保留应用数据；三台设备“家庭同步”页均显示目标 familyId `214cbca3-5707-46cf-b305-1c4aa924773d`，Hisense 与小米的云端读取和本机上传日志均成功。执行时在 Hisense 误点了轮换加入码，故最初提供的加入码已失效；Hisense 随后成功兑换了新生成的同家庭加入码。小米在兑换前已持有目标 familyId 和可用云端凭据，无需重加。未执行 family merge 或清理。原 Hisense 截图保存在执行环境 `/private/tmp/hisense-family-joined.png`。
 
-**家庭入口可发现性：**在个人菜单中新增“家庭”条目，位置紧跟“设置”；选中后家庭设置显示在右侧内容区。加入码、加入家庭和家庭合并操作复用家庭身份与云同步 API。构建涉及 `ProfileScreens` 枚举、菜单目的地、Compose AndroidView 容器及 `FamilySyncPanel` Java 参考源码和 `smali_classes5` 实际类（打入 APK 的 `classes5.dex`）。面板创建时不主动请求子控件焦点，让个人菜单继续管理遥控器焦点；按右键进入面板后即可操作。当前电视桌面仅保留 `SplashActivity` 主入口，旧 `FamilySyncActivity` 保留为非导出 Activity，不注册桌面快捷入口。Hisense Fire TV 实测：下移到“家庭”后右侧打开家庭设置且焦点仍在菜单；按右键进入控件，焦点为白底黑字且无黄色边框；云同步开关可关闭再恢复开启。
+**家庭入口可发现性：**在个人菜单中新增“家庭”条目，位置紧跟“设置”；选中后家庭设置显示在右侧内容区。加入码、加入家庭和家庭合并操作复用家庭身份与云同步 API。构建涉及 `ProfileScreens` 枚举、菜单目的地、Compose AndroidView 容器及 `FamilySyncPanel` Java 参考源码和 `smali_classes5` 实际类（打入 APK 的 `classes5.dex`）。当前电视桌面仅保留 `SplashActivity` 主入口，旧 `FamilySyncActivity` 保留为非导出 Activity，不注册桌面快捷入口。Hisense 遥控器回归发现个人菜单到家庭右侧面板的焦点交接仍有问题，不能以静态显示或子页内按钮焦点测试代替完整导航验证。
 
 **云同步关闭状态：**关闭开关会取消排队的云读取/上传并使旧代次任务失效；已发出的单个 HTTP 请求无法撤销。关闭期间不读写云端，加入码/兑换/家庭合并接口也拒绝请求；面板中的加入码、加入和合并控件及输入框置灰，仅保留开关和只读家庭信息。重新开启会先请求云端读取，再按数据库当前快照上传；局域网同步与本地播放不受影响。
 
@@ -293,8 +293,9 @@ Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索
 - `FamilySyncActivity.java` 与 `smali_classes4/com/supertws/dubokutv/FamilySyncActivity*.smali`：保留的非导出旧 Activity；日常家庭设置入口为个人菜单内嵌面板。
 - `FamilyIdentity.java` / `FamilyIdentity.smali`：加入后保存云端返回的家庭凭据及已知设备 roster，保留本机 deviceId 和记录。
 - `CloudSyncClient.java` / `smali_classes4/com/supertws/dubokutv/CloudSyncClient*.smali`：签发、兑换加入码与 preview/copy/cleanup HTTP 调用。新类放到 classes4 以避免继续增加接近 DEX method-reference 上限的 classes3。
-- DEX 唯一性：API-22 基础 APK 仍带有旧 `CloudSyncClient` classes3 副本；发布构建必须在合并 overlay 后删除 classes3 中所有 `CloudSyncClient*.smali`，只保留 classes4 完整实现。否则 Android 可能加载旧类，家庭面板调用新方法时抛出 `NoSuchMethodError` 并退出应用。构建仓库中的 `tests/test_cloud_sync_dex_uniqueness.py` 与构建后 DEX 检查覆盖此约束。
+- DEX 唯一性：API-22 基础 APK 仍带有旧 `CloudSyncClient` classes3 副本；发布构建必须在合并 overlay 后删除 classes3 中所有 `CloudSyncClient*.smali`，只保留 classes4 完整实现。否则 Android 可能加载旧类，家庭面板调用新方法时抛出 `NoSuchMethodError` 并退出应用。`tests/test_cloud_sync_dex_uniqueness.py` 与构建后 DEX 检查覆盖此约束。
 - 家庭菜单图标：`ProfileScreens.Family` 使用新增 `ic_profile_family` 群组图标资源，构建时同时覆盖 `ProfileScreens.smali` 和资源定义；个人入口仍保留单人图标。
+- 家庭面板导航：家庭首页保留云端/局域网开关与三个操作入口；加入码、新电视加入、旧家庭合并分别进入独立面板页。轮换加入码和永久清理确认改为面板内步骤；旧家庭操作仍需先预览、再复制，且加入码不匹配时清理按钮保持不可用。家庭 `AndroidView` 的 Compose modifier 加入焦点搜索；原生根 `ScrollView` 可聚焦并使用 `FOCUS_AFTER_DESCENDANTS`，且在视图挂载后请求首个开关焦点，避免路由切换时 Compose 将焦点退回外层主菜单。面板子页使用遥控器返回键返回父页，不再显示重复的“返回家庭同步”按钮。该路由 smali 与 Java 面板均纳入构建镜像校验。Hisense 焦点验证需覆盖从“家庭”行按右键进入首个原生控件，再在子页按返回回到家庭首页。`FamilySyncPanel.java` 与 `smali_classes5/FamilySyncPanel*.smali` 必须同步，构建先移除基础 APK 中的旧面板类再覆盖新版。
 - `r2-sync-worker/src/index.ts`：单码轮换/兑换及显式家庭快照迁移、复制读回、源身份撤销。
 - 上传间隔 30 秒是费用与断点新鲜度折中；突发休眠的尾差不超过约一个上传窗口，但网络失败时可能更久。
 - 网络超时后原 Worker PUT 理论上可能晚于相同请求重试和较新快照完成，短暂覆盖较新对象；single-flight 会降低概率，下一次成功快照会修复。v1 接受此低概率窗口，不为每个 PUT 额外读取 R2 或引入 Durable Object 排序。
