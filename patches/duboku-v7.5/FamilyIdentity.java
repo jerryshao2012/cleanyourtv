@@ -126,7 +126,15 @@ public final class FamilyIdentity {
         return prefs.getBoolean("cloudSyncEnabled", true);
     }
 
+    public boolean isLanSyncEnabled() { return prefs.getBoolean("lanSyncEnabled", true); }
+
     public synchronized void setCloudSyncEnabled(boolean enabled) {
         prefs.edit().putBoolean("cloudSyncEnabled", enabled).apply();
+        if (!enabled) CloudSyncClient.cancelPendingCloudSync();
+    }
+
+    public synchronized void setLanSyncEnabled(boolean enabled) {
+        prefs.edit().putBoolean("lanSyncEnabled", enabled).apply();
+        LanSyncManager.onLanSyncSettingChanged(enabled);
     }
 }

@@ -28,7 +28,7 @@
 
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda19;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
-    invoke-static {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$jySuH2tIKIxQFN9y8ZpKauD0KLc(Lcom/supertws/dubokutv/FamilySyncPanel;)V
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$cleanUp$21$com-supertws-dubokutv-FamilySyncPanel()V
 
     return-void
 .end method

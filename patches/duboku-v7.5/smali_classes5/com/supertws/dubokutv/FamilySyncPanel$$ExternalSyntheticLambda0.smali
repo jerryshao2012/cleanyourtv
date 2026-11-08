@@ -40,7 +40,7 @@
 
     iget-object v2, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda0;->f$2:Ljava/lang/String;
 
-    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$xBOvvrtFo4dZ336rvy44wltlAX0(Lcom/supertws/dubokutv/FamilySyncPanel;Ljava/lang/String;Ljava/lang/String;)V
+    invoke-virtual {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$showError$24$com-supertws-dubokutv-FamilySyncPanel(Ljava/lang/String;Ljava/lang/String;)V
 
     return-void
 .end method

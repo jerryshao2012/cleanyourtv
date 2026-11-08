@@ -27,7 +27,8 @@ public class LanSyncManager {
     private static final int PORT = 9876;
     private static volatile LanSyncManager sInstance;
     private final Context mContext;
-    private boolean mReceiverRunning = false;
+    private volatile boolean mReceiverRunning = false;
+    private volatile DatagramSocket mReceiverSocket;
     private static volatile String sCurrentDeviceId = Build.MODEL + "_" + (Build.SERIAL != null ? Build.SERIAL : "tv");
     private static final Pattern EP_PATTERN = Pattern.compile("(\\d+)");
     
@@ -47,7 +48,6 @@ public class LanSyncManager {
 
     private LanSyncManager(Context context) {
         mContext = context;
-        startReceiver();
     }
 
     public static LanSyncManager getInstance(Context context) {
@@ -55,6 +55,7 @@ public class LanSyncManager {
             synchronized (LanSyncManager.class) {
                 if (sInstance == null && context != null) {
                     sInstance = new LanSyncManager(context.getApplicationContext());
+                    if (FamilyIdentity.get(sInstance.mContext).isLanSyncEnabled()) sInstance.startReceiver();
                 }
             }
         }
@@ -77,7 +78,7 @@ public class LanSyncManager {
     }
 
     public synchronized void startReceiver() {
-        if (mReceiverRunning) return;
+        if (mReceiverRunning || !FamilyIdentity.get(mContext).isLanSyncEnabled()) return;
         mReceiverRunning = true;
         Thread t = new Thread(new Runnable() {
             @Override
@@ -85,6 +86,7 @@ public class LanSyncManager {
                 DatagramSocket socket = null;
                 try {
                     socket = new DatagramSocket(PORT);
+                    mReceiverSocket = socket;
                     socket.setBroadcast(true);
                     byte[] buf = new byte[8192];
                     Log.i(TAG, "LanSync UDP Receiver running on port " + PORT + " [Device=" + sCurrentDeviceId + "]");
@@ -100,7 +102,10 @@ public class LanSyncManager {
                     if (socket != null && !socket.isClosed()) {
                         socket.close();
                     }
-                    mReceiverRunning = false;
+                    if (mReceiverSocket == socket) {
+                        mReceiverSocket = null;
+                        mReceiverRunning = false;
+                    }
                 }
             }
         });
@@ -109,7 +114,30 @@ public class LanSyncManager {
         t.start();
     }
 
+    public synchronized void stopReceiver() {
+        mReceiverRunning = false;
+        DatagramSocket socket = mReceiverSocket;
+        if (socket != null) socket.close();
+    }
+
+    private static boolean isLanSyncEnabled() {
+        Context context = getAppContext();
+        return context != null && FamilyIdentity.get(context).isLanSyncEnabled();
+    }
+
+    public static void onLanSyncSettingChanged(boolean enabled) {
+        LanSyncManager manager = sInstance;
+        if (manager == null) return;
+        if (enabled) {
+            manager.startReceiver();
+            requestSyncFromLan();
+        } else {
+            manager.stopReceiver();
+        }
+    }
+
     private void handleIncomingJson(String jsonStr, String senderIp) {
+        if (!isLanSyncEnabled()) return;
         try {
             JSONObject json = new JSONObject(jsonStr);
             String fromDevice = json.optString("from", "");
@@ -156,6 +184,7 @@ public class LanSyncManager {
                 @Override
                 public void run() {
                     synchronized (LanSyncManager.class) {
+                        if (!isLanSyncEnabled()) return;
                         SQLiteDatabase db = null;
                         try {
                             db = mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
@@ -234,6 +263,7 @@ public class LanSyncManager {
                             cv.put("videoPageUrl", finalVideo);
                             cv.put("detailPageUrl", finalDetail);
                             cv.put("posterUrl", finalPoster);
+                            if (!isLanSyncEnabled()) return;
                             onRemoteProgress(name, remoteModifiedAt);
                             db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
                             sHandoff.offer(name, episode, progressInMillis, finalVideo, remoteModifiedAt);
@@ -278,16 +308,19 @@ public class LanSyncManager {
     }
 
     private void respondAllRecords(final String targetIp) {
+        if (!isLanSyncEnabled()) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 SQLiteDatabase db = null;
                 try {
+                    if (!isLanSyncEnabled()) return;
                     db = mContext.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
                     if (db == null) return;
                     Cursor c = db.rawQuery("SELECT id, name, episode, progressInMillis, durationInMillis, createdAt, modifiedAt, videoPageUrl, detailPageUrl, posterUrl FROM records ORDER BY modifiedAt DESC LIMIT 20", null);
                     if (c != null) {
                         while (c.moveToNext()) {
+                            if (!isLanSyncEnabled()) break;
                             JSONObject json = new JSONObject();
                             json.put("from", sCurrentDeviceId);
                             json.put("id", c.getString(0));
@@ -318,10 +351,12 @@ public class LanSyncManager {
     }
 
     public static void requestSyncFromLan() {
+        if (!isLanSyncEnabled()) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
+                    if (!isLanSyncEnabled()) return;
                     JSONObject json = new JSONObject();
                     json.put("from", sCurrentDeviceId);
                     json.put("action", "REQUEST_SYNC");
@@ -344,6 +379,7 @@ public class LanSyncManager {
     }
 
     private static void sendUdpPacket(String jsonStr, String directIp) {
+        if (!isLanSyncEnabled()) return;
         DatagramSocket socket = null;
         try {
             byte[] data = jsonStr.getBytes(StandardCharsets.UTF_8);
@@ -386,11 +422,12 @@ public class LanSyncManager {
     }
 
     public static void broadcastProgress(final Object recordObj) {
-        if (recordObj == null) return;
+        if (recordObj == null || !isLanSyncEnabled()) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
+                    if (!isLanSyncEnabled()) return;
                     pa.c rec = (pa.c) recordObj;
                     String dramaName = rec.b;
                     String episodeName = rec.c;
@@ -607,7 +644,7 @@ public class LanSyncManager {
         CloudSyncClient.fetchOnStartup(manager.mContext);
         new Thread(new Runnable() {
             @Override public void run() {
-                try {
+                if (currentLanEnabled(manager.mContext)) try {
                     JSONObject discover = new JSONObject().put("action", "FAMILY_DISCOVER").put("from", sCurrentDeviceId)
                             .put("nonce", java.util.UUID.randomUUID().toString());
                     sendUdpPacket(discover.toString(), null);
@@ -615,11 +652,17 @@ public class LanSyncManager {
                 try { Thread.sleep(2000L); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                 FamilyIdentity current = FamilyIdentity.get(manager.mContext);
                 CloudSyncClient.registerFamily(current.familyId(), current.familySecret());
-                try { sendUdpPacket(current.offer(java.util.UUID.randomUUID().toString()).toString(), null); }
-                catch (Exception ignored) { }
+                if (current.isLanSyncEnabled()) {
+                    try { sendUdpPacket(current.offer(java.util.UUID.randomUUID().toString()).toString(), null); }
+                    catch (Exception ignored) { }
+                }
             }
         }, "LanSync-Family").start();
         requestSyncFromLan();
+    }
+
+    private static boolean currentLanEnabled(Context context) {
+        return FamilyIdentity.get(context).isLanSyncEnabled();
     }
 
     public static void onActivityResume(Activity activity) {

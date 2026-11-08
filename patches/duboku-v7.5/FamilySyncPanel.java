@@ -22,11 +22,14 @@ import java.util.concurrent.Executors;
 public final class FamilySyncPanel extends ScrollView {
     private final Activity host;
     private final ExecutorService work = Executors.newSingleThreadExecutor();
-    private TextView status, currentFamily, codeDisplay;
+    private LinearLayout page;
+    private TextView status, currentFamily, codeDisplay, cloudSyncValue, lanSyncValue;
     private EditText joinCode, sourceCodes;
-    private Button cleanup, cloudSyncToggle;
+    private Button cleanup;
+    private LinearLayout cloudSyncToggle, lanSyncToggle;
     private String previewedCodes = "", copiedCodes = "";
     private boolean previewed;
+    private boolean cleanupReady;
 
     public FamilySyncPanel(Context context) {
         super(context);
@@ -36,23 +39,34 @@ public final class FamilySyncPanel extends ScrollView {
         host = (Activity) current;
         CloudSyncClient.initialize(host);
         setFillViewport(true);
-        setBackgroundColor(Color.rgb(20, 20, 24));
-        LinearLayout page = new LinearLayout(context);
+        setBackgroundColor(Color.TRANSPARENT);
+        page = new LinearLayout(context);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(32, 20, 32, 20);
+        page.setPadding(144, 20, 144, 20);
         addView(page);
 
-        page.addView(text("家庭设置", 28, true));
-        cloudSyncToggle = button("");
-        updateCloudSyncToggle();
+        page.addView(text("家庭", 28, false));
+        cloudSyncToggle = syncToggleRow("云端同步", true);
+        LinearLayout.LayoutParams toggleLayout = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        toggleLayout.bottomMargin = 16;
+        page.addView(cloudSyncToggle, toggleLayout);
         cloudSyncToggle.setOnClickListener(v -> {
             FamilyIdentity id = FamilyIdentity.get(host);
             boolean next = !id.isCloudSyncEnabled();
             id.setCloudSyncEnabled(next);
             updateCloudSyncToggle();
+            if (next) CloudSyncClient.fetchOnHistory(host);
             busy(next ? "已开启家庭云端同步" : "已关闭云端同步（仅保留局域网同步）");
         });
-        page.addView(cloudSyncToggle);
+        lanSyncToggle = syncToggleRow("局域网络同步", false);
+        lanSyncToggle.setOnClickListener(v -> {
+            FamilyIdentity id = FamilyIdentity.get(host);
+            boolean next = !id.isLanSyncEnabled();
+            id.setLanSyncEnabled(next);
+            updateCloudSyncToggle();
+            busy(next ? "已开启局域网络同步" : "已关闭局域网络同步（仅作为本地播放器）");
+        });
+        page.addView(lanSyncToggle, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         page.addView(text("管理家庭加入码、加入其他电视，或安全合并旧家庭。", 16, false));
         currentFamily = text("当前家庭：" + FamilyIdentity.get(host).familyId(), 15, false);
         page.addView(currentFamily);
@@ -85,6 +99,7 @@ public final class FamilySyncPanel extends ScrollView {
         cleanup.setOnClickListener(v -> confirmCleanup());
         status = text("就绪", 16, false);
         page.addView(status);
+        updateCloudSyncToggle();
     }
 
     private TextView text(String value, int size, boolean bold) {
@@ -107,6 +122,32 @@ public final class FamilySyncPanel extends ScrollView {
         button.setTextColor(host.getResources().getColorStateList(textColors));
         button.setBackgroundResource(host.getResources().getIdentifier("family_sync_button_focus", "drawable", host.getPackageName()));
         return button;
+    }
+
+    private LinearLayout syncToggleRow(String label, boolean cloud) {
+        LinearLayout row = new LinearLayout(host);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(24, 20, 24, 20);
+        row.setMinimumHeight(96);
+        row.setFocusable(true);
+        row.setFocusableInTouchMode(true);
+        row.setClickable(true);
+        row.setBackgroundResource(host.getResources().getIdentifier("family_sync_button_focus", "drawable", host.getPackageName()));
+
+        TextView title = text(label, 16, false);
+        title.setPadding(0, 0, 0, 0);
+        TextView value = text("", 16, false);
+        value.setPadding(0, 0, 0, 0);
+        if (cloud) cloudSyncValue = value; else lanSyncValue = value;
+        row.addView(title, new LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f));
+        row.addView(value, new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+        row.setOnFocusChangeListener((view, focused) -> {
+            int color = focused ? Color.BLACK : Color.WHITE;
+            title.setTextColor(color);
+            value.setTextColor(color);
+        });
+        return row;
     }
 
     private EditText input(String hint, boolean multiline) {
@@ -171,6 +212,8 @@ public final class FamilySyncPanel extends ScrollView {
         JSONArray source = codes();
         if (source.length() == 0) { busy("请输入至少一个旧家庭加入码。"); return; }
         String input = sourceCodes.getText().toString();
+        cleanupReady = false;
+        updateCloudSyncToggle();
         busy("正在读取旧家庭快照…");
         work.execute(() -> {
             try {
@@ -179,7 +222,7 @@ public final class FamilySyncPanel extends ScrollView {
                 previewedCodes = input;
                 copiedCodes = "";
                 host.runOnUiThread(() -> {
-                    cleanup.setEnabled(false);
+                    updateCloudSyncToggle();
                     busy("预览：" + result.optInt("families") + " 个家庭、" + result.optInt("snapshots") + " 条设备快照、" + result.optInt("records") + " 条记录。当前家庭 ID 必须是参与家庭中最小的 ID。");
                 });
             } catch (Exception e) { showError("预览合并", e); }
@@ -201,7 +244,8 @@ public final class FamilySyncPanel extends ScrollView {
                 copiedCodes = input;
                 CloudSyncClient.fetchOnHistory(host);
                 host.runOnUiThread(() -> {
-                    cleanup.setEnabled(true);
+                    cleanupReady = true;
+                    updateCloudSyncToggle();
                     busy("复制完成：" + result.optInt("copiedSnapshots") + " 条快照。请核对新家庭进度；确认无误后再清理旧家庭。");
                 });
             } catch (Exception e) { showError("复制合并", e); }
@@ -227,7 +271,7 @@ public final class FamilySyncPanel extends ScrollView {
                 previewed = false;
                 previewedCodes = "";
                 copiedCodes = "";
-                cleanup.post(() -> cleanup.setEnabled(false));
+                host.runOnUiThread(() -> { cleanupReady = false; updateCloudSyncToggle(); });
                 CloudSyncClient.fetchOnHistory(host);
                 host.runOnUiThread(() -> busy("清理完成：" + result.optInt("cleanedFamilies") + " 个旧家庭已删除并撤销凭据。"));
             } catch (Exception e) { showError("清理旧家庭", e); }
@@ -245,7 +289,15 @@ public final class FamilySyncPanel extends ScrollView {
     }
 
     private void updateCloudSyncToggle() {
-        boolean enabled = FamilyIdentity.get(host).isCloudSyncEnabled();
-        cloudSyncToggle.setText("云端同步设置：[" + (enabled ? "已开启" : "已关闭") + "] （点击切换，关闭后仅局域网同步）");
+        FamilyIdentity identity = FamilyIdentity.get(host);
+        boolean enabled = identity.isCloudSyncEnabled();
+        cloudSyncValue.setText(enabled ? "已开启" : "已关闭");
+        lanSyncValue.setText(identity.isLanSyncEnabled() ? "已开启" : "已关闭");
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View child = page.getChildAt(i);
+            if (child == cloudSyncToggle || child == lanSyncToggle) continue;
+            if (child instanceof Button) child.setEnabled(enabled && (child != cleanup || cleanupReady));
+            else if (child instanceof EditText) child.setEnabled(enabled);
+        }
     }
 }
