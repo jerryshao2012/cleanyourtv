@@ -3,32 +3,24 @@
 .source "D8$$SyntheticClass"
 
 # interfaces
-.implements Landroid/view/View$OnClickListener;
-
-
-# instance fields
-.field public final synthetic f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
+.implements Landroid/content/DialogInterface$OnClickListener;
 
 
 # direct methods
-.method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
+.method public synthetic constructor <init>()V
     .locals 0
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
-
-    iput-object p1, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda6;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
     return-void
 .end method
 
 
 # virtual methods
-.method public final onClick(Landroid/view/View;)V
-    .locals 1
+.method public final onClick(Landroid/content/DialogInterface;I)V
+    .locals 0
 
-    iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda6;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
-
-    invoke-static {v0, p1}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$uf8aAvBChOYgClYk27imyEx6Ydw(Lcom/supertws/dubokutv/FamilySyncPanel;Landroid/view/View;)V
+    invoke-static {p1, p2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$confirmIssueCode$8(Landroid/content/DialogInterface;I)V
 
     return-void
 .end method

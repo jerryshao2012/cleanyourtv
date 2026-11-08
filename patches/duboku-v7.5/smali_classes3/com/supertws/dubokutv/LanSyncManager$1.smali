@@ -25,7 +25,7 @@
 .method constructor <init>(Lcom/supertws/dubokutv/LanSyncManager;)V
     .locals 0
 
-    .line 81
+    .line 83
     iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -36,252 +36,266 @@
 
 # virtual methods
 .method public run()V
-    .locals 12
+    .locals 11
 
-    .line 84
     const-string v0, "LanSyncManager"
 
-    .line 86
-    const/4 v1, 0x0
+    const-string v1, "LanSync UDP Receiver running on port 9876 [Device="
 
     const/4 v2, 0x0
 
+    const/4 v3, 0x0
+
+    .line 88
     :try_start_0
-    new-instance v3, Ljava/net/DatagramSocket;
+    new-instance v4, Ljava/net/DatagramSocket;
 
-    const/16 v4, 0x2694
+    const/16 v5, 0x2694
 
-    invoke-direct {v3, v4}, Ljava/net/DatagramSocket;-><init>(I)V
+    invoke-direct {v4, v5}, Ljava/net/DatagramSocket;-><init>(I)V
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_1
     .catchall {:try_start_0 .. :try_end_0} :catchall_1
 
-    .line 87
-    const/4 v4, 0x1
-
-    :try_start_1
-    invoke-virtual {v3, v4}, Ljava/net/DatagramSocket;->setBroadcast(Z)V
-
-    .line 88
-    const/16 v4, 0x2000
-
-    new-array v5, v4, [B
-
     .line 89
-    new-instance v6, Ljava/lang/StringBuilder;
+    :try_start_1
+    iget-object v5, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    invoke-direct {v6}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-static {v5, v4}, Lcom/supertws/dubokutv/LanSyncManager;->access$002(Lcom/supertws/dubokutv/LanSyncManager;Ljava/net/DatagramSocket;)Ljava/net/DatagramSocket;
 
-    const-string v7, "LanSync UDP Receiver running on port 9876 [Device="
-
-    invoke-virtual {v6, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v6
-
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$000()Ljava/lang/String;
-
-    move-result-object v7
-
-    invoke-virtual {v6, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v6
-
-    const-string v7, "]"
-
-    invoke-virtual {v6, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v6
-
-    invoke-virtual {v6}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v6
-
-    invoke-static {v0, v6}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    const/4 v5, 0x1
 
     .line 90
-    :goto_0
-    iget-object v6, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+    invoke-virtual {v4, v5}, Ljava/net/DatagramSocket;->setBroadcast(Z)V
 
-    invoke-static {v6}, Lcom/supertws/dubokutv/LanSyncManager;->access$100(Lcom/supertws/dubokutv/LanSyncManager;)Z
+    const/16 v5, 0x2000
 
-    move-result v6
-
-    if-eqz v6, :cond_1
-
-    .line 91
-    new-instance v6, Ljava/net/DatagramPacket;
-
-    invoke-direct {v6, v5, v4}, Ljava/net/DatagramPacket;-><init>([BI)V
+    new-array v6, v5, [B
 
     .line 92
-    invoke-virtual {v3, v6}, Ljava/net/DatagramSocket;->receive(Ljava/net/DatagramPacket;)V
+    new-instance v7, Ljava/lang/StringBuilder;
+
+    invoke-direct {v7, v1}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$100()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v7, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    const-string v1, "]"
+
+    invoke-virtual {v7, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v7}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 93
+    :goto_0
+    iget-object v1, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->access$200(Lcom/supertws/dubokutv/LanSyncManager;)Z
+
+    move-result v1
+
+    if-eqz v1, :cond_1
+
+    .line 94
+    new-instance v1, Ljava/net/DatagramPacket;
+
+    invoke-direct {v1, v6, v5}, Ljava/net/DatagramPacket;-><init>([BI)V
+
+    .line 95
+    invoke-virtual {v4, v1}, Ljava/net/DatagramSocket;->receive(Ljava/net/DatagramPacket;)V
+
+    .line 96
     new-instance v7, Ljava/lang/String;
 
-    invoke-virtual {v6}, Ljava/net/DatagramPacket;->getData()[B
+    invoke-virtual {v1}, Ljava/net/DatagramPacket;->getData()[B
 
     move-result-object v8
 
-    invoke-virtual {v6}, Ljava/net/DatagramPacket;->getLength()I
+    invoke-virtual {v1}, Ljava/net/DatagramPacket;->getLength()I
 
     move-result v9
 
     sget-object v10, Ljava/nio/charset/StandardCharsets;->UTF_8:Ljava/nio/charset/Charset;
 
-    invoke-direct {v7, v8, v1, v9, v10}, Ljava/lang/String;-><init>([BIILjava/nio/charset/Charset;)V
+    invoke-direct {v7, v8, v2, v9, v10}, Ljava/lang/String;-><init>([BIILjava/nio/charset/Charset;)V
 
-    .line 94
+    .line 97
     iget-object v8, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    invoke-virtual {v6}, Ljava/net/DatagramPacket;->getAddress()Ljava/net/InetAddress;
+    invoke-virtual {v1}, Ljava/net/DatagramPacket;->getAddress()Ljava/net/InetAddress;
 
     move-result-object v9
 
     if-eqz v9, :cond_0
 
-    invoke-virtual {v6}, Ljava/net/DatagramPacket;->getAddress()Ljava/net/InetAddress;
+    invoke-virtual {v1}, Ljava/net/DatagramPacket;->getAddress()Ljava/net/InetAddress;
 
-    move-result-object v6
+    move-result-object v1
 
-    invoke-virtual {v6}, Ljava/net/InetAddress;->getHostAddress()Ljava/lang/String;
+    invoke-virtual {v1}, Ljava/net/InetAddress;->getHostAddress()Ljava/lang/String;
 
-    move-result-object v6
+    move-result-object v1
 
     goto :goto_1
 
     :cond_0
-    move-object v6, v2
+    move-object v1, v3
 
     :goto_1
-    invoke-static {v8, v7, v6}, Lcom/supertws/dubokutv/LanSyncManager;->access$200(Lcom/supertws/dubokutv/LanSyncManager;Ljava/lang/String;Ljava/lang/String;)V
+    invoke-static {v8, v7, v1}, Lcom/supertws/dubokutv/LanSyncManager;->access$300(Lcom/supertws/dubokutv/LanSyncManager;Ljava/lang/String;Ljava/lang/String;)V
     :try_end_1
     .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_0
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 95
     goto :goto_0
 
-    .line 99
-    :cond_1
-    invoke-virtual {v3}, Ljava/net/DatagramSocket;->isClosed()Z
-
-    move-result v0
-
-    if-nez v0, :cond_2
-
-    .line 100
-    goto :goto_3
-
-    .line 99
-    :catchall_0
-    move-exception v0
-
-    move-object v2, v3
-
-    goto :goto_4
-
-    .line 96
-    :catch_0
-    move-exception v2
-
-    goto :goto_2
-
-    .line 99
-    :catchall_1
-    move-exception v0
-
-    goto :goto_4
-
-    .line 96
-    :catch_1
-    move-exception v3
-
-    move-object v11, v3
-
-    move-object v3, v2
-
-    move-object v2, v11
-
-    .line 97
-    :goto_2
-    :try_start_2
-    new-instance v4, Ljava/lang/StringBuilder;
-
-    invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v5, "Receiver stopped: "
-
-    invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v4
-
-    invoke-virtual {v2}, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
-
-    move-result-object v2
-
-    invoke-virtual {v4, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v2
-
-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v2
-
-    invoke-static {v0, v2}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_2
-    .catchall {:try_start_2 .. :try_end_2} :catchall_0
-
-    .line 99
-    if-eqz v3, :cond_2
-
-    invoke-virtual {v3}, Ljava/net/DatagramSocket;->isClosed()Z
-
-    move-result v0
-
-    if-nez v0, :cond_2
-
-    .line 100
-    :goto_3
-    invoke-virtual {v3}, Ljava/net/DatagramSocket;->close()V
-
     .line 102
+    :cond_1
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->isClosed()Z
+
+    move-result v0
+
+    if-nez v0, :cond_2
+
+    .line 103
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->close()V
+
+    .line 105
     :cond_2
     iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    invoke-static {v0, v1}, Lcom/supertws/dubokutv/LanSyncManager;->access$102(Lcom/supertws/dubokutv/LanSyncManager;Z)Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->access$000(Lcom/supertws/dubokutv/LanSyncManager;)Ljava/net/DatagramSocket;
 
-    .line 103
-    nop
+    move-result-object v0
 
-    .line 104
-    return-void
+    if-ne v0, v4, :cond_4
 
-    .line 99
-    :goto_4
-    if-eqz v2, :cond_3
+    goto :goto_3
 
-    invoke-virtual {v2}, Ljava/net/DatagramSocket;->isClosed()Z
+    :catchall_0
+    move-exception v0
 
-    move-result v3
+    goto :goto_4
 
-    if-nez v3, :cond_3
+    :catch_0
+    move-exception v1
+
+    goto :goto_2
+
+    :catchall_1
+    move-exception v0
+
+    move-object v4, v3
+
+    goto :goto_4
+
+    :catch_1
+    move-exception v1
+
+    move-object v4, v3
 
     .line 100
-    invoke-virtual {v2}, Ljava/net/DatagramSocket;->close()V
+    :goto_2
+    :try_start_2
+    new-instance v5, Ljava/lang/StringBuilder;
+
+    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v6, "Receiver stopped: "
+
+    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v5, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v0, v1}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
+    :try_end_2
+    .catchall {:try_start_2 .. :try_end_2} :catchall_0
+
+    if-eqz v4, :cond_3
 
     .line 102
-    :cond_3
-    iget-object v2, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->isClosed()Z
 
-    invoke-static {v2, v1}, Lcom/supertws/dubokutv/LanSyncManager;->access$102(Lcom/supertws/dubokutv/LanSyncManager;Z)Z
+    move-result v0
+
+    if-nez v0, :cond_3
 
     .line 103
-    goto :goto_6
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->close()V
 
-    :goto_5
+    .line 105
+    :cond_3
+    iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->access$000(Lcom/supertws/dubokutv/LanSyncManager;)Ljava/net/DatagramSocket;
+
+    move-result-object v0
+
+    if-ne v0, v4, :cond_4
+
+    .line 106
+    :goto_3
+    iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v0, v3}, Lcom/supertws/dubokutv/LanSyncManager;->access$002(Lcom/supertws/dubokutv/LanSyncManager;Ljava/net/DatagramSocket;)Ljava/net/DatagramSocket;
+
+    .line 107
+    iget-object v0, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v0, v2}, Lcom/supertws/dubokutv/LanSyncManager;->access$202(Lcom/supertws/dubokutv/LanSyncManager;Z)Z
+
+    :cond_4
+    return-void
+
+    :goto_4
+    if-eqz v4, :cond_5
+
+    .line 102
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->isClosed()Z
+
+    move-result v1
+
+    if-nez v1, :cond_5
+
+    .line 103
+    invoke-virtual {v4}, Ljava/net/DatagramSocket;->close()V
+
+    .line 105
+    :cond_5
+    iget-object v1, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v1}, Lcom/supertws/dubokutv/LanSyncManager;->access$000(Lcom/supertws/dubokutv/LanSyncManager;)Ljava/net/DatagramSocket;
+
+    move-result-object v1
+
+    if-ne v1, v4, :cond_6
+
+    .line 106
+    iget-object v1, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v1, v3}, Lcom/supertws/dubokutv/LanSyncManager;->access$002(Lcom/supertws/dubokutv/LanSyncManager;Ljava/net/DatagramSocket;)Ljava/net/DatagramSocket;
+
+    .line 107
+    iget-object v1, p0, Lcom/supertws/dubokutv/LanSyncManager$1;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    invoke-static {v1, v2}, Lcom/supertws/dubokutv/LanSyncManager;->access$202(Lcom/supertws/dubokutv/LanSyncManager;Z)Z
+
+    .line 109
+    :cond_6
     throw v0
-
-    :goto_6
-    goto :goto_5
 .end method

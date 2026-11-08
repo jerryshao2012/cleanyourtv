@@ -206,6 +206,7 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 **主要 Java 参考源：**`LanSyncManager.java`、`CloudSyncClient.java`、`FamilyIdentity.java`、`ProgressSnapshot.java`。**APK 实际类：**`smali_classes3/com/supertws/dubokutv/LanSyncManager.smali`、`FamilyIdentity.smali`、`ProgressSnapshot.smali` 及 `LanSyncManager$*.smali`；`CloudSyncClient` 与新增家庭同步页在 `smali_classes4`。
 
 - Java 参考源与对应 smali 按现有仓库约定手动保持同步；只有 smali 被 apktool 打入 APK，不能只复制 Java 文件。家庭设置从个人菜单进入，排列在“设置”下方并在右侧面板显示；家庭同步不再注册独立启动器入口，同步身份/播放器回调仍放在现有同步类中。
+- 家庭设置的云端同步与局域网络同步是独立开关，均默认开启，状态保存在本机安装的 app-private SharedPreferences；加入家庭及同步协议不传输这两个开关，因此相同 familyId 的电视仍可各自设置。关闭 LAN 后不监听、处理或发送 UDP 同步包，本机播放与记录不受影响；重新开启会恢复监听并请求在线设备回传记录。关闭云端同步时云端管理控件置灰，但两个同步开关保持可操作。
 - `CloudSyncClient` 仅用 Android 已有 HTTP/TLS API，避免新增第三方依赖；`FamilyIdentity` 负责随机身份、偏好持久化和 UDP offer；`ProgressSnapshot` 只负责 records DTO 与 schema 验证。
 - 实现随机 `deviceId`、家庭身份持久化和 UDP `FAMILY_DISCOVER/FAMILY_OFFER`。保持现有 `REQUEST_SYNC`、progress packet、接收入库和 Room 刷新行为。
 - 实现 Worker HTTP 调用、单线程上传队列、30 秒合并窗口、事件立即上传、peer GET、重试状态与成功时间。
@@ -256,6 +257,8 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 **部署与实机验证（2026-11-07）：**Worker 已设置随机 32-byte `JOIN_CODE_KEY` 并部署为 `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`。Sony Bravia 4K UR3、Hisense Fire TV 和 Xiaomi MiTV-AZFU0 均以匹配现有证书的覆盖安装保留应用数据；三台设备“家庭同步”页均显示目标 familyId `214cbca3-5707-46cf-b305-1c4aa924773d`，Hisense 与小米的云端读取和本机上传日志均成功。执行时在 Hisense 误点了轮换加入码，故最初提供的加入码已失效；Hisense 随后成功兑换了新生成的同家庭加入码。小米在兑换前已持有目标 familyId 和可用云端凭据，无需重加。未执行 family merge 或清理。原 Hisense 截图保存在执行环境 `/private/tmp/hisense-family-joined.png`。
 
 **家庭入口可发现性：**在个人菜单中新增“家庭”条目，位置紧跟“设置”；选中后家庭设置显示在右侧内容区。加入码、加入家庭和家庭合并操作复用家庭身份与云同步 API。构建涉及 `ProfileScreens` 枚举、菜单目的地、Compose AndroidView 容器及 `FamilySyncPanel` Java 参考源码和 `smali_classes5` 实际类（打入 APK 的 `classes5.dex`）。面板创建时不主动请求子控件焦点，让个人菜单继续管理遥控器焦点；按右键进入面板后即可操作。当前电视桌面仅保留 `SplashActivity` 主入口，旧 `FamilySyncActivity` 保留为非导出 Activity，不注册桌面快捷入口。Hisense Fire TV 实测：下移到“家庭”后右侧打开家庭设置且焦点仍在菜单；按右键进入控件，焦点为白底黑字且无黄色边框；云同步开关可关闭再恢复开启。
+
+**云同步关闭状态：**关闭开关会取消排队的云读取/上传并使旧代次任务失效；已发出的单个 HTTP 请求无法撤销。关闭期间不读写云端，加入码/兑换/家庭合并接口也拒绝请求；面板中的加入码、加入和合并控件及输入框置灰，仅保留开关和只读家庭信息。重新开启会先请求云端读取，再按数据库当前快照上传；局域网同步与本地播放不受影响。
 
 **Android 5.1/API 22 网络列表失败修复（2026-11-07）：**小米 3 诊断日志显示主列表网络请求线程 `z Dispatcher` 抛出 `NoClassDefFoundError`，调用栈到 `mc.c.h`。根因是 OkHttp cleartext 策略检查在 API 22 调用了 API 23 才存在的 `android.security.NetworkSecurityPolicy`。已在 `mc.c.h` 增加 API<23 快速返回 `true`，让 Android 5 使用其默认明文策略；API 23+ 保留原策略检查。之前调整的 `About`/`Support` enum ordinal（4/5）仍保留，但不是这次网络请求失败的根因。已重建无诊断上报代码的干净 APK；三份包 SHA-256 均为 `51c83a7960b3723a9baa15c938770646e7c4681186a89e96ca9acbc7f5bfd677`。真实小米 3 安装回归仍待完成。
 

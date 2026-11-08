@@ -56,7 +56,6 @@
 
     iput-object p1, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
 
-    .line 28
     return-void
 .end method
 
@@ -74,11 +73,11 @@
 .method public static validId(Ljava/lang/String;)Z
     .locals 2
 
-    .line 116
     const/4 v0, 0x0
 
     if-eqz p0, :cond_0
 
+    .line 116
     :try_start_0
     invoke-static {p0}, Ljava/util/UUID;->fromString(Ljava/lang/String;)Ljava/util/UUID;
 
@@ -98,30 +97,23 @@
 
     const/4 v0, 0x1
 
-    goto :goto_0
+    nop
 
-    .line 117
     :catch_0
-    move-exception p0
-
-    return v0
-
-    .line 116
     :cond_0
-    :goto_0
     return v0
 .end method
 
 .method public static validSecret(Ljava/lang/String;)Z
     .locals 2
 
-    .line 121
     const/4 v0, 0x0
 
     if-eqz p0, :cond_0
 
     const/16 v1, 0xa
 
+    .line 121
     :try_start_0
     invoke-static {p0, v1}, Landroid/util/Base64;->decode(Ljava/lang/String;I)[B
 
@@ -137,17 +129,10 @@
 
     const/4 v0, 0x1
 
-    goto :goto_0
+    nop
 
-    .line 122
     :catch_0
-    move-exception p0
-
-    return v0
-
-    .line 121
     :cond_0
-    :goto_0
     return v0
 .end method
 
@@ -250,7 +235,6 @@
 
     return-void
 
-    .line 89
     :catchall_0
     move-exception p1
 
@@ -264,30 +248,30 @@
 
     monitor-enter p0
 
-    .line 59
     :try_start_0
     const-string v0, "familyId"
 
     const-string v1, ""
 
+    .line 59
     invoke-virtual {p1, v0, v1}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 60
     const-string v1, "familySecret"
 
     const-string v2, ""
 
+    .line 60
     invoke-virtual {p1, v1, v2}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v1
 
-    .line 61
     const-string v2, "from"
 
     const-string v3, ""
 
+    .line 61
     invoke-virtual {p1, v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v2
@@ -370,18 +354,18 @@
 
     invoke-direct {v8, v7}, Ljava/util/TreeSet;-><init>(Ljava/util/SortedSet;)V
 
-    .line 71
     const-string v9, "devices"
 
+    .line 71
     invoke-virtual {p1, v9}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
 
     move-result-object p1
 
-    .line 72
     if-eqz p1, :cond_4
 
     const/4 v9, 0x0
 
+    .line 72
     :goto_1
     invoke-virtual {p1}, Lorg/json/JSONArray;->length()I
 
@@ -389,9 +373,9 @@
 
     if-ge v9, v10, :cond_4
 
-    .line 73
     const-string v10, ""
 
+    .line 73
     invoke-virtual {p1, v9, v10}, Lorg/json/JSONArray;->optString(ILjava/lang/String;)Ljava/lang/String;
 
     move-result-object v10
@@ -414,7 +398,6 @@
 
     invoke-virtual {v8, v10}, Ljava/util/TreeSet;->add(Ljava/lang/Object;)Z
 
-    .line 72
     :cond_3
     add-int/lit8 v9, v9, 0x1
 
@@ -475,12 +458,11 @@
 
     if-gtz v2, :cond_7
 
-    .line 79
     if-eqz v5, :cond_6
 
-    .line 80
     const-string v2, "cloudAuthRejected"
 
+    .line 80
     invoke-interface {p1, v2}, Landroid/content/SharedPreferences$Editor;->remove(Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
     move-result-object v2
@@ -493,10 +475,10 @@
 
     invoke-interface {v2, v3, v9, v10}, Landroid/content/SharedPreferences$Editor;->putLong(Ljava/lang/String;J)Landroid/content/SharedPreferences$Editor;
 
-    .line 82
     :cond_6
     const-string v2, "familyId"
 
+    .line 82
     invoke-interface {p1, v2, v0}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
 
     move-result-object v0
@@ -509,46 +491,38 @@
     :cond_7
     invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
 
-    .line 85
     const-string p1, "R2Sync"
+
+    .line 85
+    new-instance v0, Ljava/lang/StringBuilder;
+
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v1, "Family offer accepted: identityChanged="
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v0, v5}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+
+    const-string v1, " rosterChanged="
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     invoke-virtual {v8, v7}, Ljava/util/TreeSet;->equals(Ljava/lang/Object;)Z
 
-    move-result v0
+    move-result v1
 
-    if-nez v0, :cond_8
+    if-nez v1, :cond_8
 
-    const/4 v0, 0x1
+    const/4 v1, 0x1
 
     goto :goto_3
 
     :cond_8
-    const/4 v0, 0x0
+    const/4 v1, 0x0
 
     :goto_3
-    new-instance v1, Ljava/lang/StringBuilder;
-
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v2, "Family offer accepted: identityChanged="
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v5}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    const-string v2, " rosterChanged="
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
-
-    move-result-object v0
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
 
     invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
@@ -556,9 +530,9 @@
 
     invoke-static {p1, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 86
     if-nez v5, :cond_9
 
+    .line 86
     invoke-virtual {v8, v7}, Ljava/util/TreeSet;->equals(Ljava/lang/Object;)Z
 
     move-result p1
@@ -575,7 +549,6 @@
 
     return v4
 
-    .line 63
     :cond_b
     :goto_4
     :try_start_1
@@ -583,6 +556,7 @@
 
     const-string v0, "Family offer rejected: invalid fields"
 
+    .line 63
     invoke-static {p1, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
@@ -592,7 +566,6 @@
 
     return v4
 
-    .line 58
     :catchall_0
     move-exception p1
 
@@ -681,12 +654,12 @@
 
     if-nez v0, :cond_2
 
-    .line 35
     :cond_1
     const/16 v0, 0x20
 
     new-array v0, v0, [B
 
+    .line 35
     sget-object v1, Lcom/supertws/dubokutv/FamilyIdentity;->RANDOM:Ljava/security/SecureRandom;
 
     invoke-virtual {v1, v0}, Ljava/security/SecureRandom;->nextBytes([B)V
@@ -714,9 +687,9 @@
 
     const-string v2, "familySecret"
 
-    .line 37
     const/16 v3, 0xb
 
+    .line 37
     invoke-static {v0, v3}, Landroid/util/Base64;->encodeToString([BI)Ljava/lang/String;
 
     move-result-object v0
@@ -746,7 +719,6 @@
 
     return-void
 
-    .line 32
     :catchall_0
     move-exception v0
 
@@ -810,6 +782,23 @@
     return v0
 .end method
 
+.method public isLanSyncEnabled()Z
+    .locals 3
+
+    .line 129
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
+
+    const-string v1, "lanSyncEnabled"
+
+    const/4 v2, 0x1
+
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+
+    move-result v0
+
+    return v0
+.end method
+
 .method public declared-synchronized join(Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONArray;)V
     .locals 4
 
@@ -834,11 +823,11 @@
 
     invoke-direct {v0}, Ljava/util/TreeSet;-><init>()V
 
-    .line 99
     if-eqz p3, :cond_1
 
     const/4 v1, 0x0
 
+    .line 99
     :goto_0
     invoke-virtual {p3}, Lorg/json/JSONArray;->length()I
 
@@ -846,9 +835,9 @@
 
     if-ge v1, v2, :cond_1
 
-    .line 100
     const-string v2, ""
 
+    .line 100
     invoke-virtual {p3, v1, v2}, Lorg/json/JSONArray;->optString(ILjava/lang/String;)Ljava/lang/String;
 
     move-result-object v2
@@ -872,7 +861,6 @@
 
     invoke-virtual {v0, v2}, Ljava/util/TreeSet;->add(Ljava/lang/Object;)Z
 
-    .line 99
     :cond_0
     add-int/lit8 v1, v1, 0x1
 
@@ -974,7 +962,6 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 96
     :catchall_0
     move-exception p1
 
@@ -1052,9 +1039,9 @@
 
     move-result-object v1
 
-    .line 112
     const-string v2, "nonce"
 
+    .line 112
     invoke-virtual {v1, v2, p1}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
 
     move-result-object p1
@@ -1085,7 +1072,6 @@
 
     move-result-object p1
 
-    .line 111
     return-object p1
 .end method
 
@@ -1126,9 +1112,9 @@
 
     invoke-direct {v1, v2}, Lorg/json/JSONArray;-><init>(Ljava/lang/String;)V
 
-    .line 50
     const/4 v2, 0x0
 
+    .line 50
     :goto_0
     invoke-virtual {v1}, Lorg/json/JSONArray;->length()I
 
@@ -1136,9 +1122,9 @@
 
     if-ge v2, v3, :cond_1
 
-    .line 51
     const-string v3, ""
 
+    .line 51
     invoke-virtual {v1, v2, v3}, Lorg/json/JSONArray;->optString(ILjava/lang/String;)Ljava/lang/String;
 
     move-result-object v3
@@ -1165,25 +1151,18 @@
     .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_0
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 50
     :cond_0
     add-int/lit8 v2, v2, 0x1
 
     goto :goto_0
 
-    .line 54
-    :catch_0
-    move-exception v1
-
-    :cond_1
-    nop
-
     .line 55
+    :catch_0
+    :cond_1
     monitor-exit p0
 
     return-object v0
 
-    .line 46
     :catchall_0
     move-exception v0
 
@@ -1197,7 +1176,7 @@
 
     monitor-enter p0
 
-    .line 130
+    .line 132
     :try_start_0
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
 
@@ -1209,18 +1188,62 @@
 
     invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
 
-    move-result-object p1
+    move-result-object v0
 
-    invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
+    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
+
+    if-nez p1, :cond_0
+
+    .line 133
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->cancelPendingCloudSync()V
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 131
+    .line 134
+    :cond_0
     monitor-exit p0
 
     return-void
 
-    .line 129
+    :catchall_0
+    move-exception p1
+
+    monitor-exit p0
+
+    throw p1
+.end method
+
+.method public declared-synchronized setLanSyncEnabled(Z)V
+    .locals 2
+
+    monitor-enter p0
+
+    .line 137
+    :try_start_0
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilyIdentity;->prefs:Landroid/content/SharedPreferences;
+
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+
+    move-result-object v0
+
+    const-string v1, "lanSyncEnabled"
+
+    invoke-interface {v0, v1, p1}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
+
+    move-result-object v0
+
+    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
+
+    .line 138
+    invoke-static {p1}, Lcom/supertws/dubokutv/LanSyncManager;->onLanSyncSettingChanged(Z)V
+    :try_end_0
+    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+
+    .line 139
+    monitor-exit p0
+
+    return-void
+
     :catchall_0
     move-exception p1
 

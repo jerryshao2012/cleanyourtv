@@ -34,7 +34,7 @@
 
     iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda2;->f$1:Lorg/json/JSONObject;
 
-    invoke-static {v0, v1}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$OgPsRFiAf55ksuAdO74YJ0G6te0(Lcom/supertws/dubokutv/FamilySyncPanel;Lorg/json/JSONObject;)V
+    invoke-virtual {v0, v1}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$previewMerge$15$com-supertws-dubokutv-FamilySyncPanel(Lorg/json/JSONObject;)V
 
     return-void
 .end method
