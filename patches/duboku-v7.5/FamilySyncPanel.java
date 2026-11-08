@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -131,6 +132,12 @@ public final class FamilySyncPanel extends ScrollView {
         scrollTo(0, 0);
     }
 
+    @Override protected boolean onRequestFocusInDescendants(int direction, Rect previouslyFocusedRect) {
+        if (screen == 0 && cloudSyncToggle != null)
+            return cloudSyncToggle.requestFocus(direction, previouslyFocusedRect);
+        return super.onRequestFocusInDescendants(direction, previouslyFocusedRect);
+    }
+
     private void addStatus() {
         status = text(statusMessage, 16, false);
         page.addView(status);
@@ -187,9 +194,6 @@ public final class FamilySyncPanel extends ScrollView {
         merge.setEnabled(enabled);
         addStatus();
         updateCloudSyncToggle();
-        post(() -> {
-            if (cloudSyncToggle != null) cloudSyncToggle.requestFocus();
-        });
     }
 
     private void showCode() {

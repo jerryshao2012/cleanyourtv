@@ -897,6 +897,27 @@
     return-void
 .end method
 
+
+.method protected onRequestFocusInDescendants(ILandroid/graphics/Rect;)Z
+    .locals 1
+
+    iget v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->screen:I
+    if-nez v0, :super
+
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->cloudSyncToggle:Landroid/widget/LinearLayout;
+    if-eqz v0, :super
+
+    invoke-virtual {v0, p1, p2}, Landroid/widget/LinearLayout;->requestFocus(ILandroid/graphics/Rect;)Z
+    move-result v0
+    return v0
+
+    :super
+    invoke-super {p0, p1, p2}, Landroid/widget/ScrollView;->onRequestFocusInDescendants(ILandroid/graphics/Rect;)Z
+    move-result v0
+    return v0
+.end method
+
+
 .method private setStatus(Ljava/lang/String;)V
     .locals 1
 
@@ -1410,13 +1431,6 @@
 
     .line 189
     invoke-direct {p0}, Lcom/supertws/dubokutv/FamilySyncPanel;->updateCloudSyncToggle()V
-
-    .line 190
-    new-instance v0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda11;
-
-    invoke-direct {v0, p0}, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda11;-><init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
-
-    invoke-virtual {p0, v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->post(Ljava/lang/Runnable;)Z
 
     .line 193
     return-void
