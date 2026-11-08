@@ -559,3 +559,9 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - 重新开启后恢复接收器并广播一次 `REQUEST_SYNC`；云端同步仍按自己的开关运行。关闭云同步时，LAN 开关仍可编辑，其余云端管理控件保持禁用。
 - 家庭面板开关已按设置面板统一为透明内容区、深色圆角整行、左侧名称/右侧状态和白底黑字焦点，不改变个人菜单的焦点归属。
 - 回归脚本 `tests/test_lan_sync_toggle.py` 覆盖设置持久化、LAN 网络入口门控、云/LAN 控件独立性及面板样式；Sony 与 Hisense 覆盖安装和焦点/切换验证完成。
+
+### API 22 兼容版分发包更新（2026-11-08）
+
+- 家庭面板与同步开关补丁从 `apks/common/Updated独播库TV_v7.5.apk`（minSdk 22，保留 Xiaomi 3 native/API 兼容层）重新构建；未使用 Sony 安装包作分发基底。
+- 同一成品已替换 `apks/common/独播库TV_v7.5.apk`、`apks/common/Updated独播库TV_v7.5.apk`、`devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`，SHA-256：`74a2512e57f91b448fdc6f7d6e54e1de9fc4249e1846393917c896ad8ee2a8e5`。三份文件逐字节一致；包名、versionCode 33、minSdk 22 和 Debug 签名校验通过。
+- 此兼容版在 Sony Bravia UR3、Hisense Fire TV 和 Xiaomi Mi Box 5 Max 覆盖安装并启动成功，保留应用数据。小米盒子 3 Android 5.1.1 未连接实机验证；其兼容性以 API 22 基底与保留的 native/API 补丁为依据。
