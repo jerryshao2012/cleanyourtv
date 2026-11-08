@@ -48,6 +48,8 @@ class FamilyPanelNavigationTest(unittest.TestCase):
         self.assertIn("-name 'FamilySyncPanel$*.smali'", script)
         self.assertIn("FamilySyncRoute.smali", script)
         self.assertTrue(list((PATCH / "smali_classes5/com/supertws/dubokutv").glob("FamilySyncPanel*.smali")))
+        for name in ("FamilySyncPanel$1.smali", "FamilySyncPanel$2.smali"):
+            self.assertTrue((PATCH / "smali_classes5/com/supertws/dubokutv" / name).exists(), name)
 
 
 if __name__ == "__main__":
