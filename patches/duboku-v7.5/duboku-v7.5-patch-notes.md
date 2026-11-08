@@ -572,3 +572,9 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - **修复**：Java 与 Smali 一致改为 API<26 检查通用 `https://` scheme 并降级为 `http://`；API 26+ URL 保持不变。新增 `tests/test_legacy_image_urls.py` 防止 Java/Smali 再次分叉。
 - **防遗漏构建**：新增 `build_universal_apks.sh`，只从 `apks/common/Updated独播库TV_v7.5.apk` 解码；校验 minSdk 22、两种 ABI 的 Xiaomi 3 shim、封面及 API 22 网络补丁，并比较发行源与 `cleanyourtv/patches` 的关键图片 Java/Smali 文件；打包后校验签名、minSdk 和 native 库逐字节未变，再同步三份发行包。未来不要从 Sony/Hisense APK 重建通用发布包。
 - **发行包**：三份 APK SHA-256 为 `9037b4804ed4e41873d1159118184f72046ddb6e255d7b4d2869887933eb8ff1`。Sony、Hisense、Xiaomi Mi Box 5 Max 覆盖安装并启动通过。小米盒子 3 ADB 当前未连接，仍需实机确认各域名封面加载。
+
+### 跳过片头焦点修复纳入通用 APK 构建（2026-11-08）
+
+- 回归原因：上一版“焦点移动不快进，按 OK 才快进”的修复已在 sony-ur3 补丁树中，但通用 APK 从 `apks/patches/duboku-v7.5` 叠加 smali；构建镜像校验遗漏播放器 `r.smali` 和 `SkipIntroFocusNoop.smali`，因此旧焦点回调重新进入 APK。
+- 恢复该既有修复：焦点回调使用空操作 `SkipIntroFocusNoop`，点击回调保留 `SkipIntroHelper` 的 30 秒快进。没有再实现另一套播放器逻辑。
+- `build_universal_apks.sh` 现在逐字节校验这两个文件与 sony-ur3 补丁树一致；`tests/test_skip_intro_focus.py` 检查焦点回调、点击回调和构建镜像守卫。
