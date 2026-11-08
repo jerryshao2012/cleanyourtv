@@ -293,6 +293,8 @@ Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索
 - `FamilySyncActivity.java` 与 `smali_classes4/com/supertws/dubokutv/FamilySyncActivity*.smali`：保留的非导出旧 Activity；日常家庭设置入口为个人菜单内嵌面板。
 - `FamilyIdentity.java` / `FamilyIdentity.smali`：加入后保存云端返回的家庭凭据及已知设备 roster，保留本机 deviceId 和记录。
 - `CloudSyncClient.java` / `smali_classes4/com/supertws/dubokutv/CloudSyncClient*.smali`：签发、兑换加入码与 preview/copy/cleanup HTTP 调用。新类放到 classes4 以避免继续增加接近 DEX method-reference 上限的 classes3。
+- DEX 唯一性：API-22 基础 APK 仍带有旧 `CloudSyncClient` classes3 副本；发布构建必须在合并 overlay 后删除 classes3 中所有 `CloudSyncClient*.smali`，只保留 classes4 完整实现。否则 Android 可能加载旧类，家庭面板调用新方法时抛出 `NoSuchMethodError` 并退出应用。构建仓库中的 `tests/test_cloud_sync_dex_uniqueness.py` 与构建后 DEX 检查覆盖此约束。
+- 家庭菜单图标：`ProfileScreens.Family` 使用新增 `ic_profile_family` 群组图标资源，构建时同时覆盖 `ProfileScreens.smali` 和资源定义；个人入口仍保留单人图标。
 - `r2-sync-worker/src/index.ts`：单码轮换/兑换及显式家庭快照迁移、复制读回、源身份撤销。
 - 上传间隔 30 秒是费用与断点新鲜度折中；突发休眠的尾差不超过约一个上传窗口，但网络失败时可能更久。
 - 网络超时后原 Worker PUT 理论上可能晚于相同请求重试和较新快照完成，短暂覆盖较新对象；single-flight 会降低概率，下一次成功快照会修复。v1 接受此低概率窗口，不为每个 PUT 额外读取 R2 或引入 Durable Object 排序。
