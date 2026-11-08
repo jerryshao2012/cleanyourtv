@@ -3,7 +3,7 @@
 .source "D8$$SyntheticClass"
 
 # interfaces
-.implements Landroid/content/DialogInterface$OnClickListener;
+.implements Landroid/view/View$OnClickListener;
 
 
 # instance fields
@@ -23,12 +23,12 @@
 
 
 # virtual methods
-.method public final onClick(Landroid/content/DialogInterface;I)V
+.method public final onClick(Landroid/view/View;)V
     .locals 1
 
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda7;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
-    invoke-virtual {v0, p1, p2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$confirmIssueCode$9$com-supertws-dubokutv-FamilySyncPanel(Landroid/content/DialogInterface;I)V
+    invoke-virtual {v0, p1}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$showHome$3$com-supertws-dubokutv-FamilySyncPanel(Landroid/view/View;)V
 
     return-void
 .end method

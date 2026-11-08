@@ -28,6 +28,9 @@
     invoke-static {v1, v2}, Landroidx/compose/foundation/layout/f2;->c(Landroidx/compose/ui/q;F)Landroidx/compose/ui/q;
     move-result-object v1
 
+    invoke-static {v1}, Landroidx/compose/foundation/i;->l(Landroidx/compose/ui/q;)Landroidx/compose/ui/q;
+    move-result-object v1
+
     const/4 v2, 0x0
     const/4 v4, 0x0
     const/4 v5, 0x4
