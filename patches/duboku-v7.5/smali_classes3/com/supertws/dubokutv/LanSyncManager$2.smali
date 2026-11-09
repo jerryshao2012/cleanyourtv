@@ -540,25 +540,25 @@
     const-string v9, ""
 
     :goto_7
-    if-eqz v22, :cond_12
-
-    move-object/from16 v2, v22
-
-    goto :goto_8
-
     .line 252
-    :cond_12
     iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
 
-    if-eqz v2, :cond_13
+    if-eqz v2, :cond_12
 
     invoke-virtual {v2}, Ljava/lang/String;->isEmpty()Z
 
     move-result v2
 
-    if-nez v2, :cond_13
+    if-nez v2, :cond_12
 
     iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
+
+    goto :goto_8
+
+    :cond_12
+    if-eqz v22, :cond_13
+
+    move-object/from16 v2, v22
 
     goto :goto_8
 
@@ -727,6 +727,41 @@
 
     invoke-static {v2, v11, v12}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
 
+    if-eqz v22, :insert_remote_record
+
+    const-string v2, "records"
+
+    const-string v7, "id = ?"
+
+    const/4 v13, 0x1
+
+    new-array v14, v13, [Ljava/lang/String;
+
+    const/4 v13, 0x0
+
+    aput-object v22, v14, v13
+
+    move-object/from16 v27, v6
+
+    const-string v28, "records"
+
+    move-object/from16 v29, v10
+
+    move-object/from16 v30, v7
+
+    move-object/from16 v31, v14
+
+    const/16 v32, 0x5
+
+    invoke-virtual/range {v27 .. v32}, Landroid/database/sqlite/SQLiteDatabase;->updateWithOnConflict(Ljava/lang/String;Landroid/content/ContentValues;Ljava/lang/String;[Ljava/lang/String;I)I
+
+    move-result v13
+
+    if-lez v13, :insert_remote_record
+
+    goto :remote_record_written
+
+    :insert_remote_record
     const-string v2, "records"
 
     const/4 v7, 0x5
@@ -734,6 +769,7 @@
     .line 268
     invoke-virtual {v6, v2, v5, v10, v7}, Landroid/database/sqlite/SQLiteDatabase;->insertWithOnConflict(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;I)J
 
+    :remote_record_written
     .line 269
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$600()Lcom/supertws/dubokutv/HandoffProgress;
 

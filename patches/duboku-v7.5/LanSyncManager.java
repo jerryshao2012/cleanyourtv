@@ -249,7 +249,7 @@ public class LanSyncManager {
                             String finalVideo = (videoPageUrl != null && !videoPageUrl.isEmpty() && !videoPageUrl.contains("example.com"))
                                     ? videoPageUrl : (existingVideo != null ? existingVideo : "");
 
-                            String finalId = existingId != null ? existingId : ((id != null && !id.isEmpty()) ? id : null);
+                            String finalId = (id != null && !id.isEmpty()) ? id : existingId;
                             if (finalId == null || finalId.isEmpty()) finalId = name;
 
                             ContentValues cv = new ContentValues();
@@ -265,7 +265,9 @@ public class LanSyncManager {
                             cv.put("posterUrl", finalPoster);
                             if (!isLanSyncEnabled()) return;
                             onRemoteProgress(name, remoteModifiedAt);
-                            db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                            int updated = existingId == null ? 0 : db.updateWithOnConflict(
+                                    "records", cv, "id = ?", new String[]{existingId}, SQLiteDatabase.CONFLICT_REPLACE);
+                            if (updated == 0) db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
                             sHandoff.offer(name, episode, progressInMillis, finalVideo, remoteModifiedAt);
 
                             // Close write connection first to ensure changes are flushed and locks released

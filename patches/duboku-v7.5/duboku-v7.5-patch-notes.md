@@ -1,5 +1,11 @@
 # 独播库TV (com.supertws.dubokutv v7.5 / versionCode 33) Android 5.1 兼容补丁 — 全程记录
 
+## 2026-11-08 Sony 历史记录集数与实际播放集数错位修复
+
+Sony 上复现：历史卡片显示《小城良方》第 22 集，确认后播放器实际注册为第 16 集。原因是 Room 历史行的 `episode` 已合并为新集，但接收端仍保留本地旧集的主键 `id`；播放器按该主键解析视频，所以打开旧集。此前文档所述的 `LanSyncManagerPatch` 修正没有作用：实际 UDP 接收路径在 `LanSyncManager$2.run()` 中直接入库，并未委托给该遗留辅助类；云端 `CloudSnapshotMerger` 也有相同的本地 ID 优先问题。
+
+修复后，LAN 与云端合并都优先采用远端单集 ID，缺失时回退本地 ID 和标题，并用 `updateWithOnConflict(..., CONFLICT_REPLACE)` 原位更新旧记录，避免旧主键造成续播错集或另插一条重复历史。新增 `tests/test_sync_episode_id.py` 检查实际打包路径及 Java 参考实现；扩展隔离 SQLite 合并测试验证单集 ID 更新后仍只有一条记录。最终 Sony 实机回归结果将在安装和验证后补记。
+
 ## 2026-11-07 API 22 网络策略崩溃诊断与修复
 
 小米 3 的临时诊断 APK 收到重复的 `JAVA_CRASH thread=z Dispatcher`，堆栈指向 `mc.c.h`，异常类型为 `NoClassDefFoundError`，cause 为 `ClassNotFoundException`。检查该方法发现 API<24 分支无条件调用 `android.security.NetworkSecurityPolicy.getInstance()`；此类从 API 23 才存在，因此 Android 5.1/API 22 请求线程在 OkHttp 的明文策略检查中失败，主列表数据请求无法正常完成。修复是在调用该类之前增加 SDK 23 守卫：API<23 返回 `true`（沿用 Android 5 默认允许明文的策略），API 23+ 路径不变。
@@ -491,7 +497,7 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
   2. 视频全屏播放状态下按遥控器向上键（DPAD_UP）想呼出控制按钮时，应用直接闪退并退出到系统桌面（Launcher）。
 - **根本原因分析**：
   1. **集数与 VideoId 不匹配**：
-     - 在局域网进度同步写入 SQLite 数据库时（`LanSyncManagerPatch.smali` 第 81 行）：
+     - 在局域网进度同步写入 SQLite 数据库时（实际路径 `LanSyncManager$2.smali`）：
        `cv.put("id", (existingId != null && !existingId.isEmpty()) ? existingId : id);`
      - 独播库中 `records.id` 即为具体的单集视频 ID（如第 11 集和第 12 集各自有不同的 `videoId`）。
      - 当从其他电视同步第 12 集的最新进度时，因保留了本地旧的 `existingId`（第 11 集的 ID），导致数据库中的 `episode` 被更新为“第12集”，但主键 `id` 仍锁死在第 11 集。点击历史卡片时，程序取该 `id` 直接向 `VideoPlayer` 发起导航，导致播放了第 11 集！

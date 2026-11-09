@@ -45,13 +45,15 @@ final class CloudSnapshotMerger {
                         if (detail.isEmpty()) detail = oldDetail == null ? "" : oldDetail;
                         if (video.isEmpty()) video = oldVideo == null ? "" : oldVideo;
                         ContentValues values = new ContentValues();
-                        values.put("id", id != null && !id.isEmpty() ? id : row.optString("id", name));
+                        String remoteId = row.optString("id", "");
+                        values.put("id", !remoteId.isEmpty() ? remoteId : (id != null && !id.isEmpty() ? id : name));
                         values.put("name", name); values.put("episode", episode); values.put("progressInMillis", progress);
                         values.put("durationInMillis", duration > 0 ? duration : oldDuration);
                         values.put("createdAt", oldCreated > 0 ? oldCreated : (created > 0 ? created : System.currentTimeMillis()));
                         values.put("modifiedAt", modified); values.put("videoPageUrl", video); values.put("detailPageUrl", detail); values.put("posterUrl", poster);
                         LanSyncManager.onRemoteProgress(name, modified);
-                        if (db.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE) < 0) throw new IllegalStateException("Record write failed");
+                        int updated = id == null ? 0 : db.updateWithOnConflict("records", values, "id = ?", new String[]{id}, SQLiteDatabase.CONFLICT_REPLACE);
+                        if (updated == 0 && db.insertWithOnConflict("records", null, values, SQLiteDatabase.CONFLICT_REPLACE) < 0) throw new IllegalStateException("Record write failed");
                         handoffs.add(new Object[]{name, episode, progress, video, modified});
                         changed = true;
                     }

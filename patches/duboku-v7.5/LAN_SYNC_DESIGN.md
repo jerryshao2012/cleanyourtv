@@ -127,8 +127,8 @@ flowchart TD
 | 文件路径 | 修改目的与注入行为 |
 | :--- | :--- |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager.smali` | 局域网同步核心单例、UDP 收发、冲突算法、Room Tracker 反射通知、`checkSyncOnPlay` / `applyPendingHandoff` 播放页接续 |
-| `smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali` | 委托调用 `LanSyncManagerPatch.runSync` 执行异步入库与防抖裁决 |
-| `smali_classes3/com/supertws/dubokutv/LanSyncManagerPatch.smali` | 线程安全入库、封面保护、测试数据清洗、整数百分比变更节流与 Room 版本递增 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali` | UDP 进度接收后的实际异步入库、冲突裁决、Room 版本递增；历史集更新时使用数据包中的单集 `id` 并原位替换旧主键 |
+| `smali_classes3/com/supertws/dubokutv/LanSyncManagerPatch.smali` | 遗留辅助实现；当前 UDP 接收线程不调用此类，修改行为时以 `$2.run()` 为准 |
 | `smali_classes3/com/supertws/dubokutv/smali_classes3/com/supertws/dubokutv/presentation/screens/history/i.smali` | 历史记录页：绕过 `AnimatedContent` 整行重绘、固定 `LaunchedEffect` 焦点、切断 `REQUEST_SYNC` 重组风暴 |
 | `smali_classes3/com/supertws/dubokutv/presentation/screens/history/v.smali` | 历史记录 `LazyRow`：解除对 `AnimatedContentScope` 的强依赖 |
 | `smali_classes3/com/supertws/dubokutv/LanSyncManager$1.smali` | UDP Receiver 独立后台线程，包含启动阶段的历史自动清理 |
