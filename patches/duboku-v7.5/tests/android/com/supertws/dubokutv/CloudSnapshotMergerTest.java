@@ -22,6 +22,18 @@ public final class CloudSnapshotMergerTest {
             return c.moveToFirst() ? c.getString(0) : "";
         } finally { db.close(); }
     }
+    private static String id() {
+        SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(PATH, null);
+        try (Cursor c = db.rawQuery("SELECT id FROM records WHERE name = ?", new String[]{"isolated-test"})) {
+            return c.moveToFirst() ? c.getString(0) : "";
+        } finally { db.close(); }
+    }
+    private static int count() {
+        SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(PATH, null);
+        try (Cursor c = db.rawQuery("SELECT COUNT(*) FROM records WHERE name = ?", new String[]{"isolated-test"})) {
+            return c.moveToFirst() ? c.getInt(0) : 0;
+        } finally { db.close(); }
+    }
     private static void check(boolean condition) { if (!condition) throw new AssertionError(); }
     public static void main(String[] args) throws Exception {
         new File(PATH).delete();
@@ -34,18 +46,20 @@ public final class CloudSnapshotMergerTest {
             }
         };
         try {
-            check(CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("test-id", "第5集", 200)))));
-            check("第5集".equals(episode()) && LanSyncManager.handoffs == 1 && LanSyncManager.notifications == 1);
-            check(!CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("test-id", "第6集", 100)))));
-            check("第5集".equals(episode()));
-            check(CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("test-id", "第4集", 300)))));
-            check("第4集".equals(episode()));
+            check(CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("episode-5", "第5集", 200)))));
+            check("第5集".equals(episode()) && "episode-5".equals(id()) && count() == 1
+                    && LanSyncManager.handoffs == 1 && LanSyncManager.notifications == 1);
+            check(!CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("episode-6", "第6集", 100)))));
+            check("第5集".equals(episode()) && "episode-5".equals(id()));
+            check(CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("episode-4", "第4集", 300)))));
+            check("第4集".equals(episode()) && "episode-4".equals(id()) && count() == 1);
             int handoffs = LanSyncManager.handoffs;
             try {
                 CloudSnapshotMerger.merge(snapshot(new JSONArray().put(row("test-id", "第7集", 400)).put(JSONObject.NULL)));
                 throw new AssertionError("Invalid record accepted");
             } catch (IllegalArgumentException expected) { }
-            check("第4集".equals(episode()) && LanSyncManager.handoffs == handoffs);
+            check("第4集".equals(episode()) && "episode-4".equals(id()) && count() == 1
+                    && LanSyncManager.handoffs == handoffs);
             System.out.println("Cloud snapshot merge tests passed");
         } finally { new File(PATH).delete(); }
     }

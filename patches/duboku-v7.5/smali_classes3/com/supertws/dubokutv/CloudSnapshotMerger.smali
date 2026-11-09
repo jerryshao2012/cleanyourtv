@@ -462,26 +462,34 @@
     .line 48
     const-string v6, "id"
 
+    const-string v7, ""
+
+    invoke-virtual {v8, v6, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v7
+
+    invoke-virtual {v7}, Ljava/lang/String;->isEmpty()Z
+
+    move-result v0
+
+    if-eqz v0, :goto_6
+
     if-eqz v30, :cond_b
 
     invoke-virtual/range {v30 .. v30}, Ljava/lang/String;->isEmpty()Z
 
-    move-result v7
+    move-result v0
 
-    if-nez v7, :cond_b
+    if-nez v0, :cond_b
+
+    move-object/from16 v7, v30
 
     goto :goto_6
 
     :cond_b
-    const-string v7, "id"
-
-    invoke-virtual {v8, v7, v13}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v30
+    move-object/from16 v7, v13
 
     :goto_6
-    move-object/from16 v7, v30
-
     invoke-virtual {v1, v6, v7}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 
     .line 49
@@ -575,6 +583,41 @@
     invoke-static {v13, v10, v11}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
 
     .line 54
+    const/4 v6, 0x5
+
+    if-eqz v30, :insert_cloud_record
+
+    const-string v0, "records"
+
+    const/4 v7, 0x1
+
+    new-array v15, v7, [Ljava/lang/String;
+
+    const/4 v8, 0x0
+
+    aput-object v30, v15, v8
+
+    move-object/from16 v33, v4
+
+    move-object/from16 v34, v0
+
+    move-object/from16 v35, v1
+
+    const-string v36, "id = ?"
+
+    move-object/from16 v37, v15
+
+    const/16 v38, 0x5
+
+    invoke-virtual/range {v33 .. v38}, Landroid/database/sqlite/SQLiteDatabase;->updateWithOnConflict(Ljava/lang/String;Landroid/content/ContentValues;Ljava/lang/String;[Ljava/lang/String;I)I
+
+    move-result v0
+
+    if-lez v0, :insert_cloud_record
+
+    goto :cloud_record_written
+
+    :insert_cloud_record
     const-string v0, "records"
 
     const/4 v6, 0x5
@@ -590,6 +633,8 @@
     cmp-long v8, v0, v14
 
     if-ltz v8, :cond_f
+
+    :cloud_record_written
 
     .line 55
     new-array v0, v6, [Ljava/lang/Object;
