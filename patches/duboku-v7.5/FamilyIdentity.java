@@ -105,6 +105,10 @@ public final class FamilyIdentity {
                 .putLong("familyCreatedAt", System.currentTimeMillis()).remove("cloudAuthRejected").apply();
     }
 
+    public synchronized void adoptSignedInFamily(String family, String secret) {
+        join(family, secret, new JSONArray());
+    }
+
     public JSONObject offer(String nonce) throws Exception {
         JSONArray devices = new JSONArray();
         devices.put(deviceId()); for (String peer : peers()) devices.put(peer);
@@ -123,10 +127,19 @@ public final class FamilyIdentity {
     }
 
     public boolean isCloudSyncEnabled() {
-        return prefs.getBoolean("cloudSyncEnabled", true);
+        return prefs.getBoolean("cloudSyncEnabled", false);
     }
 
-    public boolean isLanSyncEnabled() { return prefs.getBoolean("lanSyncEnabled", true); }
+    public boolean isLanSyncEnabled() { return prefs.getBoolean("lanSyncEnabled", false); }
+
+    public synchronized void enableSyncDefaultsIfUnset(Context context) {
+        boolean cloud = !prefs.contains("cloudSyncEnabled");
+        boolean lan = !prefs.contains("lanSyncEnabled");
+        if (cloud) prefs.edit().putBoolean("cloudSyncEnabled", true).apply();
+        if (lan) prefs.edit().putBoolean("lanSyncEnabled", true).apply();
+        if (cloud) CloudSyncClient.fetchOnHistory(context);
+        if (lan) LanSyncManager.onLanSyncSettingChanged(true);
+    }
 
     public synchronized void setCloudSyncEnabled(boolean enabled) {
         prefs.edit().putBoolean("cloudSyncEnabled", enabled).apply();

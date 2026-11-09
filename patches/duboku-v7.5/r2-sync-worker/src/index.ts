@@ -79,6 +79,17 @@ async function decryptJoinPayload(value: unknown, env: Env): Promise<{ familyId:
     return validId(payload?.familyId) && decodeSecret(payload?.familySecret) ? payload : null;
   } catch { return null; }
 }
+async function decryptFamilySecret(value: unknown, env: Env): Promise<string | null> {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{60,200}$/.test(value)) return null;
+  try {
+    const rawText = atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4));
+    const raw = Uint8Array.from(rawText, c => c.charCodeAt(0));
+    if (raw.length < 29) return null;
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, await encryptionKey(env), raw.slice(12));
+    const secret = JSON.parse(new TextDecoder().decode(plain))?.familySecret;
+    return decodeSecret(secret) ? secret : null;
+  } catch { return null; }
+}
 async function coordinator(env: Env, path: string, body: unknown): Promise<Response> {
   return env.REGISTRATION_COORDINATOR.getByName('registration-coordinator').fetch(`https://coordinator/${path}`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
@@ -214,16 +225,17 @@ async function register(request: Request, env: Env): Promise<Response> {
   let data: unknown;
   try { data = JSON.parse(body.text); } catch { return error(400, 'invalid_json'); }
   if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'familyId,familySecret') return error(400, 'invalid_request');
-  const { familyId, familySecret } = data as Record<string, unknown>;
+      const { familyId, familySecret } = data as Record<string, unknown>;
   const secret = decodeSecret(familySecret);
   if (typeof familyId !== 'string' || !validId(familyId) || !secret) return error(400, 'invalid_request');
+  const secretCipher = await encryptJoinPayload({ familySecret }, env);
   const ip = request.headers.get('CF-Connecting-IP');
   if (!ip || ip.length > 128) return error(400, 'invalid_request');
   const hash = await sha256(secret);
   const coordinator = env.REGISTRATION_COORDINATOR.getByName('registration-coordinator');
   const result = await coordinator.fetch('https://coordinator/register', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ familyId, secretHash: hex(hash), ipHash: hex(await sha256(new TextEncoder().encode(ip))) })
+    body: JSON.stringify({ familyId, secretHash: hex(hash), secretCipher, ipHash: hex(await sha256(new TextEncoder().encode(ip))) })
   });
   return result.status === 201 || result.status === 200 ? json({ familyId, registered: true }, result.status) : result;
 }
@@ -250,7 +262,9 @@ export class RegistrationCoordinator {
   constructor(state: DurableObjectState) {
     this.storage = state.storage;
     this.sql = state.storage.sql;
-    this.sql.exec('CREATE TABLE IF NOT EXISTS families (family_id TEXT PRIMARY KEY, secret_hash TEXT NOT NULL)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS families (family_id TEXT PRIMARY KEY, secret_hash TEXT NOT NULL, secret_cipher TEXT)');
+    if (!this.sql.exec<{ name: string }>('PRAGMA table_info(families)').toArray().some(column => column.name === 'secret_cipher')) this.sql.exec('ALTER TABLE families ADD COLUMN secret_cipher TEXT');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS family_credentials (family_id TEXT PRIMARY KEY, secret_cipher TEXT NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS revoked_families (family_id TEXT PRIMARY KEY, revoked_at INTEGER NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS registration_attempts (ip_hash TEXT NOT NULL, occurred_at INTEGER NOT NULL)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS registration_attempts_ip_time ON registration_attempts (ip_hash, occurred_at)');
@@ -258,10 +272,12 @@ export class RegistrationCoordinator {
     this.sql.exec('CREATE TABLE IF NOT EXISTS join_attempts (kind TEXT NOT NULL, subject_hash TEXT NOT NULL, occurred_at INTEGER NOT NULL)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS join_attempts_subject_time ON join_attempts (kind, subject_hash, occurred_at)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS merge_manifests (target_family_id TEXT PRIMARY KEY, source_families TEXT NOT NULL, source_fingerprint TEXT NOT NULL)');
-    this.sql.exec('CREATE TABLE IF NOT EXISTS family_auth_sessions (session_hash TEXT PRIMARY KEY, poll_hash TEXT NOT NULL, family_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL, provider TEXT, subject TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS family_auth_sessions (session_hash TEXT PRIMARY KEY, poll_hash TEXT NOT NULL, family_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL, provider TEXT, subject TEXT, join_mode INTEGER NOT NULL DEFAULT 0, ticket_hash TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS family_auth_states (state_hash TEXT PRIMARY KEY, session_hash TEXT NOT NULL, provider TEXT NOT NULL, expires_at INTEGER NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS family_provider_links (provider TEXT NOT NULL, subject TEXT NOT NULL, family_id TEXT NOT NULL, linked_at INTEGER NOT NULL, display_name TEXT, PRIMARY KEY (provider, subject))');
     if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_auth_sessions)').toArray().some(column => column.name === 'subject')) this.sql.exec('ALTER TABLE family_auth_sessions ADD COLUMN subject TEXT');
+    if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_auth_sessions)').toArray().some(column => column.name === 'join_mode')) this.sql.exec('ALTER TABLE family_auth_sessions ADD COLUMN join_mode INTEGER NOT NULL DEFAULT 0');
+    if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_auth_sessions)').toArray().some(column => column.name === 'ticket_hash')) this.sql.exec('ALTER TABLE family_auth_sessions ADD COLUMN ticket_hash TEXT');
     if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_provider_links)').toArray().some(column => column.name === 'display_name')) this.sql.exec('ALTER TABLE family_provider_links ADD COLUMN display_name TEXT');
   }
 
@@ -271,17 +287,22 @@ export class RegistrationCoordinator {
     const path = new URL(request.url).pathname;
     if (path.startsWith('/auth/')) return this.auth(path, body);
     if (path === '/register') {
-      if (typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.secretHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.secretHash) || typeof body.ipHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.ipHash)) return error(400, 'invalid_request');
+      if (typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.secretHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.secretHash) || typeof body.secretCipher !== 'string' || typeof body.ipHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.ipHash)) return error(400, 'invalid_request');
       return this.storage.transactionSync(() => {
       const rows = this.sql.exec<{ secret_hash: string }>('SELECT secret_hash FROM families WHERE family_id = ?', body.familyId).toArray();
       if (this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id = ?', body.familyId).toArray().length) return error(410, 'family_revoked');
-      if (rows.length) return equalHash(fromHex(rows[0].secret_hash), fromHex(body.secretHash)) ? json({ familyId: body.familyId, registered: true }, 200) : error(409, 'family_conflict');
+      if (rows.length) {
+        if (!equalHash(fromHex(rows[0].secret_hash), fromHex(body.secretHash))) return error(409, 'family_conflict');
+        this.sql.exec('INSERT INTO family_credentials (family_id, secret_cipher) VALUES (?, ?) ON CONFLICT(family_id) DO UPDATE SET secret_cipher=excluded.secret_cipher', body.familyId, body.secretCipher);
+        return json({ familyId: body.familyId, registered: true }, 200);
+      }
       const now = Date.now();
       this.sql.exec('DELETE FROM registration_attempts WHERE occurred_at <= ?', now - 3_600_000);
       const attempts = this.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM registration_attempts WHERE ip_hash = ?', body.ipHash).toArray()[0].count;
       if (attempts >= 10) return error(429, 'rate_limited');
       this.sql.exec('INSERT INTO registration_attempts (ip_hash, occurred_at) VALUES (?, ?)', body.ipHash, now);
-      this.sql.exec('INSERT INTO families (family_id, secret_hash) VALUES (?, ?)', body.familyId, body.secretHash);
+      this.sql.exec('INSERT INTO families (family_id, secret_hash, secret_cipher) VALUES (?, ?, ?)', body.familyId, body.secretHash, body.secretCipher);
+      this.sql.exec('INSERT INTO family_credentials (family_id, secret_cipher) VALUES (?, ?)', body.familyId, body.secretCipher);
       return json({ familyId: body.familyId, registered: true }, 201);
       });
     }
@@ -327,6 +348,7 @@ export class RegistrationCoordinator {
         for (const familyId of body.familyIds as string[]) {
           this.sql.exec('INSERT OR IGNORE INTO revoked_families (family_id, revoked_at) VALUES (?, ?)', familyId, Date.now());
           this.sql.exec('DELETE FROM families WHERE family_id = ?', familyId);
+          this.sql.exec('DELETE FROM family_credentials WHERE family_id = ?', familyId);
           this.sql.exec('DELETE FROM join_codes WHERE family_id = ?', familyId);
         }
         return json({ revoked: true });
@@ -357,14 +379,20 @@ export class RegistrationCoordinator {
     if (!Number.isSafeInteger(now)) return error(400, 'invalid_request');
     return this.storage.transactionSync(() => {
       if (path === '/auth/create-session') {
-        if (typeof body.sessionHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.sessionHash) || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || typeof body.familyId !== 'string' || !validId(body.familyId) || !Number.isSafeInteger(body.expiresAt) || body.expiresAt !== (now as number) + 300_000) return error(400, 'invalid_request');
+        if (typeof body.sessionHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.sessionHash) || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.joinMode !== 'boolean' || !Number.isSafeInteger(body.expiresAt) || body.expiresAt !== (now as number) + 300_000) return error(400, 'invalid_request');
         const family = this.sql.exec('SELECT family_id FROM families WHERE family_id=?', body.familyId).toArray();
         const revoked = this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length > 0;
         if (!family.length || revoked) return error(401, 'unauthorized');
         this.sql.exec('DELETE FROM family_auth_sessions WHERE expires_at<=?', now);
         this.sql.exec('DELETE FROM family_auth_states WHERE expires_at<=?', now);
-        this.sql.exec("INSERT INTO family_auth_sessions (session_hash,poll_hash,family_id,created_at,expires_at,status) VALUES (?,?,?,?,?,'pending')", body.sessionHash, body.pollHash, body.familyId, now, body.expiresAt);
+        this.sql.exec("INSERT INTO family_auth_sessions (session_hash,poll_hash,family_id,created_at,expires_at,status,join_mode) VALUES (?,?,?,?,?,'pending',?)", body.sessionHash, body.pollHash, body.familyId, now, body.expiresAt, body.joinMode ? 1 : 0);
         return json({ created: true }, 201);
+      }
+      if (path === '/auth/get-secret') {
+        if (typeof body.familyId !== 'string' || !validId(body.familyId)) return error(400, 'invalid_request');
+        const row = this.sql.exec<{ secret_cipher: string }>('SELECT secret_cipher FROM family_credentials WHERE family_id=?', body.familyId).toArray()[0];
+        if (!row || !row.secret_cipher || this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length) return error(404, 'family_unavailable');
+        return json({ secretCipher: row.secret_cipher });
       }
       if (path === '/auth/consume-state') {
         if (typeof body.stateHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.stateHash)) return error(400, 'invalid_request');
@@ -382,7 +410,7 @@ export class RegistrationCoordinator {
         return json({ accounts, providers: [...new Set(accounts.map(account => account.provider))] });
       }
       if (typeof body.sessionHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.sessionHash)) return error(400, 'invalid_request');
-      const session = this.sql.exec<{ poll_hash: string; family_id: string; expires_at: number; status: string; provider: string | null; subject: string | null }>('SELECT poll_hash,family_id,expires_at,status,provider,subject FROM family_auth_sessions WHERE session_hash=?', body.sessionHash).toArray()[0];
+      const session = this.sql.exec<{ poll_hash: string; family_id: string; expires_at: number; status: string; provider: string | null; subject: string | null; join_mode: number; ticket_hash: string | null }>('SELECT poll_hash,family_id,expires_at,status,provider,subject,join_mode,ticket_hash FROM family_auth_sessions WHERE session_hash=?', body.sessionHash).toArray()[0];
       if (path === '/auth/page-session') return session ? json({ status: session.expires_at <= (now as number) ? 'expired' : session.status }) : error(404, 'not_found');
       if (path === '/auth/status' || path === '/auth/cancel') {
         if (!session || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || !equalHash(fromHex(session.poll_hash), fromHex(body.pollHash))) return error(401, 'unauthorized');
@@ -391,7 +419,23 @@ export class RegistrationCoordinator {
         const account = status === 'linked' && session.provider && session.subject
           ? this.sql.exec<{ display_name: string | null }>('SELECT display_name FROM family_provider_links WHERE provider=? AND subject=? AND family_id=?', session.provider, session.subject, session.family_id).toArray()[0]
           : undefined;
-        return json({ status, ...(status === 'linked' && session.provider ? { provider: session.provider, displayName: account?.display_name ?? '' } : {}) });
+        return json({ status, ...(status === 'linked' && session.provider ? { provider: session.provider, displayName: account?.display_name ?? '', familyId: session.family_id } : {}) });
+      }
+      if (path === '/auth/claim-family') {
+        if (!session || session.status !== 'linked' || session.expires_at <= (now as number) || typeof body.ticketHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.ticketHash) || !session.ticket_hash || !equalHash(fromHex(session.ticket_hash), fromHex(body.ticketHash))) return error(401, 'unauthorized');
+        const account = session.provider && session.subject ? this.sql.exec<{ family_id: string }>('SELECT family_id FROM family_provider_links WHERE provider=? AND subject=?', session.provider, session.subject).toArray()[0] : undefined;
+        const familyId = account?.family_id ?? session.family_id;
+        const family = this.sql.exec<{ family_id: string }>('SELECT family_id FROM families WHERE family_id=?', familyId).toArray()[0];
+        if (!family) return error(404, 'family_unavailable');
+        this.sql.exec('UPDATE family_auth_sessions SET ticket_hash=NULL WHERE session_hash=?', body.sessionHash);
+        return json({ familyId });
+      }
+      if (path === '/auth/issue-ticket') {
+        if (!session || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || !equalHash(fromHex(session.poll_hash), fromHex(body.pollHash)) || session.status !== 'linked' || session.expires_at <= (now as number) || typeof body.ticketHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.ticketHash)) return error(401, 'unauthorized');
+        const previous = this.sql.exec<{ ticket_hash: string | null }>('SELECT ticket_hash FROM family_auth_sessions WHERE session_hash=?', body.sessionHash).toArray()[0];
+        if (previous.ticket_hash) return json({ issued: true });
+        this.sql.exec('UPDATE family_auth_sessions SET ticket_hash=? WHERE session_hash=?', body.ticketHash, body.sessionHash);
+        return json({ issued: true });
       }
       if (path === '/auth/begin-oauth') {
         if (!session || session.expires_at <= (now as number) || session.status !== 'pending' || typeof body.stateHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.stateHash) || !['google', 'github'].includes(String(body.provider))) return error(400, 'invalid_session');
@@ -403,12 +447,15 @@ export class RegistrationCoordinator {
         if (!session || session.family_id !== body.familyId || session.status !== 'pending' || session.expires_at <= (now as number)) return error(400, 'invalid_session');
         if (!this.sql.exec('SELECT family_id FROM families WHERE family_id=?', body.familyId).toArray().length || this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length) return error(401, 'unauthorized');
         const existing = this.sql.exec<{ family_id: string }>('SELECT family_id FROM family_provider_links WHERE provider=? AND subject=?', body.provider, body.subject).toArray()[0];
-        if (existing && existing.family_id !== body.familyId) return error(409, 'account_already_linked');
+        const targetFamilyId = session.join_mode && existing ? existing.family_id : body.familyId;
+        if (existing && existing.family_id !== body.familyId && !session.join_mode) return error(409, 'account_already_linked');
+        if (session.join_mode && existing && !this.sql.exec('SELECT family_id FROM families WHERE family_id=?', existing.family_id).toArray().length) return error(409, 'family_unavailable');
         const displayName = cleanDisplayName(body.displayName);
         if (!displayName) return error(400, 'invalid_request');
-        this.sql.exec('INSERT INTO family_provider_links (provider,subject,family_id,linked_at,display_name) VALUES (?,?,?,?,?) ON CONFLICT(provider,subject) DO UPDATE SET family_id=excluded.family_id,linked_at=excluded.linked_at,display_name=excluded.display_name', body.provider, body.subject, body.familyId, now, displayName);
-        this.sql.exec("UPDATE family_auth_sessions SET status='linked',provider=?,subject=? WHERE session_hash=? AND status='pending'", body.provider, body.subject, body.sessionHash);
-        return json({ linked: true });
+        this.sql.exec('INSERT INTO family_provider_links (provider,subject,family_id,linked_at,display_name) VALUES (?,?,?,?,?) ON CONFLICT(provider,subject) DO UPDATE SET family_id=excluded.family_id,linked_at=excluded.linked_at,display_name=excluded.display_name', body.provider, body.subject, targetFamilyId, now, displayName);
+        const ticketHash = typeof body.ticketHash === 'string' && /^[0-9a-f]{64}$/.test(body.ticketHash) ? body.ticketHash : null;
+        this.sql.exec("UPDATE family_auth_sessions SET status='linked',provider=?,subject=?,family_id=? WHERE session_hash=? AND status='pending'", body.provider, body.subject, targetFamilyId, body.sessionHash);
+        return json({ linked: true, familyId: targetFamilyId });
       }
       return error(404, 'not_found');
     });
@@ -603,9 +650,10 @@ function authPage(message: string, status = 200): Response {
 }
 async function createAuthSession(request: Request, env: Env): Promise<Response> {
   const familyId = new URL(request.url).searchParams.get('familyId') ?? '';
+  const joinMode = new URL(request.url).searchParams.get('mode') === 'join';
   if (!validId(familyId) || !(await authorized(request, familyId, env))) return error(401, 'unauthorized');
   const sessionId = newToken(), pollSecret = newToken(), now = Date.now();
-  const result = await coordinator(env, 'auth/create-session', { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), familyId, now, expiresAt: now + 300_000 });
+  const result = await coordinator(env, 'auth/create-session', { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), familyId, joinMode, now, expiresAt: now + 300_000 });
   if (result.status !== 201) return result;
   return json({ sessionId, pollSecret, url: `${new URL(request.url).origin}/auth/${sessionId}`, expiresAt: now + 300_000 }, 201);
 }
@@ -614,7 +662,30 @@ async function authSession(request: Request, env: Env, sessionId: string, action
   const pollSecret = request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '';
   if (!/^[A-Za-z0-9_-]{43}$/.test(pollSecret)) return error(401, 'unauthorized');
   const result = await coordinator(env, `auth/${action}`, { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), now: Date.now() });
-  return result.status === 200 ? result : error(result.status, 'unauthorized');
+  if (result.status !== 200) return error(result.status, 'unauthorized');
+  if (action === 'cancel') return result;
+  const data = await result.json() as Record<string, unknown>;
+  if (data.status === 'linked' && typeof data.familyId === 'string') {
+    const ticket = newToken();
+    const stored = await coordinator(env, 'auth/issue-ticket', { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), ticketHash: await hashText(ticket), now: Date.now() });
+    if (!stored.ok) return stored;
+    data.familyTicket = ticket;
+  }
+  return json(data);
+}
+async function claimFamily(request: Request, env: Env, sessionId: string): Promise<Response> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId)) return error(400, 'invalid_session');
+  const ticket = request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '';
+  if (!/^[A-Za-z0-9_-]{43}$/.test(ticket)) return error(401, 'unauthorized');
+  const result = await coordinator(env, 'auth/claim-family', { sessionHash: await hashText(sessionId), ticketHash: await hashText(ticket), now: Date.now() });
+  if (!result.ok) return result;
+  const data = await result.json() as { familyId: string };
+  const secret = await coordinator(env, 'auth/get-secret', { familyId: data.familyId, now: Date.now() });
+  if (!secret.ok) return error(500, 'credential_unavailable');
+  const encrypted = await secret.json() as { secretCipher: string };
+  const familySecret = await decryptFamilySecret(encrypted.secretCipher, env);
+  if (!familySecret) return error(500, 'credential_decryption_failed');
+  return json({ familyId: data.familyId, familySecret });
 }
 async function phonePage(sessionId: string, env: Env): Promise<Response> {
   if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId)) return error(404, 'not_found');
@@ -716,6 +787,8 @@ export default {
     try {
       const url = new URL(request.url);
       if (url.pathname === '/v1/family-auth/sessions' && request.method === 'POST') return await createAuthSession(request, env);
+      const claimMatch = /^\/v1\/family-auth\/sessions\/([^/]+)\/claim$/.exec(url.pathname);
+      if (claimMatch && request.method === 'POST') return await claimFamily(request, env, claimMatch[1]);
       const authMatch = /^\/v1\/family-auth\/sessions\/([^/]+)(?:\/(oauth\/(google|github)|cancel))?$/.exec(url.pathname);
       if (authMatch) {
         const [, sessionId, nested, provider] = authMatch;

@@ -38,18 +38,13 @@ class CloudSyncDisabledTest(unittest.TestCase):
             self.assertIn("requireCloudSyncEnabled()" if method.startswith(("create", "redeem", "merge", "post", "get")) else "cloudSyncEnabled()",
                           method_body(CLIENT, method))
 
-    def test_cloud_controls_follow_sync_toggle_but_leave_toggle_enabled(self):
+    def test_cloud_controls_follow_sync_toggle(self):
         home = method_body(PANEL, "private void showHome()")
-        join = method_body(PANEL, "private void showJoin()")
-        merge = method_body(PANEL, "private void showMerge()")
-        controls = method_body(PANEL, "private void updateMergeControls()")
-        for action in ("code", "join", "merge"):
-            self.assertIn(f"{action}.setEnabled(enabled)", home)
-        self.assertIn("joinCode.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled())", join)
-        self.assertIn("sourceCodes.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled())", merge)
-        self.assertIn("mergePreview.setEnabled(enabled)", controls)
-        self.assertIn("mergeCopy.setEnabled(enabled &&", controls)
-        self.assertNotIn("setEnabled", method_body(PANEL, "private void updateCloudSyncToggle()"))
+        self.assertNotIn("showJoin()", PANEL)
+        self.assertNotIn("showMerge()", PANEL)
+        self.assertIn("authLinkButton.setEnabled(true)",
+                      method_body(PANEL, "private void updateCloudSyncToggle()"))
+        self.assertNotIn("请先开启云端同步", PANEL)
 
 
 if __name__ == "__main__":

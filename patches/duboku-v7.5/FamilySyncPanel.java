@@ -8,20 +8,17 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
-import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,21 +28,17 @@ public final class FamilySyncPanel extends ScrollView {
     private final ExecutorService work = Executors.newSingleThreadExecutor();
     private final Handler authHandler = new Handler(Looper.getMainLooper());
     private LinearLayout page;
-    private TextView status, familyHeader, currentFamily, codeDisplay, cloudSyncValue, lanSyncValue;
-    private EditText joinCode, sourceCodes;
-    private Button cleanup, mergePreview, mergeCopy;
+    private TextView status, welcomeMessage, currentFamily, cloudSyncValue, lanSyncValue;
     private Button authLinkButton;
     private WebView authQr;
     private LinearLayout cloudSyncToggle, lanSyncToggle;
-    private String previewedCodes = "", copiedCodes = "", joinCodeValue = "", sourceCodeValue = "";
-    private String generatedCode = "", statusMessage = "";
+    private String statusMessage = "";
     private String linkedProviders = "";
     private String linkedDisplayName = "";
     private String linkedProvidersFamilyId = "";
+    private boolean accountLinked;
     private String authSessionId = "", authPollSecret = "";
     private int screen;
-    private boolean previewed;
-    private boolean cleanupReady;
     private boolean authPolling;
 
     public FamilySyncPanel(Context context) {
@@ -115,40 +108,22 @@ public final class FamilySyncPanel extends ScrollView {
         return row;
     }
 
-    private EditText input(String hint, boolean multiline) {
-        EditText input = new EditText(host);
-        input.setSingleLine(!multiline);
-        input.setHint(hint);
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.LTGRAY);
-        input.setTextSize(16);
-        if (multiline) {
-            input.setMinLines(2);
-            input.setGravity(Gravity.TOP | Gravity.START);
-        }
-        return input;
-    }
-
     private void resetPage() {
         stopAuthPolling(true);
         status = null;
-        cleanup = null;
+        welcomeMessage = null;
         cloudSyncToggle = null;
         lanSyncToggle = null;
         cloudSyncValue = null;
         lanSyncValue = null;
-        joinCode = null;
-        sourceCodes = null;
-        mergePreview = null;
-        mergeCopy = null;
         authLinkButton = null;
         page.removeAllViews();
         scrollTo(0, 0);
     }
 
     @Override protected boolean onRequestFocusInDescendants(int direction, Rect previouslyFocusedRect) {
-        if (screen == 0 && cloudSyncToggle != null)
-            return cloudSyncToggle.requestFocus(direction, previouslyFocusedRect);
+        if (screen == 0 && authLinkButton != null)
+            return (accountLinked ? cloudSyncToggle : authLinkButton).requestFocus(direction, previouslyFocusedRect);
         return super.onRequestFocusInDescendants(direction, previouslyFocusedRect);
     }
 
@@ -175,10 +150,15 @@ public final class FamilySyncPanel extends ScrollView {
         screen = 0;
         resetPage();
         page.addView(text("家庭", 28, false));
+        welcomeMessage = text("", 18, false);
+        page.addView(welcomeMessage);
+        updateWelcomeMessage();
+        authLinkButton = actionRow("关联 Google / GitHub 账号（手机扫码）", this::startAuth);
+        updateAuthLinkButton();
         cloudSyncToggle = syncToggleRow("云端同步", true);
+        cloudSyncToggle.setEnabled(false);
         LinearLayout.LayoutParams toggleLayout = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         toggleLayout.bottomMargin = 16;
-        page.addView(cloudSyncToggle, toggleLayout);
         cloudSyncToggle.setOnClickListener(v -> {
             FamilyIdentity id = FamilyIdentity.get(host);
             boolean next = !id.isCloudSyncEnabled();
@@ -188,6 +168,7 @@ public final class FamilySyncPanel extends ScrollView {
             setStatus(next ? "已开启家庭云端同步" : "已关闭云端同步（仅保留局域网同步）");
         });
         lanSyncToggle = syncToggleRow("局域网络同步", false);
+        lanSyncToggle.setEnabled(false);
         lanSyncToggle.setOnClickListener(v -> {
             FamilyIdentity id = FamilyIdentity.get(host);
             boolean next = !id.isLanSyncEnabled();
@@ -195,110 +176,16 @@ public final class FamilySyncPanel extends ScrollView {
             updateCloudSyncToggle();
             setStatus(next ? "已开启局域网络同步" : "已关闭局域网络同步（仅作为本地播放器）");
         });
+        page.addView(cloudSyncToggle, toggleLayout);
         page.addView(lanSyncToggle, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        familyHeader = text("家庭管理", 20, true);
-        page.addView(familyHeader);
         currentFamily = text("当前家庭：" + FamilyIdentity.get(host).familyId(), 15, false);
         page.addView(currentFamily);
-        authLinkButton = actionRow("关联 Google / GitHub", this::startAuth);
-        authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        updateAuthLinkButton();
         refreshLinkedProviders();
-        Button code = actionRow("管理家庭加入码", this::showCode);
-        Button join = actionRow("新电视加入家庭", this::showJoin);
-        Button merge = actionRow("合并旧家庭记录", this::showMerge);
-        boolean enabled = FamilyIdentity.get(host).isCloudSyncEnabled();
-        code.setEnabled(enabled);
-        join.setEnabled(enabled);
-        merge.setEnabled(enabled);
         addStatus();
         updateCloudSyncToggle();
     }
 
-    private void showCode() {
-        screen = 1;
-        resetPage();
-        page.addView(text("家庭加入码", 24, true));
-        page.addView(text("把当前加入码输入新电视，即可加入同一家庭。生成新码会使旧码失效。", 16, false));
-        page.addView(text("当前家庭：" + FamilyIdentity.get(host).familyId(), 15, false));
-        codeDisplay = text(generatedCode.isEmpty() ? "加入码尚未生成" : generatedCode, 24, true);
-        page.addView(codeDisplay);
-        Button issue = actionRow(generatedCode.isEmpty() ? "生成家庭加入码" : "轮换加入码", () -> showIssueConfirm());
-        issue.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        addStatus();
-        issue.requestFocus();
-    }
-
-    private void showIssueConfirm() {
-        screen = 4;
-        resetPage();
-        page.addView(text("确认更换加入码？", 24, true));
-        page.addView(text("新码生成后，原加入码会立即失效。", 18, false));
-        Button confirm = actionRow("确认生成新加入码", this::issueCode);
-        confirm.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        confirm.requestFocus();
-        addStatus();
-    }
-
-    private void showJoin() {
-        screen = 2;
-        resetPage();
-        page.addView(text("新电视加入当前家庭", 24, true));
-        page.addView(text("输入另一台电视显示的家庭加入码。加入后会读取并合并家庭进度。", 16, false));
-        joinCode = input("例如 ABCD-EFGH-JKLM-NPQR", false);
-        joinCode.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        joinCode.setText(joinCodeValue);
-        joinCode.addTextChangedListener(new TextWatcher() {
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            public void onTextChanged(CharSequence s, int start, int before, int count) { joinCodeValue = s.toString(); }
-            public void afterTextChanged(Editable s) { }
-        });
-        page.addView(joinCode);
-        Button join = actionRow("加入并同步家庭进度", this::joinFamily);
-        join.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        addStatus();
-        join.requestFocus();
-    }
-
-    private void showMerge() {
-        screen = 3;
-        resetPage();
-        page.addView(text("合并旧家庭记录", 24, true));
-        page.addView(text("每行输入一个旧家庭加入码。先预览，再复制并核对记录；最后才确认清理旧家庭。", 16, false));
-        sourceCodes = input("每行一个旧家庭加入码", true);
-        sourceCodes.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
-        sourceCodes.setText(sourceCodeValue);
-        sourceCodes.addTextChangedListener(new TextWatcher() {
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                sourceCodeValue = s.toString();
-                if (!previewedCodes.equals(sourceCodeValue)) cleanupReady = false;
-                updateMergeControls();
-            }
-            public void afterTextChanged(Editable s) { }
-        });
-        page.addView(sourceCodes);
-        mergePreview = actionRow("预览旧家庭记录", this::previewMerge);
-        mergeCopy = actionRow("复制记录到当前家庭", this::copyMerge);
-        cleanup = actionRow("确认清理旧 familyId 和快照", this::confirmCleanup);
-        updateMergeControls();
-        addStatus();
-        mergePreview.requestFocus();
-    }
-
-    private void showCleanupConfirm() {
-        screen = 5;
-        resetPage();
-        page.addView(text("永久清理旧家庭？", 24, true));
-        page.addView(text("旧家庭快照将被删除，旧 familyId 凭据将失效。请先确认当前家庭已显示并可继续播放刚复制的进度。", 18, false));
-        Button confirm = actionRow("复制已核验，永久清理", this::cleanUp);
-        confirm.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled() && cleanupReady && copiedCodes.equals(sourceCodeValue));
-        confirm.requestFocus();
-        addStatus();
-    }
-
     private void startAuth() {
-        if (!FamilyIdentity.get(host).isCloudSyncEnabled()) { setStatus("请先开启云端同步。"); return; }
         showAuth();
         setStatus("正在创建手机扫码登录…");
         String family = FamilyIdentity.get(host).familyId(), secret = FamilyIdentity.get(host).familySecret();
@@ -323,7 +210,7 @@ public final class FamilySyncPanel extends ScrollView {
         screen = 6;
         resetPage();
         page.addView(text("手机扫码关联账号", 24, true));
-        page.addView(text("扫描二维码后在手机上选择 Google 或 GitHub。成功后账号会关联到当前家庭。", 16, false));
+        page.addView(text("扫描二维码后在手机上选择 Google 或 GitHub。已有账号会自动加入该账号的家庭；首次登录将建立家庭。", 16, false));
         authQr = new WebView(host);
         WebSettings settings = authQr.getSettings();
         settings.setJavaScriptEnabled(false);
@@ -351,8 +238,27 @@ public final class FamilySyncPanel extends ScrollView {
                         if (authQr != null) authQr.loadDataWithBaseURL(null, "<html><body style='font:24px sans-serif;text-align:center;padding:4em'>账号已关联</body></html>", "text/html", "UTF-8", null);
                         String provider = result.optString("provider", "provider");
                         String displayName = result.optString("displayName", "").trim();
-                        rememberLinkedProvider(provider, displayName);
-                        busy((displayName.isEmpty() ? "" : "欢迎，" + displayName + "！") + "已使用 " + ("google".equals(provider) ? "Google" : "github".equals(provider) ? "GitHub" : "") + " 账号关联当前家庭。按返回回到家庭设置。");
+                        String ticket = result.optString("familyTicket", "");
+                        busy("正在连接该账号的家庭…");
+                        work.execute(() -> {
+                            try {
+                                JSONObject credentials = FamilyAuthClient.claimFamily(id, ticket);
+                                FamilyIdentity.get(host).adoptSignedInFamily(credentials.getString("familyId"), credentials.getString("familySecret"));
+                                FamilyIdentity identity = FamilyIdentity.get(host);
+                                identity.setCloudSyncEnabled(true);
+                                identity.setLanSyncEnabled(true);
+                                CloudSyncClient.fetchOnHistory(host.getApplicationContext());
+                                host.runOnUiThread(() -> {
+                                    if (screen != 6) return;
+                                    accountLinked = true;
+                                    linkedDisplayName = displayName;
+                                    rememberLinkedProvider(provider);
+                                    updateWelcomeMessage();
+                                    updateCloudSyncToggle();
+                                    busy((displayName.isEmpty() ? "" : "欢迎，" + displayName + "！") + "已连接家庭同步。按返回回到家庭设置。");
+                                });
+                            } catch (Exception e) { host.runOnUiThread(() -> showError("连接家庭", e)); }
+                        });
                     } else if ("expired".equals(state) || "cancelled".equals(state)) {
                         authPolling = false;
                         if (authQr != null) authQr.loadDataWithBaseURL(null, "<html><body style='font:24px sans-serif;text-align:center;padding:4em'>此登录码已失效</body></html>", "text/html", "UTF-8", null);
@@ -379,7 +285,7 @@ public final class FamilySyncPanel extends ScrollView {
     }
 
     private void returnFromAuth() {
-        boolean linked = statusMessage.contains("关联当前家庭");
+        boolean linked = statusMessage.contains("已连接家庭同步");
         boolean ended = statusMessage.startsWith("扫码登录已");
         showHome();
         if (!linked && !ended) setStatus("已退出手机扫码登录。");
@@ -388,30 +294,29 @@ public final class FamilySyncPanel extends ScrollView {
 
     private void updateAuthLinkButton() {
         if (authLinkButton == null) return;
-        String label = linkedProviders.isEmpty() ? "关联 Google / GitHub" : "继续关联 Google / GitHub";
+        String label = linkedProviders.isEmpty() ? "关联 Google / GitHub 账号（手机扫码）" : "继续使用 Google / GitHub 添加电视";
         authLinkButton.setText(label);
         authLinkButton.setSingleLine(true);
         authLinkButton.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
+        authLinkButton.setEnabled(true);
     }
 
-    private void rememberLinkedProvider(String provider, String displayName) {
+    private void rememberLinkedProvider(String provider) {
         if (!"google".equals(provider) && !"github".equals(provider)) return;
         boolean google = linkedProviders.contains("Google") || "google".equals(provider);
         boolean github = linkedProviders.contains("GitHub") || "github".equals(provider);
         linkedProviders = google && github ? "Google 和 GitHub" : google ? "Google" : "GitHub";
-        linkedDisplayName = displayName;
         linkedProvidersFamilyId = FamilyIdentity.get(host).familyId();
     }
 
     private void refreshLinkedProviders() {
-        if (!FamilyIdentity.get(host).isCloudSyncEnabled()) return;
         String family = FamilyIdentity.get(host).familyId();
         String secret = FamilyIdentity.get(host).familySecret();
         if (!family.equals(linkedProvidersFamilyId)) {
             linkedProvidersFamilyId = family;
             linkedProviders = "";
             linkedDisplayName = "";
+            updateWelcomeMessage();
             updateAuthLinkButton();
         }
         work.execute(() -> {
@@ -437,26 +342,22 @@ public final class FamilySyncPanel extends ScrollView {
                 String welcomeName = displayName;
                 host.runOnUiThread(() -> {
                     if (screen == 0 && family.equals(FamilyIdentity.get(host).familyId())) {
+                        accountLinked = !linked.isEmpty();
+                        if (accountLinked) FamilyIdentity.get(host).enableSyncDefaultsIfUnset(host.getApplicationContext());
                         linkedProviders = linked;
                         linkedDisplayName = welcomeName;
-                        updateFamilyHeader();
+                        updateWelcomeMessage();
                         updateAuthLinkButton();
+                        updateCloudSyncToggle();
                     }
                 });
             } catch (Exception ignored) { }
         });
     }
 
-    private void updateFamilyHeader() {
-        if (familyHeader != null) familyHeader.setText(linkedDisplayName.isEmpty()
-                ? "家庭管理" : "家庭管理 · 欢迎，" + linkedDisplayName + "！");
-    }
-
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-            if (screen == 4) showCode();
-            else if (screen == 5) showMerge();
-            else if (screen == 6) returnFromAuth();
+            if (screen == 6) returnFromAuth();
             else if (screen != 0) showHome();
             else return super.dispatchKeyEvent(event);
             return true;
@@ -464,116 +365,7 @@ public final class FamilySyncPanel extends ScrollView {
         return super.dispatchKeyEvent(event);
     }
 
-    private JSONArray codes() {
-        JSONArray result = new JSONArray();
-        for (String line : sourceCodeValue.split("[,\\n\\r]+"))
-            if (!line.trim().isEmpty()) result.put(line.trim());
-        return result;
-    }
-
     private void busy(String message) { setStatus(message); }
-
-    private void issueCode() {
-        busy("正在连接家庭云端…");
-        work.execute(() -> {
-            try {
-                String code = CloudSyncClient.createJoinCode();
-                host.runOnUiThread(() -> {
-                    generatedCode = code;
-                    showCode();
-                    busy("加入码已生成；记下后可在新电视输入。再次生成会立即使旧码失效。");
-                });
-            } catch (Exception e) { showError("生成加入码", e); }
-        });
-    }
-
-    private void joinFamily() {
-        String code = joinCodeValue.trim();
-        if (code.isEmpty()) { busy("请先输入加入码。"); return; }
-        busy("正在验证加入码并读取设备列表…");
-        work.execute(() -> {
-            try {
-                JSONObject joined = CloudSyncClient.redeemJoinCode(code);
-                FamilyIdentity.get(host).join(joined.getString("familyId"), joined.getString("familySecret"), joined.optJSONArray("deviceIds"));
-                CloudSyncClient.fetchOnHistory(host.getApplicationContext());
-                host.runOnUiThread(() -> {
-                    statusMessage = "已加入家庭，正在读取家庭进度。";
-                    showHome();
-                });
-            } catch (Exception e) { showError("加入家庭", e); }
-        });
-    }
-
-    private void previewMerge() {
-        JSONArray source = codes();
-        if (source.length() == 0) { busy("请输入至少一个旧家庭加入码。"); return; }
-        String input = sourceCodeValue;
-        cleanupReady = false;
-        updateCloudSyncToggle();
-        busy("正在读取旧家庭快照…");
-        work.execute(() -> {
-            try {
-                JSONObject result = CloudSyncClient.mergeFamilies(FamilyIdentity.get(host).familyId(), FamilyIdentity.get(host).familySecret(), "preview", source, false);
-                previewed = true;
-                previewedCodes = input;
-                copiedCodes = "";
-                host.runOnUiThread(() -> {
-                    updateMergeControls();
-                    busy("预览：" + result.optInt("families") + " 个家庭、" + result.optInt("snapshots") + " 条设备快照、" + result.optInt("records") + " 条记录。当前家庭 ID 必须是参与家庭中最小的 ID。");
-                });
-            } catch (Exception e) { showError("预览合并", e); }
-        });
-    }
-
-    private void copyMerge() {
-        JSONArray source = codes();
-        if (!previewed || source.length() == 0 || !previewedCodes.equals(sourceCodeValue)) {
-            busy("请先预览当前输入的旧家庭加入码。"); return;
-        }
-        String input = sourceCodeValue;
-        busy("正在复制合并快照…");
-        work.execute(() -> {
-            try {
-                JSONObject result = CloudSyncClient.mergeFamilies(FamilyIdentity.get(host).familyId(), FamilyIdentity.get(host).familySecret(), "copy", source, false);
-                JSONArray devices = result.optJSONArray("devices");
-                if (devices != null) for (int i = 0; i < devices.length(); i++) FamilyIdentity.get(host).addPeer(devices.optString(i, ""));
-                copiedCodes = input;
-                CloudSyncClient.fetchOnHistory(host.getApplicationContext());
-                host.runOnUiThread(() -> {
-                    cleanupReady = true;
-                    updateMergeControls();
-                    busy("复制完成：" + result.optInt("copiedSnapshots") + " 条快照。请核对新家庭进度；确认无误后再清理旧家庭。");
-                });
-            } catch (Exception e) { showError("复制合并", e); }
-        });
-    }
-
-    private void confirmCleanup() {
-        if (copiedCodes.isEmpty() || !copiedCodes.equals(sourceCodeValue)) {
-            busy("加入码与上次复制不一致，请重新预览并复制。"); return;
-        }
-        showCleanupConfirm();
-    }
-
-    private void cleanUp() {
-        JSONArray source = codes();
-        busy("正在清理旧家庭云端快照…");
-        work.execute(() -> {
-            try {
-                JSONObject result = CloudSyncClient.mergeFamilies(FamilyIdentity.get(host).familyId(), FamilyIdentity.get(host).familySecret(), "cleanup", source, true);
-                previewed = false;
-                previewedCodes = "";
-                copiedCodes = "";
-                sourceCodeValue = "";
-                host.runOnUiThread(() -> {
-                    cleanupReady = false;
-                    statusMessage = "清理完成：" + result.optInt("cleanedFamilies") + " 个旧家庭已删除并撤销凭据。";
-                    showMerge();
-                });
-                CloudSyncClient.fetchOnHistory(host.getApplicationContext());
-            } catch (Exception e) { showError("清理旧家庭", e); }
-        });
-    }
 
     @Override protected void onDetachedFromWindow() {
         stopAuthPolling(true);
@@ -583,21 +375,19 @@ public final class FamilySyncPanel extends ScrollView {
 
     private void showError(String action, Exception error) {
         String kind = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-        host.runOnUiThread(() -> busy(action + "失败：" + kind + "。检查网络、Worker 部署状态和加入码后重试。"));
+        host.runOnUiThread(() -> busy(action + "失败：" + kind + "。检查网络和 Worker 部署状态后重试。"));
     }
 
     private void updateCloudSyncToggle() {
         FamilyIdentity identity = FamilyIdentity.get(host);
         if (cloudSyncValue != null) cloudSyncValue.setText(identity.isCloudSyncEnabled() ? "已开启" : "已关闭");
         if (lanSyncValue != null) lanSyncValue.setText(identity.isLanSyncEnabled() ? "已开启" : "已关闭");
-        if (authLinkButton != null) authLinkButton.setEnabled(identity.isCloudSyncEnabled());
-        updateMergeControls();
+        if (cloudSyncToggle != null) cloudSyncToggle.setEnabled(accountLinked);
+        if (lanSyncToggle != null) lanSyncToggle.setEnabled(accountLinked);
+        if (authLinkButton != null) authLinkButton.setEnabled(true);
     }
 
-    private void updateMergeControls() {
-        boolean enabled = FamilyIdentity.get(host).isCloudSyncEnabled();
-        if (mergePreview != null) mergePreview.setEnabled(enabled);
-        if (mergeCopy != null) mergeCopy.setEnabled(enabled && previewed && previewedCodes.equals(sourceCodeValue));
-        if (cleanup != null) cleanup.setEnabled(enabled && cleanupReady && copiedCodes.equals(sourceCodeValue));
+    private void updateWelcomeMessage() {
+        if (welcomeMessage != null) welcomeMessage.setText(linkedDisplayName.isEmpty() ? "" : "欢迎，" + linkedDisplayName + "！");
     }
 }

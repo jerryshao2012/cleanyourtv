@@ -1,65 +1,44 @@
-.class Lcom/supertws/dubokutv/FamilySyncPanel$1;
+.class public final synthetic Lcom/supertws/dubokutv/FamilySyncPanel$1;
 .super Ljava/lang/Object;
-.source "FamilySyncPanel.java"
+.source "D8$$SyntheticClass"
 
 # interfaces
-.implements Landroid/text/TextWatcher;
+.implements Ljava/lang/Runnable;
 
 
 # annotations
-.annotation system Ldalvik/annotation/EnclosingMethod;
-    value = Lcom/supertws/dubokutv/FamilySyncPanel;->showJoin()V
-.end annotation
-
-.annotation system Ldalvik/annotation/InnerClass;
-    accessFlags = 0x0
-    name = null
+.annotation runtime Lcom/android/tools/r8/annotations/LambdaMethod;
+    holder = "Lcom/supertws/dubokutv/FamilySyncPanel;"
+    method = "pollAuth"
+    proto = "()V"
 .end annotation
 
 
 # instance fields
-.field final synthetic this$0:Lcom/supertws/dubokutv/FamilySyncPanel;
+.field public final synthetic f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
 
 # direct methods
-.method constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
-    .locals 0
+.method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
+    .registers 2
 
-    .line 250
-    iput-object p1, p0, Lcom/supertws/dubokutv/FamilySyncPanel$1;->this$0:Lcom/supertws/dubokutv/FamilySyncPanel;
-
+    .line 0
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
+
+    iput-object p1, p0, Lcom/supertws/dubokutv/FamilySyncPanel$1;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
     return-void
 .end method
 
 
 # virtual methods
-.method public afterTextChanged(Landroid/text/Editable;)V
-    .locals 0
+.method public final run()V
+    .registers 2
 
-    .line 253
-    return-void
-.end method
+    .line 0
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$1;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
-.method public beforeTextChanged(Ljava/lang/CharSequence;III)V
-    .locals 0
-
-    .line 251
-    return-void
-.end method
-
-.method public onTextChanged(Ljava/lang/CharSequence;III)V
-    .locals 0
-
-    .line 252
-    iget-object p2, p0, Lcom/supertws/dubokutv/FamilySyncPanel$1;->this$0:Lcom/supertws/dubokutv/FamilySyncPanel;
-
-    invoke-interface {p1}, Ljava/lang/CharSequence;->toString()Ljava/lang/String;
-
-    move-result-object p1
-
-    invoke-static {p2, p1}, Lcom/supertws/dubokutv/FamilySyncPanel;->access$002(Lcom/supertws/dubokutv/FamilySyncPanel;Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$_LHjD1-EQPdsS32Rb8va70t8-V4(Lcom/supertws/dubokutv/FamilySyncPanel;)V
 
     return-void
 .end method

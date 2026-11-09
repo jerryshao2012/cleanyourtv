@@ -61,6 +61,7 @@ Merge uses R2 LIST/GET/PUT/DELETE only after the user explicitly starts the oper
 Production deployment:
 
 - Worker URL: `https://cleantv-r2-sync.jerry-shao.workers.dev`
+- 2026-11-09 deployed version (Google/GitHub account-based family claim and same-account TV join): `ebc4b63c-140c-4a98-b9aa-8fcb9d78ce2d`
 - 2026-11-07 deployed version (KV-free family authorization): `8c506743-98f7-4e74-b3d3-afedc0157ee6`
 - Previous version (join codes / family merge): `3ffff7a0-f8d9-4caa-9136-f871fe6e72a0`
 - Previous progress-sync version (2026-11-05): `511a0c02-cbee-4430-b9d6-87b2ea549918`
@@ -69,7 +70,8 @@ Production deployment:
 - Workers KV: not bound or used
 - Post-deploy smoke: existing Hisense family registration returned 200, snapshot GET returned 200, snapshot PUT returned 204, Durable Object authorization returned 200; no Worker exceptions observed.
 - Sony Bravia 4K UR3 installed the matching-signature APK by `adb install -r`; code generation displayed successfully on 2026-11-07.
-- 2026-11-09 Worker release `6e2462d5-bcab-43f5-bf80-c03460784e1a` includes Google/GitHub QR sign-in, stored display names, and corrected QR format bits for camera recognition. Worker tests pass. The refreshed APK is installed on the Sony UR3 and the Family panel renders; its older provider links have no saved display names, so a new phone OAuth completion is still needed to verify the personalized header on that TV (see the app patch notes).
+- Latest production release (2026-11-09): `ebc4b63c-140c-4a98-b9aa-8fcb9d78ce2d`; 19 Worker tests pass. Google/GitHub associations belong to a family ID: any TV already holding that family ID sees the family's linked provider. Sony completed the QR claim and account lookup for family `214cbca3-5707-46cf-b305-1c4aa924773d`; no snapshot GET was observed during that sign-in, so this confirms account association, not snapshot synchronization.
+- Universal APK `0a3bb045eac1755919ffa734fa9d63606d31ba4028094691d3a6ae15a2ae8e2f` is installed with app data preserved on Sony Bravia UR3, Hisense Fire TV, and Xiaomi Mi Box 5 Max. Xiaomi Mi Box 3's manual-install copy is at `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk` in the repository; it was not installed in this rollout.
 
 For a later deployment, confirm the configured bucket belongs to the intended account, then run:
 

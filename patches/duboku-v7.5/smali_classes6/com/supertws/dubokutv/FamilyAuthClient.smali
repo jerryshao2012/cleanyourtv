@@ -9,7 +9,7 @@
 
 # direct methods
 .method private constructor <init>()V
-    .locals 0
+    .registers 1
 
     .line 14
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -18,14 +18,14 @@
 .end method
 
 .method public static accounts(Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
-    .locals 2
+    .registers 4
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 30
+    .line 38
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -66,14 +66,14 @@
 .end method
 
 .method public static cancel(Ljava/lang/String;Ljava/lang/String;)V
-    .locals 2
+    .registers 4
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 26
+    .line 30
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -108,12 +108,60 @@
 
     invoke-static {v1, p0, p1, v0}, Lcom/supertws/dubokutv/FamilyAuthClient;->request(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
 
-    .line 27
+    .line 31
     return-void
 .end method
 
+.method public static claimFamily(Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
+    .registers 4
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 34
+    new-instance v0, Ljava/lang/StringBuilder;
+
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v1, "/v1/family-auth/sessions/"
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-static {p0}, Lcom/supertws/dubokutv/FamilyAuthClient;->enc(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object p0
+
+    invoke-virtual {v0, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p0
+
+    const-string v0, "/claim"
+
+    invoke-virtual {p0, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p0
+
+    invoke-virtual {p0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object p0
+
+    const-string v0, "{}"
+
+    const-string v1, "POST"
+
+    invoke-static {v1, p0, p1, v0}, Lcom/supertws/dubokutv/FamilyAuthClient;->request(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
+
+    move-result-object p0
+
+    return-object p0
+.end method
+
 .method public static create(Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
-    .locals 2
+    .registers 3
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
@@ -121,13 +169,31 @@
     .end annotation
 
     .line 17
+    const/4 v0, 0x1
+
+    invoke-static {p0, p1, v0}, Lcom/supertws/dubokutv/FamilyAuthClient;->create(Ljava/lang/String;Ljava/lang/String;Z)Lorg/json/JSONObject;
+
+    move-result-object p0
+
+    return-object p0
+.end method
+
+.method public static create(Ljava/lang/String;Ljava/lang/String;Z)Lorg/json/JSONObject;
+    .registers 5
+    .annotation system Ldalvik/annotation/Throws;
+        value = {
+            Ljava/lang/Exception;
+        }
+    .end annotation
+
+    .line 21
     invoke-static {p0, p1}, Lcom/supertws/dubokutv/CloudSyncClient;->registerFamily(Ljava/lang/String;Ljava/lang/String;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_0
+    if-eqz v0, :cond_30
 
-    .line 18
+    .line 22
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -146,22 +212,36 @@
 
     move-result-object p0
 
+    if-eqz p2, :cond_1e
+
+    const-string p2, "&mode=join"
+
+    goto :goto_20
+
+    :cond_1e
+    const-string p2, ""
+
+    :goto_20
+    invoke-virtual {p0, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object p0
+
     invoke-virtual {p0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
     move-result-object p0
 
-    const/4 v0, 0x0
+    const/4 p2, 0x0
 
-    const-string v1, "POST"
+    const-string v0, "POST"
 
-    invoke-static {v1, p0, p1, v0}, Lcom/supertws/dubokutv/FamilyAuthClient;->request(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
+    invoke-static {v0, p0, p1, p2}, Lcom/supertws/dubokutv/FamilyAuthClient;->request(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
 
     move-result-object p0
 
     return-object p0
 
-    .line 17
-    :cond_0
+    .line 21
+    :cond_30
     new-instance p0, Ljava/lang/IllegalStateException;
 
     const-string p1, "family_unavailable"
@@ -172,14 +252,14 @@
 .end method
 
 .method private static enc(Ljava/lang/String;)Ljava/lang/String;
-    .locals 1
+    .registers 2
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 63
+    .line 71
     const-string v0, "UTF-8"
 
     invoke-static {p0, v0}, Ljava/net/URLEncoder;->encode(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
@@ -190,20 +270,20 @@
 .end method
 
 .method private static request(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
-    .locals 5
+    .registers 9
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 34
+    .line 42
     nop
 
-    .line 36
+    .line 44
     const/4 v0, 0x0
 
-    :try_start_0
+    :try_start_2
     new-instance v1, Ljava/net/URL;
 
     new-instance v2, Ljava/lang/StringBuilder;
@@ -231,29 +311,29 @@
     move-result-object p1
 
     check-cast p1, Ljava/net/HttpURLConnection;
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_1
+    :try_end_20
+    .catchall {:try_start_2 .. :try_end_20} :catchall_c4
 
-    .line 37
-    :try_start_1
+    .line 45
+    :try_start_20
     invoke-virtual {p1, p0}, Ljava/net/HttpURLConnection;->setRequestMethod(Ljava/lang/String;)V
 
-    .line 38
+    .line 46
     const/16 p0, 0x1388
 
     invoke-virtual {p1, p0}, Ljava/net/HttpURLConnection;->setConnectTimeout(I)V
 
-    .line 39
+    .line 47
     invoke-virtual {p1, p0}, Ljava/net/HttpURLConnection;->setReadTimeout(I)V
 
-    .line 40
+    .line 48
     const-string p0, "Accept"
 
     const-string v0, "application/json"
 
     invoke-virtual {p1, p0, v0}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 41
+    .line 49
     const-string p0, "Authorization"
 
     new-instance v0, Ljava/lang/StringBuilder;
@@ -275,134 +355,134 @@
     move-result-object p2
 
     invoke-virtual {p1, p0, p2}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
+    :try_end_4a
+    .catchall {:try_start_20 .. :try_end_4a} :catchall_c1
 
-    .line 42
+    .line 50
     const-string p0, "UTF-8"
 
-    if-eqz p3, :cond_0
+    if-eqz p3, :cond_67
 
-    .line 43
+    .line 51
     const/4 p2, 0x1
 
-    :try_start_2
+    :try_start_4f
     invoke-virtual {p1, p2}, Ljava/net/HttpURLConnection;->setDoOutput(Z)V
 
-    .line 44
+    .line 52
     const-string p2, "Content-Type"
 
     const-string v0, "application/json; charset=utf-8"
 
     invoke-virtual {p1, p2, v0}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 45
+    .line 53
     invoke-virtual {p1}, Ljava/net/HttpURLConnection;->getOutputStream()Ljava/io/OutputStream;
 
     move-result-object p2
 
-    .line 46
+    .line 54
     invoke-virtual {p3, p0}, Ljava/lang/String;->getBytes(Ljava/lang/String;)[B
 
     move-result-object p3
 
     invoke-virtual {p2, p3}, Ljava/io/OutputStream;->write([B)V
 
-    .line 47
+    .line 55
     invoke-virtual {p2}, Ljava/io/OutputStream;->close()V
 
-    .line 49
-    :cond_0
+    .line 57
+    :cond_67
     invoke-virtual {p1}, Ljava/net/HttpURLConnection;->getResponseCode()I
 
     move-result p2
 
-    .line 50
+    .line 58
     const/16 p3, 0x190
 
-    if-lt p2, p3, :cond_1
+    if-lt p2, p3, :cond_74
 
     invoke-virtual {p1}, Ljava/net/HttpURLConnection;->getErrorStream()Ljava/io/InputStream;
 
     move-result-object p3
 
-    goto :goto_0
+    goto :goto_78
 
-    :cond_1
+    :cond_74
     invoke-virtual {p1}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
 
     move-result-object p3
-    :try_end_2
-    .catchall {:try_start_2 .. :try_end_2} :catchall_0
+    :try_end_78
+    .catchall {:try_start_4f .. :try_end_78} :catchall_c1
 
-    .line 51
-    :goto_0
+    .line 59
+    :goto_78
     const-string v0, "request_failed"
 
-    if-eqz p3, :cond_5
+    if-eqz p3, :cond_bb
 
-    .line 52
-    :try_start_3
+    .line 60
+    :try_start_7c
     new-instance v1, Ljava/io/ByteArrayOutputStream;
 
     invoke-direct {v1}, Ljava/io/ByteArrayOutputStream;-><init>()V
 
-    .line 53
+    .line 61
     const/16 v2, 0x400
 
     new-array v2, v2, [B
 
-    .line 55
-    :goto_1
+    .line 63
+    :goto_85
     invoke-virtual {p3, v2}, Ljava/io/InputStream;->read([B)I
 
     move-result v3
 
-    if-ltz v3, :cond_2
+    if-ltz v3, :cond_90
 
     const/4 v4, 0x0
 
     invoke-virtual {v1, v2, v4, v3}, Ljava/io/ByteArrayOutputStream;->write([BII)V
 
-    goto :goto_1
+    goto :goto_85
 
-    .line 56
-    :cond_2
+    .line 64
+    :cond_90
     invoke-virtual {p3}, Ljava/io/InputStream;->close()V
 
-    .line 57
+    .line 65
     invoke-virtual {v1, p0}, Ljava/io/ByteArrayOutputStream;->toString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object p0
 
-    .line 58
+    .line 66
     const/16 p3, 0xc8
 
-    if-lt p2, p3, :cond_4
+    if-lt p2, p3, :cond_aa
 
     const/16 p3, 0x12c
 
-    if-ge p2, p3, :cond_4
+    if-ge p2, p3, :cond_aa
 
-    .line 59
+    .line 67
     new-instance p2, Lorg/json/JSONObject;
 
     invoke-direct {p2, p0}, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
-    :try_end_3
-    .catchall {:try_start_3 .. :try_end_3} :catchall_0
+    :try_end_a4
+    .catchall {:try_start_7c .. :try_end_a4} :catchall_c1
 
-    .line 60
-    if-eqz p1, :cond_3
+    .line 68
+    if-eqz p1, :cond_a9
 
     invoke-virtual {p1}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 59
-    :cond_3
+    .line 67
+    :cond_a9
     return-object p2
 
-    .line 58
-    :cond_4
-    :try_start_4
+    .line 66
+    :cond_aa
+    :try_start_aa
     new-instance p2, Ljava/lang/IllegalStateException;
 
     new-instance p3, Lorg/json/JSONObject;
@@ -419,45 +499,45 @@
 
     throw p2
 
-    .line 51
-    :cond_5
+    .line 59
+    :cond_bb
     new-instance p0, Ljava/lang/IllegalStateException;
 
     invoke-direct {p0, v0}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
 
     throw p0
-    :try_end_4
-    .catchall {:try_start_4 .. :try_end_4} :catchall_0
+    :try_end_c1
+    .catchall {:try_start_aa .. :try_end_c1} :catchall_c1
 
-    .line 60
-    :catchall_0
+    .line 68
+    :catchall_c1
     move-exception p0
 
     move-object v0, p1
 
-    goto :goto_2
+    goto :goto_c5
 
-    :catchall_1
+    :catchall_c4
     move-exception p0
 
-    :goto_2
-    if-eqz v0, :cond_6
+    :goto_c5
+    if-eqz v0, :cond_ca
 
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    :cond_6
+    :cond_ca
     throw p0
 .end method
 
 .method public static status(Ljava/lang/String;Ljava/lang/String;)Lorg/json/JSONObject;
-    .locals 2
+    .registers 4
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
         }
     .end annotation
 
-    .line 22
+    .line 26
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V

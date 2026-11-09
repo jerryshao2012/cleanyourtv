@@ -242,7 +242,8 @@ test('links Google and GitHub stable IDs and rejects a provider identity already
   const googleState = new URL(googleStart.headers.get('location')).searchParams.get('state');
   assert.equal((await call(e, `/v1/oauth/google/callback?code=good&state=${googleState}`, { auth: null })).status, 200);
   assert.equal((await call(e, `/v1/oauth/google/callback?code=good&state=${googleState}`, { auth: null })).status, 400);
-  assert.deepEqual(await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json(), { status: 'linked', provider: 'google', displayName: 'Alice Example' });
+  const linked = await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json();
+  assert.deepEqual(Object.fromEntries(Object.entries(linked).filter(([key]) => key !== 'familyTicket' && key !== 'familyId')), { status: 'linked', provider: 'google', displayName: 'Alice Example' });
 
   const githubSession = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
   e.FETCH = async input => String(input).includes('github.com/login/oauth/access_token') ? Response.json({ access_token: 'github-token' }) : Response.json({ id: 9876, name: 'Bob Example', login: 'bob' });
@@ -260,6 +261,27 @@ test('links Google and GitHub stable IDs and rejects a provider identity already
   const secondStart = await call(e, `/v1/family-auth/sessions/${second.sessionId}/oauth/github`, { auth: null });
   const secondState = new URL(secondStart.headers.get('location')).searchParams.get('state');
   assert.equal((await call(e, `/v1/oauth/github/callback?code=good&state=${secondState}`, { auth: null })).status, 409);
+  e.database.close();
+});
+
+test('a later TV using the same provider identity claims the existing family once', async () => {
+  const e = env(); await create(e, FAMILY);
+  e.GOOGLE_CLIENT_ID = 'google-client'; e.GOOGLE_CLIENT_SECRET = 'google-secret';
+  const signIn = async mode => {
+    const session = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}&mode=${mode}`, { method: 'POST' })).json();
+    const start = await call(e, `/v1/family-auth/sessions/${session.sessionId}/oauth/google`, { auth: null });
+    const state = new URL(start.headers.get('location')).searchParams.get('state');
+    e.FETCH = async input => String(input).includes('oauth2.googleapis.com/token') ? Response.json({ access_token: 'google-token' }) : Response.json({ sub: 'stable-household-account', name: 'Alice' });
+    assert.equal((await call(e, `/v1/oauth/google/callback?code=ok&state=${state}`, { auth: null })).status, 200);
+    const result = await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json();
+    return { session, result, claimed: await call(e, `/v1/family-auth/sessions/${session.sessionId}/claim`, { method: 'POST', auth: result.familyTicket }) };
+  };
+  const first = await signIn('link');
+  assert.equal(first.result.status, 'linked');
+  assert.deepEqual(await first.claimed.json(), { familyId: FAMILY, familySecret: SECRET });
+  const second = await signIn('join');
+  assert.deepEqual(await second.claimed.json(), { familyId: FAMILY, familySecret: SECRET });
+  assert.equal((await call(e, `/v1/family-auth/sessions/${second.session.sessionId}/claim`, { method: 'POST', auth: second.result.familyTicket })).status, 401);
   e.database.close();
 });
 

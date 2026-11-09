@@ -3,14 +3,14 @@
 .source "D8$$SyntheticClass"
 
 # interfaces
-.implements Ljava/lang/Runnable;
+.implements Landroid/view/View$OnClickListener;
 
 
 # annotations
 .annotation runtime Lcom/android/tools/r8/annotations/LambdaMethod;
     holder = "Lcom/supertws/dubokutv/FamilySyncPanel;"
-    method = "lambda$showCode$4"
-    proto = "()V"
+    method = "lambda$showHome$3"
+    proto = "(Landroid/view/View;)V"
 .end annotation
 
 
@@ -20,7 +20,7 @@
 
 # direct methods
 .method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
-    .locals 0
+    .registers 2
 
     .line 0
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -32,13 +32,13 @@
 
 
 # virtual methods
-.method public final run()V
-    .locals 1
+.method public final onClick(Landroid/view/View;)V
+    .registers 3
 
     .line 0
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$3;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
-    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$showCode$4$com-supertws-dubokutv-FamilySyncPanel()V
+    invoke-virtual {v0, p1}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$showHome$3$com-supertws-dubokutv-FamilySyncPanel(Landroid/view/View;)V
 
     return-void
 .end method

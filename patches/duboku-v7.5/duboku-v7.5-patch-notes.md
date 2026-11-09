@@ -584,3 +584,19 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - 回归原因：上一版“焦点移动不快进，按 OK 才快进”的修复已在 sony-ur3 补丁树中，但通用 APK 从 `apks/patches/duboku-v7.5` 叠加 smali；构建镜像校验遗漏播放器 `r.smali` 和 `SkipIntroFocusNoop.smali`，因此旧焦点回调重新进入 APK。
 - 恢复该既有修复：焦点回调使用空操作 `SkipIntroFocusNoop`，点击回调保留 `SkipIntroHelper` 的 30 秒快进。没有再实现另一套播放器逻辑。
 - `build_universal_apks.sh` 现在逐字节校验这两个文件与 sony-ur3 补丁树一致；`tests/test_skip_intro_focus.py` 检查焦点回调、点击回调和构建镜像守卫。
+
+### 家庭 Google / GitHub 手机扫码登录与欢迎标题（2026-11-09）
+
+- Worker 支持短时 QR 登录会话、Google/GitHub OAuth 回调、TV 独立轮询密钥、账户唯一关联与取消/过期处理；服务端只保留稳定 provider ID 和显示名称，不保留邮箱、头像或 provider token。进度同步仍使用家庭 ID/secret。
+- 修正 QR 的格式位，使 iPhone 相机能将电视码识别为链接。家庭账户查询返回 provider 显示名；新授权会刷新已有同一家庭关联的显示名。
+- “欢迎，显示名！”显示在 Profile > 家庭页的“家庭”标题下方；移除“家庭管理”标题。
+- 扫码页移除与遥控器 Back 重复的“取消并返回”按钮，二维码区域不再抢焦点；登录关联行改为简短单行标签，过长时省略显示。
+- 日常添加电视改用家庭级账号关联：账号在一个 familyId 关联后，所有已持有该 familyId 的电视都会显示该家庭已关联账号；“继续使用 Google / GitHub 添加电视”表示家庭账号可继续用于新电视，并不表示当前设备单独完成过 OAuth。新设备未关联家庭账号时，云端与 LAN 开关均默认关闭且禁用；家庭账号关联成功后两项自动开启。
+
+### 家庭同步退出修复与设备发布（2026-11-09）
+
+- Sony 按“家庭”后退出的根因是 `FamilyIdentity` 同时存在于 `classes3.dex` 和 `classes6.dex`：`classes3` 优先加载了旧类，缺少新面板调用的 `enableSyncDefaultsIfUnset(Context)`，触发 `NoSuchMethodError`。修复为两个 dex 使用相同 smali，并在通用构建中逐字节比较 `FamilyIdentity` 的两份实现，同时检查发行目录与 `cleanyourtv` 镜像一致。
+- Sony Bravia UR3 上确认家庭页可正常显示，familyId 为 `214cbca3-5707-46cf-b305-1c4aa924773d`；Worker 日志确认账号授权与家庭账号查询成功。登录期间没有观察到快照 GET，因此本次只确认账号关联和加入家庭，不宣称快照同步已验收。
+- 通用 APK versionCode 33、minSdk 22，SHA-256：`0a3bb045eac1755919ffa734fa9d63606d31ba4028094691d3a6ae15a2ae8e2f`。保留应用数据覆盖安装到 Sony、Hisense Fire TV（`192.168.87.37`）及 Xiaomi Mi Box 5 Max / MiTV-AZFU0（`192.168.87.38`）；三台启动后进程正常。
+- 小米盒子 3 保留手动安装包 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`，与通用包 SHA-256 相同；本轮未对它执行安装。
+- Worker 生产版本：`ebc4b63c-140c-4a98-b9aa-8fcb9d78ce2d`。家庭面板、开关和 dex 一致性回归测试通过；完整通用 APK 构建成功。

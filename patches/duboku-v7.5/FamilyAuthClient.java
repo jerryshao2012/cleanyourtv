@@ -14,8 +14,12 @@ public final class FamilyAuthClient {
     private FamilyAuthClient() { }
 
     public static JSONObject create(String familyId, String familySecret) throws Exception {
+        return create(familyId, familySecret, true);
+    }
+
+    public static JSONObject create(String familyId, String familySecret, boolean join) throws Exception {
         if (!CloudSyncClient.registerFamily(familyId, familySecret)) throw new IllegalStateException("family_unavailable");
-        return request("POST", "/v1/family-auth/sessions?familyId=" + enc(familyId), familySecret, null);
+        return request("POST", "/v1/family-auth/sessions?familyId=" + enc(familyId) + (join ? "&mode=join" : ""), familySecret, null);
     }
 
     public static JSONObject status(String sessionId, String pollSecret) throws Exception {
@@ -24,6 +28,10 @@ public final class FamilyAuthClient {
 
     public static void cancel(String sessionId, String pollSecret) throws Exception {
         request("POST", "/v1/family-auth/sessions/" + enc(sessionId) + "/cancel", pollSecret, "{}");
+    }
+
+    public static JSONObject claimFamily(String sessionId, String ticket) throws Exception {
+        return request("POST", "/v1/family-auth/sessions/" + enc(sessionId) + "/claim", ticket, "{}");
     }
 
     public static JSONObject accounts(String familyId, String familySecret) throws Exception {

@@ -9,7 +9,7 @@
 # annotations
 .annotation runtime Lcom/android/tools/r8/annotations/LambdaMethod;
     holder = "Lcom/supertws/dubokutv/FamilySyncPanel;"
-    method = "copyMerge"
+    method = "lambda$pollAuth$11"
     proto = "()V"
 .end annotation
 
@@ -20,7 +20,7 @@
 
 # direct methods
 .method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
-    .locals 0
+    .registers 2
 
     .line 0
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -33,12 +33,12 @@
 
 # virtual methods
 .method public final run()V
-    .locals 1
+    .registers 2
 
     .line 0
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$17;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
-    invoke-static {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$8weXfa96tAX_g-oEftmhElhbAkQ(Lcom/supertws/dubokutv/FamilySyncPanel;)V
+    invoke-virtual {v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$pollAuth$11$com-supertws-dubokutv-FamilySyncPanel()V
 
     return-void
 .end method

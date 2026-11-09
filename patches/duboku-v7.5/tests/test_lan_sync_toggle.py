@@ -6,6 +6,12 @@ IDENTITY = (PATCH / "FamilyIdentity.java").read_text()
 LAN = (PATCH / "LanSyncManager.java").read_text()
 PANEL = (PATCH / "FamilySyncPanel.java").read_text()
 SNAPSHOT = (PATCH / "ProgressSnapshot.java").read_text()
+IDENTITY_SMALI = (PATCH / "smali_classes3/com/supertws/dubokutv/FamilyIdentity.smali").read_text()
+BUILD_PATH = PATCH / "build_universal_apks.sh"
+if not BUILD_PATH.exists():
+    BUILD_PATH = next(parent / "apks/patches/duboku-v7.5/build_universal_apks.sh" for parent in PATCH.parents
+                      if (parent / "apks/patches/duboku-v7.5/build_universal_apks.sh").exists())
+BUILD = BUILD_PATH.read_text()
 
 
 def method_body(source, signature):
@@ -23,7 +29,7 @@ def method_body(source, signature):
 class LanSyncToggleTest(unittest.TestCase):
     def test_setting_persists_and_controls_lan_receiver(self):
         getter = method_body(IDENTITY, "isLanSyncEnabled()")
-        self.assertIn('prefs.getBoolean("lanSyncEnabled", true)', getter)
+        self.assertIn('prefs.getBoolean("lanSyncEnabled", false)', getter)
         setter = method_body(IDENTITY, "setLanSyncEnabled(boolean enabled)")
         self.assertIn('putBoolean("lanSyncEnabled", enabled)', setter)
         self.assertIn(".apply()", setter)
@@ -43,10 +49,22 @@ class LanSyncToggleTest(unittest.TestCase):
         self.assertIn('setLanSyncEnabled(next)', PANEL)
         self.assertIn('局域网络同步', PANEL)
         home = method_body(PANEL, "private void showHome()")
-        self.assertLess(home.index('lanSyncToggle = syncToggleRow("局域网络同步", false)'), home.index("\n        page.addView(text(\"家庭管理\""))
+        self.assertLess(home.index("authLinkButton = actionRow"), home.index('lanSyncToggle = syncToggleRow("局域网络同步", false)'))
         update = method_body(PANEL, "private void updateCloudSyncToggle()")
         self.assertIn("lanSyncValue", update)
-        self.assertNotIn("setEnabled", update)
+        self.assertIn("lanSyncToggle.setEnabled(accountLinked)", update)
+        self.assertIn("cloudSyncToggle.setEnabled(accountLinked)", update)
+
+    def test_sync_defaults_are_off_until_account_is_linked(self):
+        self.assertIn('prefs.getBoolean("cloudSyncEnabled", false)', IDENTITY)
+        self.assertIn('prefs.getBoolean("lanSyncEnabled", false)', IDENTITY)
+        initialize = method_body(IDENTITY, "enableSyncDefaultsIfUnset(Context context)")
+        self.assertIn('!prefs.contains("cloudSyncEnabled")', initialize)
+        self.assertIn('!prefs.contains("lanSyncEnabled")', initialize)
+        self.assertIn("enableSyncDefaultsIfUnset(host.getApplicationContext())", PANEL)
+        self.assertIn("enableSyncDefaultsIfUnset(Landroid/content/Context;)V", IDENTITY_SMALI)
+        self.assertIn('const-string v1, "cloudSyncEnabled"', IDENTITY_SMALI)
+        self.assertIn('"$PATCH_DIR/smali_classes6/com/supertws/dubokutv/FamilyIdentity.smali"', BUILD)
 
     def test_sync_switches_are_local_and_not_shared_with_family(self):
         self.assertIn("getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)", IDENTITY)

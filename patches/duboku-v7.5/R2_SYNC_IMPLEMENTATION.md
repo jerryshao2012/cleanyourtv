@@ -268,7 +268,13 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 **封面 D 再现修复与兼容构建防遗漏（2026-11-08）：**复核发现 `cleanyourtv/patches` 已按任意 HTTPS 降级，但发行目录 `apks/patches` 仍是旧的 host-only 代码；构建时用旧镜像覆盖 API 22 基底里的新逻辑，导致其他海报域名在 Xiaomi 3 上回退到 D 占位。现已同步 Java/Smali，并将 API<26 URL 改写为匹配通用 `https://` scheme；API 26+ 不改 URL。新增 `tests/test_legacy_image_urls.py` 锁定 Java 与 Smali 行为。之后分发 APK 必须用 `apks/patches/duboku-v7.5/build_universal_apks.sh` 构建：除固定 API 22 兼容基底、native shim、API 22 补丁、签名和库校验外，还会拒绝发行目录与 `cleanyourtv/patches` 的关键图片补丁源发生漂移，并同步更新三份 APK。当前三份包 SHA-256：`9037b4804ed4e41873d1159118184f72046ddb6e255d7b4d2869887933eb8ff1`。Sony、Hisense、Xiaomi Mi Box 5 Max 覆盖安装启动成功；Xiaomi 3 ADB 暂不可用，封面实机结果待设备重新连接确认。
 
-### 11.1 单个已有家庭：显示并记下加入码
+**当前电视添加流程与修复（2026-11-09）：**日常添加使用 Google/GitHub 手机扫码。provider association 绑定在 familyId 上；所有已持有该 familyId 的电视都会显示家庭已关联 provider。“继续使用 Google / GitHub 添加电视”表示该家庭账号可继续用于新电视，并不代表当前电视各自执行过 OAuth。新家庭的云端与 LAN 开关默认关闭且禁用；家庭账号关联成功后两项自动开启。当前 Family 面板不显示加入码与合并入口，相关 Worker API 保留作兼容/管理。
+
+Sony 上按“家庭”退出的根因是 `FamilyIdentity` 在 `classes3.dex` 和 `classes6.dex` 不一致：运行时先加载旧 classes3 类，找不到 `enableSyncDefaultsIfUnset(Context)` 并抛出 `NoSuchMethodError`。现已将相同 smali 放入两个 dex，并让 `build_universal_apks.sh` 校验两份 smali 逐字节一致及发行目录与 `cleanyourtv` 镜像一致。Sony 家庭页确认显示 familyId `214cbca3-5707-46cf-b305-1c4aa924773d`；Worker 记录账号授权与账号查询成功，但该次 OAuth 没观察到快照 GET。
+
+Worker 当前生产版本 `ebc4b63c-140c-4a98-b9aa-8fcb9d78ce2d`。通用 APK versionCode 33 / minSdk 22，SHA-256 `0a3bb045eac1755919ffa734fa9d63606d31ba4028094691d3a6ae15a2ae8e2f`，保留数据安装到 Sony、Hisense Fire TV（`192.168.87.37`）和 Xiaomi Mi Box 5 Max / MiTV-AZFU0（`192.168.87.38`），三台启动后进程正常。小米盒子 3 未安装，手动包为 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`。
+
+### 11.1 旧版加入码 API（当前 UI 不提供）
 
 1. 在已加入家庭的电视个人菜单选择 **家庭**（位于设置下方）。
 2. 选择 **生成 / 更换加入码（旧码立即失效）**，再在确认框选择 **确认更换**。Worker 用该电视现有 familySecret 认证，生成 80-bit 随机码；屏幕显示 `XXXX-XXXX-XXXX-XXXX` 格式，可手抄到新电视。按返回或选择取消不会更换加入码。
@@ -277,7 +283,7 @@ Worker 对未知 method/path 返回 404；CORS 不作为 Android 原生客户端
 
 Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索引，凭据以 AES-GCM 加密保存；解密密钥 `JOIN_CODE_KEY` 必须作为 Worker Secret 配置，不能写入仓库、APK 或日志。兑换按 IP 每小时最多 30 次。加入码是可手抄的 bearer credential，获得它的人可以加入该家庭；需要撤销时在原电视重新生成新码。已经部署的旧 Worker 没有这些 API，必须先部署兼容版本才可用。
 
-### 11.2 重复创建 familyId：复制、核验、再清理
+### 11.2 旧版多家庭合并 API（当前 UI 不提供）
 
 1. 先在将保留的 **最小字典序 familyId** 电视打开家庭同步页。向每个待合并家庭的设备生成并手抄加入码，再逐行输入到保留电视。
 2. 选择 **预览旧家庭记录**。Worker 只列出这些明确输入的源 `v1/<familyId>/` 前缀，报告源家庭、快照、记录和设备数量；普通上传/下载仍不执行 LIST。
@@ -289,13 +295,13 @@ Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索
 
 ### 11.3 代码入口
 
-- `FamilySyncPanel.java`、`smali_classes5/com/supertws/dubokutv/FamilySyncPanel*.smali` 与 `smali_classes3/com/supertws/dubokutv/presentation/screens/profile/FamilySyncRoute.smali`：个人菜单右侧嵌入的家庭设置面板。
+- `FamilySyncPanel.java`、`smali_classes6/com/supertws/dubokutv/FamilySyncPanel*.smali` 与 `smali_classes3/com/supertws/dubokutv/presentation/screens/profile/FamilySyncRoute.smali`：个人菜单右侧嵌入的家庭设置面板；账号按钮位于云/LAN 开关上方，欢迎语在“家庭”标题下方。
 - `FamilySyncActivity.java` 与 `smali_classes4/com/supertws/dubokutv/FamilySyncActivity*.smali`：保留的非导出旧 Activity；日常家庭设置入口为个人菜单内嵌面板。
 - `FamilyIdentity.java` / `FamilyIdentity.smali`：加入后保存云端返回的家庭凭据及已知设备 roster，保留本机 deviceId 和记录。
 - `CloudSyncClient.java` / `smali_classes4/com/supertws/dubokutv/CloudSyncClient*.smali`：签发、兑换加入码与 preview/copy/cleanup HTTP 调用。新类放到 classes4 以避免继续增加接近 DEX method-reference 上限的 classes3。
-- DEX 唯一性：API-22 基础 APK 仍带有旧 `CloudSyncClient` classes3 副本；发布构建必须在合并 overlay 后删除 classes3 中所有 `CloudSyncClient*.smali`，只保留 classes4 完整实现。否则 Android 可能加载旧类，家庭面板调用新方法时抛出 `NoSuchMethodError` 并退出应用。`tests/test_cloud_sync_dex_uniqueness.py` 与构建后 DEX 检查覆盖此约束。
+- DEX 一致性：API-22 基础 APK 带有 `FamilyIdentity` 的 classes3 副本；必须让 classes3/classes6 的实现逐字节一致，因为 classes3 会先被加载。Sony 实测旧 classes3 缺少新方法时会在进入家庭页抛出 `NoSuchMethodError` 并退出。`build_universal_apks.sh` 比较两份 smali 和源码镜像，`tests/test_lan_sync_toggle.py` 锁定新方法存在。旧 `CloudSyncClient` classes3 副本仍在构建时删除，只保留 classes4 完整实现；`tests/test_cloud_sync_dex_uniqueness.py` 覆盖这一约束。
 - 家庭菜单图标：`ProfileScreens.Family` 使用新增 `ic_profile_family` 群组图标资源，构建时同时覆盖 `ProfileScreens.smali` 和资源定义；个人入口仍保留单人图标。
-- 家庭面板导航：家庭首页保留云端/局域网开关与三个操作入口；加入码、新电视加入、旧家庭合并分别进入独立面板页。轮换加入码和永久清理确认改为面板内步骤；旧家庭操作仍需先预览、再复制，且加入码不匹配时清理按钮保持不可用。家庭 `AndroidView` 使用 Compose focus modifier，原生根 `ScrollView` 可聚焦并使用 `FOCUS_AFTER_DESCENDANTS`；选择“家庭”时只显示右侧面板并保留左侧家庭菜单项的焦点，用户按右键后才进入原生面板。`onRequestFocusInDescendants` 明确把该次焦点交接定向到“云端同步”，页面初始显示时不主动调用 `requestFocus()`。面板子页使用遥控器返回键返回父页，不再显示重复的“返回家庭同步”按钮。该路由 smali 与 Java 面板均纳入构建镜像校验。Hisense 焦点验证需覆盖家庭项高亮且上下键可继续浏览，再按右键聚焦首个开关，并在子页按返回回到家庭首页。`FamilySyncPanel.java` 与 `smali_classes5/FamilySyncPanel*.smali` 必须同步，特别是 `FamilySyncPanel$1/$2` 两个输入监听类；家庭面板导航测试检查它们随 APK 一起打包，防止新电视加入或合并页点击后因 `NoClassDefFoundError` 退出。
+- 家庭面板导航：当前首页显示账号关联按钮、两个家庭同步开关和只读 familyId；旧加入码/合并操作不再显示。家庭 `AndroidView` 使用 Compose focus modifier，原生根 `ScrollView` 可聚焦并使用 `FOCUS_AFTER_DESCENDANTS`；选择“家庭”时保留左侧菜单焦点，用户按右键后才进入面板。`onRequestFocusInDescendants` 将焦点交给可用的开关或账号按钮，页面初始显示时不主动调用 `requestFocus()`。当前面板源码编译产物位于 `smali_classes6`，lambda synthetic smali 一并打包。Hisense 焦点验证仍需覆盖家庭项高亮、上下浏览、按右进入面板和返回路径。
 - `r2-sync-worker/src/index.ts`：单码轮换/兑换及显式家庭快照迁移、复制读回、源身份撤销。
 - 上传间隔 30 秒是费用与断点新鲜度折中；突发休眠的尾差不超过约一个上传窗口，但网络失败时可能更久。
 - 网络超时后原 Worker PUT 理论上可能晚于相同请求重试和较新快照完成，短暂覆盖较新对象；single-flight 会降低概率，下一次成功快照会修复。v1 接受此低概率窗口，不为每个 PUT 额外读取 R2 或引入 Durable Object 排序。
