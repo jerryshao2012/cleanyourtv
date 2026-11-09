@@ -10,6 +10,11 @@ interface Env {
   R2_BUCKET: R2Bucket;
   REGISTRATION_COORDINATOR: DurableObjectNamespace<RegistrationCoordinator>;
   JOIN_CODE_KEY: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  FETCH?: typeof fetch;
 }
 interface RecordItem {
   id: string; name: string; episode: string;
@@ -83,6 +88,80 @@ function equalHash(a: Uint8Array, b: Uint8Array): boolean {
   let diff = a.length ^ b.length;
   for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
   return diff === 0;
+}
+function newToken(): string { return base64url(crypto.getRandomValues(new Uint8Array(32))); }
+async function hashText(value: string): Promise<string> { return hex(await sha256(new TextEncoder().encode(value))); }
+
+// QR version 5-L is enough for the fixed Worker URL and a 256-bit session ID.
+function qrSvg(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  if (bytes.length > 106) throw new Error('QR input too long');
+  const bits: number[] = [];
+  const append = (n: number, length: number) => { for (let i = length - 1; i >= 0; i--) bits.push((n >>> i) & 1); };
+  append(4, 4); append(bytes.length, 8); for (const byte of bytes) append(byte, 8);
+  for (let i = 0; i < Math.min(4, 864 - bits.length); i++) bits.push(0);
+  while (bits.length % 8) bits.push(0);
+  const data: number[] = [];
+  for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
+  for (let pad = 0xec; data.length < 108; pad ^= 0xec ^ 0x11) data.push(pad);
+  const mul = (x: number, y: number) => {
+    let z = 0;
+    for (let i = 7; i >= 0; i--) { z = ((z << 1) ^ ((z >>> 7) * 0x11d)) & 255; z ^= ((y >>> i) & 1) * x; }
+    return z;
+  };
+  const divisor = Array(26).fill(0); divisor[25] = 1;
+  let root = 1;
+  for (let i = 0; i < 26; i++) {
+    for (let j = 0; j < 26; j++) { divisor[j] = mul(divisor[j], root); if (j + 1 < 26) divisor[j] ^= divisor[j + 1]; }
+    root = mul(root, 2);
+  }
+  const remainder = Array(26).fill(0);
+  for (const byte of data) {
+    const factor = byte ^ remainder.shift()!; remainder.push(0);
+    for (let i = 0; i < 26; i++) remainder[i] ^= mul(divisor[i], factor);
+  }
+  const codewords = [...data, ...remainder], size = 37;
+  const modules = Array.from({ length: size }, () => Array(size).fill(false));
+  const fixed = Array.from({ length: size }, () => Array(size).fill(false));
+  const set = (x: number, y: number, dark: boolean) => { if (x >= 0 && x < size && y >= 0 && y < size) { modules[y][x] = dark; fixed[y][x] = true; } };
+  const finder = (left: number, top: number) => {
+    for (let dy = -1; dy <= 7; dy++) for (let dx = -1; dx <= 7; dx++) {
+      const d = Math.max(Math.abs(dx - 3), Math.abs(dy - 3));
+      set(left + dx, top + dy, dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6 && (d === 3 || d <= 1));
+    }
+  };
+  finder(0, 0); finder(30, 0); finder(0, 30);
+  for (let i = 8; i < size - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(30 + dx, 30 + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  const format = 8;
+  let rem = format;
+  for (let i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >>> 9) & 1) * 0x537);
+  const formatBits = ((format << 10) | rem) ^ 0x5412;
+  for (let i = 0; i <= 5; i++) set(8, i, ((formatBits >>> i) & 1) !== 0);
+  set(8, 7, ((formatBits >>> 6) & 1) !== 0); set(8, 8, ((formatBits >>> 7) & 1) !== 0); set(7, 8, ((formatBits >>> 8) & 1) !== 0);
+  for (let i = 9; i < 15; i++) set(14 - i, 8, ((formatBits >>> i) & 1) !== 0);
+  for (let i = 0; i < 8; i++) set(size - 1 - i, 8, ((formatBits >>> i) & 1) !== 0);
+  for (let i = 8; i < 15; i++) set(8, size - 15 + i, ((formatBits >>> i) & 1) !== 0);
+  set(8, size - 8, true);
+  let bitIndex = 0, upward = true;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right--;
+    for (let vert = 0; vert < size; vert++) {
+      const y = upward ? size - 1 - vert : vert;
+      for (let offset = 0; offset < 2; offset++) {
+        const x = right - offset;
+        if (fixed[y][x]) continue;
+        let dark = bitIndex < codewords.length * 8 && ((codewords[bitIndex >>> 3] >>> (7 - (bitIndex & 7))) & 1) !== 0;
+        bitIndex++;
+        if ((x + y) % 2 === 0) dark = !dark;
+        modules[y][x] = dark;
+      }
+    }
+    upward = !upward;
+  }
+  let path = '';
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (modules[y][x]) path += `M${x} ${y}h1v1h-1z`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 45 45" shape-rendering="crispEdges"><path fill="#fff" d="M-4-4h45v45H-4z"/><path fill="#000" d="${path}"/></svg>`;
 }
 
 async function readBody(request: Request): Promise<{ text: string } | { status: 413 } | { status: 400 }> {
@@ -179,12 +258,18 @@ export class RegistrationCoordinator {
     this.sql.exec('CREATE TABLE IF NOT EXISTS join_attempts (kind TEXT NOT NULL, subject_hash TEXT NOT NULL, occurred_at INTEGER NOT NULL)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS join_attempts_subject_time ON join_attempts (kind, subject_hash, occurred_at)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS merge_manifests (target_family_id TEXT PRIMARY KEY, source_families TEXT NOT NULL, source_fingerprint TEXT NOT NULL)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS family_auth_sessions (session_hash TEXT PRIMARY KEY, poll_hash TEXT NOT NULL, family_id TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, status TEXT NOT NULL, provider TEXT, subject TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS family_auth_states (state_hash TEXT PRIMARY KEY, session_hash TEXT NOT NULL, provider TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS family_provider_links (provider TEXT NOT NULL, subject TEXT NOT NULL, family_id TEXT NOT NULL, linked_at INTEGER NOT NULL, display_name TEXT, PRIMARY KEY (provider, subject))');
+    if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_auth_sessions)').toArray().some(column => column.name === 'subject')) this.sql.exec('ALTER TABLE family_auth_sessions ADD COLUMN subject TEXT');
+    if (!this.sql.exec<{ name: string }>('PRAGMA table_info(family_provider_links)').toArray().some(column => column.name === 'display_name')) this.sql.exec('ALTER TABLE family_provider_links ADD COLUMN display_name TEXT');
   }
 
   async fetch(request: Request): Promise<Response> {
     let body: Record<string, unknown>;
     try { body = await request.json() as Record<string, unknown>; } catch { return error(400, 'invalid_request'); }
     const path = new URL(request.url).pathname;
+    if (path.startsWith('/auth/')) return this.auth(path, body);
     if (path === '/register') {
       if (typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.secretHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.secretHash) || typeof body.ipHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.ipHash)) return error(400, 'invalid_request');
       return this.storage.transactionSync(() => {
@@ -266,9 +351,73 @@ export class RegistrationCoordinator {
     }
     return error(404, 'not_found');
   }
+
+  private auth(path: string, body: Record<string, unknown>): Response {
+    const now = body.now;
+    if (!Number.isSafeInteger(now)) return error(400, 'invalid_request');
+    return this.storage.transactionSync(() => {
+      if (path === '/auth/create-session') {
+        if (typeof body.sessionHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.sessionHash) || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || typeof body.familyId !== 'string' || !validId(body.familyId) || !Number.isSafeInteger(body.expiresAt) || body.expiresAt !== (now as number) + 300_000) return error(400, 'invalid_request');
+        const family = this.sql.exec('SELECT family_id FROM families WHERE family_id=?', body.familyId).toArray();
+        const revoked = this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length > 0;
+        if (!family.length || revoked) return error(401, 'unauthorized');
+        this.sql.exec('DELETE FROM family_auth_sessions WHERE expires_at<=?', now);
+        this.sql.exec('DELETE FROM family_auth_states WHERE expires_at<=?', now);
+        this.sql.exec("INSERT INTO family_auth_sessions (session_hash,poll_hash,family_id,created_at,expires_at,status) VALUES (?,?,?,?,?,'pending')", body.sessionHash, body.pollHash, body.familyId, now, body.expiresAt);
+        return json({ created: true }, 201);
+      }
+      if (path === '/auth/consume-state') {
+        if (typeof body.stateHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.stateHash)) return error(400, 'invalid_request');
+        const state = this.sql.exec<{ session_hash: string; provider: string; expires_at: number }>('SELECT session_hash,provider,expires_at FROM family_auth_states WHERE state_hash=?', body.stateHash).toArray()[0];
+        if (!state || state.provider !== body.provider || state.expires_at <= (now as number)) return error(400, 'invalid_state');
+        this.sql.exec('DELETE FROM family_auth_states WHERE state_hash=?', body.stateHash);
+        const session = this.sql.exec<{ family_id: string; expires_at: number; status: string }>('SELECT family_id,expires_at,status FROM family_auth_sessions WHERE session_hash=?', state.session_hash).toArray()[0];
+        if (!session || session.status !== 'pending' || session.expires_at <= (now as number)) return error(400, 'invalid_session');
+        return json({ sessionHash: state.session_hash, familyId: session.family_id });
+      }
+      if (path === '/auth/list-links') {
+        if (typeof body.familyId !== 'string' || !validId(body.familyId)) return error(400, 'invalid_request');
+        if (!this.sql.exec('SELECT family_id FROM families WHERE family_id=?', body.familyId).toArray().length || this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length) return error(401, 'unauthorized');
+        const accounts = this.sql.exec<{ provider: string; display_name: string | null }>('SELECT provider,display_name FROM family_provider_links WHERE family_id=? ORDER BY provider,linked_at DESC', body.familyId).toArray().map(row => ({ provider: row.provider, displayName: row.display_name ?? '' }));
+        return json({ accounts, providers: [...new Set(accounts.map(account => account.provider))] });
+      }
+      if (typeof body.sessionHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.sessionHash)) return error(400, 'invalid_request');
+      const session = this.sql.exec<{ poll_hash: string; family_id: string; expires_at: number; status: string; provider: string | null; subject: string | null }>('SELECT poll_hash,family_id,expires_at,status,provider,subject FROM family_auth_sessions WHERE session_hash=?', body.sessionHash).toArray()[0];
+      if (path === '/auth/page-session') return session ? json({ status: session.expires_at <= (now as number) ? 'expired' : session.status }) : error(404, 'not_found');
+      if (path === '/auth/status' || path === '/auth/cancel') {
+        if (!session || typeof body.pollHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.pollHash) || !equalHash(fromHex(session.poll_hash), fromHex(body.pollHash))) return error(401, 'unauthorized');
+        let status = session.expires_at <= (now as number) && session.status === 'pending' ? 'expired' : session.status;
+        if (path === '/auth/cancel' && status === 'pending') { status = 'cancelled'; this.sql.exec("UPDATE family_auth_sessions SET status='cancelled' WHERE session_hash=? AND status='pending'", body.sessionHash); }
+        const account = status === 'linked' && session.provider && session.subject
+          ? this.sql.exec<{ display_name: string | null }>('SELECT display_name FROM family_provider_links WHERE provider=? AND subject=? AND family_id=?', session.provider, session.subject, session.family_id).toArray()[0]
+          : undefined;
+        return json({ status, ...(status === 'linked' && session.provider ? { provider: session.provider, displayName: account?.display_name ?? '' } : {}) });
+      }
+      if (path === '/auth/begin-oauth') {
+        if (!session || session.expires_at <= (now as number) || session.status !== 'pending' || typeof body.stateHash !== 'string' || !/^[0-9a-f]{64}$/.test(body.stateHash) || !['google', 'github'].includes(String(body.provider))) return error(400, 'invalid_session');
+        this.sql.exec('INSERT INTO family_auth_states (state_hash,session_hash,provider,expires_at) VALUES (?,?,?,?)', body.stateHash, body.sessionHash, body.provider, session.expires_at);
+        return json({ started: true });
+      }
+      if (path === '/auth/link') {
+        if (typeof body.familyId !== 'string' || !validId(body.familyId) || typeof body.provider !== 'string' || !['google', 'github'].includes(body.provider) || typeof body.subject !== 'string' || !body.subject || body.subject.length > 255 || typeof body.displayName !== 'string') return error(400, 'invalid_request');
+        if (!session || session.family_id !== body.familyId || session.status !== 'pending' || session.expires_at <= (now as number)) return error(400, 'invalid_session');
+        if (!this.sql.exec('SELECT family_id FROM families WHERE family_id=?', body.familyId).toArray().length || this.sql.exec('SELECT family_id FROM revoked_families WHERE family_id=?', body.familyId).toArray().length) return error(401, 'unauthorized');
+        const existing = this.sql.exec<{ family_id: string }>('SELECT family_id FROM family_provider_links WHERE provider=? AND subject=?', body.provider, body.subject).toArray()[0];
+        if (existing && existing.family_id !== body.familyId) return error(409, 'account_already_linked');
+        const displayName = cleanDisplayName(body.displayName);
+        if (!displayName) return error(400, 'invalid_request');
+        this.sql.exec('INSERT INTO family_provider_links (provider,subject,family_id,linked_at,display_name) VALUES (?,?,?,?,?) ON CONFLICT(provider,subject) DO UPDATE SET family_id=excluded.family_id,linked_at=excluded.linked_at,display_name=excluded.display_name', body.provider, body.subject, body.familyId, now, displayName);
+        this.sql.exec("UPDATE family_auth_sessions SET status='linked',provider=?,subject=? WHERE session_hash=? AND status='pending'", body.provider, body.subject, body.sessionHash);
+        return json({ linked: true });
+      }
+      return error(404, 'not_found');
+    });
+  }
 }
 
 function fromHex(value: string): Uint8Array { return Uint8Array.from(value.match(/.{2}/g) ?? [], pair => parseInt(pair, 16)); }
+function cleanDisplayName(value: string): string { return Array.from(value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()).slice(0, 80).join(''); }
+function escapeHtml(value: string): string { return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!); }
 
 async function familyJoinCode(request: Request, env: Env, familyId: string): Promise<Response> {
   if (!validId(familyId)) return error(400, 'invalid_path');
@@ -284,6 +433,12 @@ async function familyJoinCode(request: Request, env: Env, familyId: string): Pro
     });
     return result.status === 201 ? json({ familyId, joinCode }, 201) : result;
   } catch { return error(500, 'internal_error'); }
+}
+
+async function familyLinkedAccounts(request: Request, env: Env, familyId: string): Promise<Response> {
+  if (!validId(familyId)) return error(400, 'invalid_path');
+  if (!(await authorized(request, familyId, env))) return error(401, 'unauthorized');
+  return coordinator(env, 'auth/list-links', { familyId, now: Date.now() });
 }
 
 async function lookupJoinCode(env: Env, code: string, ip: string): Promise<{ familyId: string; familySecret: string } | { status: number } | null> {
@@ -443,6 +598,95 @@ async function mergeFamilies(request: Request, env: Env, targetFamilyId: string)
   return json({ cleanedFamilies: sources.map(item => item.familyId) });
 }
 
+function authPage(message: string, status = 200): Response {
+  return new Response(`<!doctype html><html><meta name="viewport" content="width=device-width"><title>Family sign-in</title><body style="font:18px system-ui;max-width:34rem;margin:12vh auto;padding:1rem"><h1>Family Sync</h1>${message}</body></html>`, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' } });
+}
+async function createAuthSession(request: Request, env: Env): Promise<Response> {
+  const familyId = new URL(request.url).searchParams.get('familyId') ?? '';
+  if (!validId(familyId) || !(await authorized(request, familyId, env))) return error(401, 'unauthorized');
+  const sessionId = newToken(), pollSecret = newToken(), now = Date.now();
+  const result = await coordinator(env, 'auth/create-session', { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), familyId, now, expiresAt: now + 300_000 });
+  if (result.status !== 201) return result;
+  return json({ sessionId, pollSecret, url: `${new URL(request.url).origin}/auth/${sessionId}`, expiresAt: now + 300_000 }, 201);
+}
+async function authSession(request: Request, env: Env, sessionId: string, action: 'status' | 'cancel'): Promise<Response> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId)) return error(400, 'invalid_session');
+  const pollSecret = request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '';
+  if (!/^[A-Za-z0-9_-]{43}$/.test(pollSecret)) return error(401, 'unauthorized');
+  const result = await coordinator(env, `auth/${action}`, { sessionHash: await hashText(sessionId), pollHash: await hashText(pollSecret), now: Date.now() });
+  return result.status === 200 ? result : error(result.status, 'unauthorized');
+}
+async function phonePage(sessionId: string, env: Env): Promise<Response> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId)) return error(404, 'not_found');
+  const result = await coordinator(env, 'auth/page-session', { sessionHash: await hashText(sessionId), now: Date.now() });
+  if (!result.ok || (await result.json() as { status: string }).status !== 'pending') return authPage('<p>This sign-in request has expired or is already complete. Start again from your TV.</p>');
+  const buttons = [['google', 'Google', env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET], ['github', 'GitHub', env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET]]
+    .map(([provider, label, configured]) => configured ? `<p><a href="/v1/family-auth/sessions/${sessionId}/oauth/${provider}">Continue with ${label}</a></p>` : `<p>${label} sign-in is not configured yet.</p>`).join('');
+  return authPage(`<p>Choose an account to link to the family shown on your TV.</p>${buttons}<p>This request expires in five minutes.</p>`);
+}
+async function qrImage(request: Request, env: Env, sessionId: string): Promise<Response> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId)) return error(404, 'not_found');
+  const result = await coordinator(env, 'auth/page-session', { sessionHash: await hashText(sessionId), now: Date.now() });
+  if (!result.ok || (await result.json() as { status: string }).status !== 'pending') return error(404, 'not_found');
+  try { return new Response(qrSvg(`${new URL(request.url).origin}/auth/${sessionId}`), { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
+  catch { return error(500, 'internal_error'); }
+}
+async function beginOAuth(request: Request, env: Env, sessionId: string, provider: string): Promise<Response> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(sessionId) || !['google', 'github'].includes(provider)) return error(400, 'invalid_request');
+  const clientId = provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID;
+  if (!clientId) return error(503, 'provider_unconfigured');
+  const state = newToken();
+  const saved = await coordinator(env, 'auth/begin-oauth', { sessionHash: await hashText(sessionId), stateHash: await hashText(state), provider, now: Date.now() });
+  if (!saved.ok) return saved;
+  const url = new URL(provider === 'google' ? 'https://accounts.google.com/o/oauth2/v2/auth' : 'https://github.com/login/oauth/authorize');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', `${new URL(request.url).origin}/v1/oauth/${provider}/callback`);
+  url.searchParams.set('response_type', 'code'); url.searchParams.set('state', state);
+  url.searchParams.set('scope', provider === 'google' ? 'openid profile' : 'read:user');
+  if (provider === 'google') url.searchParams.set('prompt', 'select_account');
+  return Response.redirect(url.toString(), 302);
+}
+async function oauthCallback(request: Request, env: Env, provider: string): Promise<Response> {
+  const url = new URL(request.url), code = url.searchParams.get('code') ?? '', state = url.searchParams.get('state') ?? '';
+  if (!['google', 'github'].includes(provider) || !code || code.length > 2048 || !/^[A-Za-z0-9_-]{43}$/.test(state)) return authPage('<p>Sign-in could not be completed. Return to the TV and try again.</p>', 400);
+  const consumed = await coordinator(env, 'auth/consume-state', { stateHash: await hashText(state), provider, now: Date.now() });
+  if (!consumed.ok) return authPage('<p>This sign-in request is invalid or has expired. Return to the TV and try again.</p>', 400);
+  const { sessionHash, familyId } = await consumed.json() as { sessionHash: string; familyId: string };
+  const clientId = provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID;
+  const clientSecret = provider === 'google' ? env.GOOGLE_CLIENT_SECRET : env.GITHUB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return authPage('<p>This provider is not configured. Return to the TV.</p>', 503);
+  const redirectUri = `${url.origin}/v1/oauth/${provider}/callback`, fetcher = env.FETCH ?? fetch;
+  try {
+    let subject = '', displayName = '';
+    if (provider === 'google') {
+      const tokenResponse = await fetcher('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code' }) });
+      if (!tokenResponse.ok) throw new Error('provider');
+      const tokenData = await tokenResponse.json() as { access_token?: string };
+      if (!tokenData.access_token) throw new Error('provider');
+      const profile = await fetcher('https://openidconnect.googleapis.com/v1/userinfo', { headers: { authorization: `Bearer ${tokenData.access_token}` } });
+      if (!profile.ok) throw new Error('provider');
+      const account = await profile.json() as { sub?: string; name?: string; given_name?: string };
+      subject = account.sub ?? '';
+      displayName = cleanDisplayName(account.name ?? account.given_name ?? '') || 'Google user';
+    } else {
+      const tokenResponse = await fetcher('https://github.com/login/oauth/access_token', { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json' }, body: JSON.stringify({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri }) });
+      if (!tokenResponse.ok) throw new Error('provider');
+      const tokenData = await tokenResponse.json() as { access_token?: string };
+      if (!tokenData.access_token) throw new Error('provider');
+      const profile = await fetcher('https://api.github.com/user', { headers: { authorization: `Bearer ${tokenData.access_token}`, accept: 'application/vnd.github+json', 'user-agent': 'CleanTV-FamilySync' } });
+      if (!profile.ok) throw new Error('provider');
+      const account = await profile.json() as { id?: number; name?: string | null; login?: string };
+      subject = Number.isSafeInteger(account.id) ? String(account.id) : '';
+      displayName = cleanDisplayName(account.name ?? account.login ?? '') || 'GitHub user';
+    }
+    if (!subject || subject.length > 255) throw new Error('provider');
+    const linked = await coordinator(env, 'auth/link', { sessionHash, familyId, provider, subject, displayName, now: Date.now() });
+    if (linked.status === 409) return authPage('<p>This account is already linked to another family. Sign in with a different account.</p>', 409);
+    if (!linked.ok) throw new Error('link');
+    return authPage(`<p>Welcome, ${escapeHtml(displayName)}. Your account is linked to this family. You can return to your TV.</p>`);
+  } catch { return authPage('<p>Sign-in could not be completed. Return to the TV and try again.</p>', 400); }
+}
+
 async function sync(request: Request, env: Env, familyId: string, deviceId: string): Promise<Response> {
   if (!validId(familyId) || !validId(deviceId)) return error(400, 'invalid_path');
   if (!(await authorized(request, familyId, env))) return error(401, 'unauthorized');
@@ -471,10 +715,26 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const url = new URL(request.url);
+      if (url.pathname === '/v1/family-auth/sessions' && request.method === 'POST') return await createAuthSession(request, env);
+      const authMatch = /^\/v1\/family-auth\/sessions\/([^/]+)(?:\/(oauth\/(google|github)|cancel))?$/.exec(url.pathname);
+      if (authMatch) {
+        const [, sessionId, nested, provider] = authMatch;
+        if (nested?.startsWith('oauth/')) return request.method === 'GET' ? await beginOAuth(request, env, sessionId, provider) : error(404, 'not_found');
+        if (nested === 'cancel') return request.method === 'POST' ? await authSession(request, env, sessionId, 'cancel') : error(404, 'not_found');
+        return request.method === 'GET' ? await authSession(request, env, sessionId, 'status') : error(404, 'not_found');
+      }
+      const pageMatch = /^\/auth\/([^/]+)$/.exec(url.pathname);
+      if (pageMatch && request.method === 'GET') return await phonePage(pageMatch[1], env);
+      const qrMatch = /^\/auth\/qr\/([A-Za-z0-9_-]+)\.svg$/.exec(url.pathname);
+      if (qrMatch && request.method === 'GET') return await qrImage(request, env, qrMatch[1]);
+      const callbackMatch = /^\/v1\/oauth\/(google|github)\/callback$/.exec(url.pathname);
+      if (callbackMatch && request.method === 'GET') return await oauthCallback(request, env, callbackMatch[1]);
       if (url.pathname === '/v1/families') return request.method === 'POST' ? await register(request, env) : error(404, 'not_found');
       if (url.pathname === '/v1/families/join') return request.method === 'POST' ? await redeemJoinCode(request, env) : error(404, 'not_found');
       const joinMatch = /^\/v1\/families\/([^/]+)\/join-code$/.exec(url.pathname);
       if (joinMatch) return request.method === 'POST' ? await familyJoinCode(request, env, joinMatch[1]) : error(404, 'not_found');
+      const accountsMatch = /^\/v1\/families\/([^/]+)\/accounts$/.exec(url.pathname);
+      if (accountsMatch) return request.method === 'GET' ? await familyLinkedAccounts(request, env, accountsMatch[1]) : error(404, 'not_found');
       const mergeMatch = /^\/v1\/families\/([^/]+)\/merge$/.exec(url.pathname);
       if (mergeMatch) return request.method === 'POST' ? await mergeFamilies(request, env, mergeMatch[1]) : error(404, 'not_found');
       const match = /^\/v1\/sync\/([^/]+)\/([^/]+)$/.exec(url.pathname);

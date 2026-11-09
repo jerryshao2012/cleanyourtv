@@ -6,6 +6,8 @@ import android.content.ContextWrapper;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -16,6 +18,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.webkit.WebView;
+import android.webkit.WebSettings;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.concurrent.ExecutorService;
@@ -25,16 +29,24 @@ import java.util.concurrent.Executors;
 public final class FamilySyncPanel extends ScrollView {
     private final Activity host;
     private final ExecutorService work = Executors.newSingleThreadExecutor();
+    private final Handler authHandler = new Handler(Looper.getMainLooper());
     private LinearLayout page;
-    private TextView status, currentFamily, codeDisplay, cloudSyncValue, lanSyncValue;
+    private TextView status, familyHeader, currentFamily, codeDisplay, cloudSyncValue, lanSyncValue;
     private EditText joinCode, sourceCodes;
     private Button cleanup, mergePreview, mergeCopy;
+    private Button authLinkButton;
+    private WebView authQr;
     private LinearLayout cloudSyncToggle, lanSyncToggle;
     private String previewedCodes = "", copiedCodes = "", joinCodeValue = "", sourceCodeValue = "";
     private String generatedCode = "", statusMessage = "";
+    private String linkedProviders = "";
+    private String linkedDisplayName = "";
+    private String linkedProvidersFamilyId = "";
+    private String authSessionId = "", authPollSecret = "";
     private int screen;
     private boolean previewed;
     private boolean cleanupReady;
+    private boolean authPolling;
 
     public FamilySyncPanel(Context context) {
         super(context);
@@ -118,6 +130,7 @@ public final class FamilySyncPanel extends ScrollView {
     }
 
     private void resetPage() {
+        stopAuthPolling(true);
         status = null;
         cleanup = null;
         cloudSyncToggle = null;
@@ -128,6 +141,7 @@ public final class FamilySyncPanel extends ScrollView {
         sourceCodes = null;
         mergePreview = null;
         mergeCopy = null;
+        authLinkButton = null;
         page.removeAllViews();
         scrollTo(0, 0);
     }
@@ -182,9 +196,14 @@ public final class FamilySyncPanel extends ScrollView {
             setStatus(next ? "已开启局域网络同步" : "已关闭局域网络同步（仅作为本地播放器）");
         });
         page.addView(lanSyncToggle, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        page.addView(text("家庭管理", 20, true));
+        familyHeader = text("家庭管理", 20, true);
+        page.addView(familyHeader);
         currentFamily = text("当前家庭：" + FamilyIdentity.get(host).familyId(), 15, false);
         page.addView(currentFamily);
+        authLinkButton = actionRow("关联 Google / GitHub 账号（手机扫码）", this::startAuth);
+        authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
+        updateAuthLinkButton();
+        refreshLinkedProviders();
         Button code = actionRow("管理家庭加入码", this::showCode);
         Button join = actionRow("新电视加入家庭", this::showJoin);
         Button merge = actionRow("合并旧家庭记录", this::showMerge);
@@ -278,10 +297,164 @@ public final class FamilySyncPanel extends ScrollView {
         addStatus();
     }
 
+    private void startAuth() {
+        if (!FamilyIdentity.get(host).isCloudSyncEnabled()) { setStatus("请先开启云端同步。"); return; }
+        showAuth();
+        setStatus("正在创建手机扫码登录…");
+        String family = FamilyIdentity.get(host).familyId(), secret = FamilyIdentity.get(host).familySecret();
+        work.execute(() -> {
+            try {
+                JSONObject session = FamilyAuthClient.create(family, secret);
+                String id = session.getString("sessionId"), poll = session.getString("pollSecret");
+                host.runOnUiThread(() -> {
+                    if (screen != 6) { work.execute(() -> { try { FamilyAuthClient.cancel(id, poll); } catch (Exception ignored) { } }); return; }
+                    authSessionId = id; authPollSecret = poll;
+                    String pageHtml = "<!doctype html><html><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;background:#fff;text-align:center;font:16px sans-serif'><img alt='Scan with your phone to link Google or GitHub' style='display:block;width:180px;height:180px;margin:auto' src='/auth/qr/" + id + ".svg'></body></html>";
+                    authQr.loadDataWithBaseURL(CloudSyncClient.BASE_URL + "/", pageHtml, "text/html", "UTF-8", null);
+                    authPolling = true;
+                    busy("请用手机扫描二维码并完成登录；此码五分钟后失效。");
+                    pollAuth();
+                });
+            } catch (Exception e) { showError("创建扫码登录", e); }
+        });
+    }
+
+    private void showAuth() {
+        screen = 6;
+        resetPage();
+        page.addView(text("手机扫码关联账号", 24, true));
+        page.addView(text("扫描二维码后在手机上选择 Google 或 GitHub。成功后账号会关联到当前家庭。", 16, false));
+        authQr = new WebView(host);
+        WebSettings settings = authQr.getSettings();
+        settings.setJavaScriptEnabled(false);
+        settings.setDomStorageEnabled(false);
+        settings.setAllowFileAccess(false);
+        settings.setSupportZoom(false);
+        page.addView(authQr, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 360));
+        Button cancel = actionRow("取消并返回", this::returnFromAuth);
+        addStatus();
+        cancel.requestFocus();
+    }
+
+    private void pollAuth() {
+        if (!authPolling || screen != 6 || authSessionId.isEmpty()) return;
+        String id = authSessionId, poll = authPollSecret;
+        work.execute(() -> {
+            try {
+                JSONObject result = FamilyAuthClient.status(id, poll);
+                String state = result.optString("status", "pending");
+                host.runOnUiThread(() -> {
+                    if (!authPolling || screen != 6 || !id.equals(authSessionId)) return;
+                    if ("linked".equals(state)) {
+                        authPolling = false;
+                        if (authQr != null) authQr.loadDataWithBaseURL(null, "<html><body style='font:24px sans-serif;text-align:center;padding:4em'>账号已关联</body></html>", "text/html", "UTF-8", null);
+                        String provider = result.optString("provider", "provider");
+                        String displayName = result.optString("displayName", "").trim();
+                        rememberLinkedProvider(provider, displayName);
+                        busy((displayName.isEmpty() ? "" : "欢迎，" + displayName + "！") + "已使用 " + ("google".equals(provider) ? "Google" : "github".equals(provider) ? "GitHub" : "") + " 账号关联当前家庭。按返回回到家庭设置。");
+                    } else if ("expired".equals(state) || "cancelled".equals(state)) {
+                        authPolling = false;
+                        if (authQr != null) authQr.loadDataWithBaseURL(null, "<html><body style='font:24px sans-serif;text-align:center;padding:4em'>此登录码已失效</body></html>", "text/html", "UTF-8", null);
+                        busy("扫码登录已" + ("expired".equals(state) ? "过期" : "取消") + "，请返回后重新开始。");
+                    } else authHandler.postDelayed(this::pollAuth, 2000);
+                });
+            } catch (Exception e) {
+                host.runOnUiThread(() -> { if (authPolling && screen == 6) authHandler.postDelayed(this::pollAuth, 5000); });
+            }
+        });
+    }
+
+    private void stopAuthPolling(boolean cancel) {
+        boolean wasPolling = authPolling;
+        authPolling = false;
+        authHandler.removeCallbacksAndMessages(null);
+        if (cancel && wasPolling && !authSessionId.isEmpty()) {
+            String id = authSessionId, poll = authPollSecret;
+            work.execute(() -> { try { FamilyAuthClient.cancel(id, poll); } catch (Exception ignored) { } });
+        }
+        authSessionId = "";
+        authPollSecret = "";
+        if (authQr != null) { authQr.destroy(); authQr = null; }
+    }
+
+    private void returnFromAuth() {
+        boolean linked = statusMessage.contains("关联当前家庭");
+        boolean ended = statusMessage.startsWith("扫码登录已");
+        showHome();
+        if (!linked && !ended) setStatus("已退出手机扫码登录。");
+        if (authLinkButton != null) authLinkButton.requestFocus();
+    }
+
+    private void updateAuthLinkButton() {
+        if (authLinkButton == null) return;
+        String label = linkedProviders.isEmpty() ? "关联 Google / GitHub 账号（手机扫码）"
+                : "已关联 " + linkedProviders + " 账号" + (linkedDisplayName.isEmpty() ? "" : " · " + linkedDisplayName) + "（继续扫码关联）";
+        authLinkButton.setText(label);
+        authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
+    }
+
+    private void rememberLinkedProvider(String provider, String displayName) {
+        if (!"google".equals(provider) && !"github".equals(provider)) return;
+        boolean google = linkedProviders.contains("Google") || "google".equals(provider);
+        boolean github = linkedProviders.contains("GitHub") || "github".equals(provider);
+        linkedProviders = google && github ? "Google 和 GitHub" : google ? "Google" : "GitHub";
+        linkedDisplayName = displayName;
+        linkedProvidersFamilyId = FamilyIdentity.get(host).familyId();
+    }
+
+    private void refreshLinkedProviders() {
+        if (!FamilyIdentity.get(host).isCloudSyncEnabled()) return;
+        String family = FamilyIdentity.get(host).familyId();
+        String secret = FamilyIdentity.get(host).familySecret();
+        if (!family.equals(linkedProvidersFamilyId)) {
+            linkedProvidersFamilyId = family;
+            linkedProviders = "";
+            linkedDisplayName = "";
+            updateAuthLinkButton();
+        }
+        work.execute(() -> {
+            try {
+                JSONObject response = FamilyAuthClient.accounts(family, secret);
+                JSONArray accounts = response.optJSONArray("accounts"), providers = response.optJSONArray("providers");
+                boolean google = false, github = false;
+                String displayName = "";
+                if (accounts != null) for (int i = 0; i < accounts.length(); i++) {
+                    JSONObject account = accounts.optJSONObject(i);
+                    if (account == null) continue;
+                    String provider = account.optString("provider", "");
+                    google |= "google".equals(provider);
+                    github |= "github".equals(provider);
+                    if (displayName.isEmpty()) displayName = account.optString("displayName", "").trim();
+                }
+                if (accounts == null && providers != null) for (int i = 0; i < providers.length(); i++) {
+                    String provider = providers.optString(i, "");
+                    google |= "google".equals(provider);
+                    github |= "github".equals(provider);
+                }
+                String linked = google && github ? "Google 和 GitHub" : google ? "Google" : github ? "GitHub" : "";
+                String welcomeName = displayName;
+                host.runOnUiThread(() -> {
+                    if (screen == 0 && family.equals(FamilyIdentity.get(host).familyId())) {
+                        linkedProviders = linked;
+                        linkedDisplayName = welcomeName;
+                        updateFamilyHeader();
+                        updateAuthLinkButton();
+                    }
+                });
+            } catch (Exception ignored) { }
+        });
+    }
+
+    private void updateFamilyHeader() {
+        if (familyHeader != null) familyHeader.setText(linkedDisplayName.isEmpty()
+                ? "家庭管理" : "家庭管理 · 欢迎，" + linkedDisplayName + "！");
+    }
+
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             if (screen == 4) showCode();
             else if (screen == 5) showMerge();
+            else if (screen == 6) returnFromAuth();
             else if (screen != 0) showHome();
             else return super.dispatchKeyEvent(event);
             return true;
@@ -401,6 +574,7 @@ public final class FamilySyncPanel extends ScrollView {
     }
 
     @Override protected void onDetachedFromWindow() {
+        stopAuthPolling(true);
         work.shutdownNow();
         super.onDetachedFromWindow();
     }
@@ -414,6 +588,7 @@ public final class FamilySyncPanel extends ScrollView {
         FamilyIdentity identity = FamilyIdentity.get(host);
         if (cloudSyncValue != null) cloudSyncValue.setText(identity.isCloudSyncEnabled() ? "已开启" : "已关闭");
         if (lanSyncValue != null) lanSyncValue.setText(identity.isLanSyncEnabled() ? "已开启" : "已关闭");
+        if (authLinkButton != null) authLinkButton.setEnabled(identity.isCloudSyncEnabled());
         updateMergeControls();
     }
 

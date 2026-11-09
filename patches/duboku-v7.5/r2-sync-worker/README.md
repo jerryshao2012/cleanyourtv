@@ -27,6 +27,21 @@ For local development, run:
 npx wrangler@latest dev
 ```
 
+## Google and GitHub family sign-in
+
+Create one Google OAuth web client and one GitHub OAuth application. Set each provider's callback URL to the deployed Worker origin followed by `/v1/oauth/google/callback` or `/v1/oauth/github/callback` (for example, `https://cleantv-r2-sync.jerry-shao.workers.dev/v1/oauth/google/callback`). Keep the client credentials in Cloudflare Worker secrets:
+
+```sh
+npx wrangler@latest secret put GOOGLE_CLIENT_ID
+npx wrangler@latest secret put GOOGLE_CLIENT_SECRET
+npx wrangler@latest secret put GITHUB_CLIENT_ID
+npx wrangler@latest secret put GITHUB_CLIENT_SECRET
+```
+
+The TV creates a five-minute session with a separate polling secret, then shows a QR code containing only the public session URL. The phone completes OAuth; the Worker exchanges the code, stores the provider's stable subject ID and display name linked to the current family, and discards the provider access token. Google uses the OpenID Connect `sub`; GitHub uses the numeric account ID. Email addresses and avatars are not stored or used for identity. TV join codes and family-secret snapshot authorization remain unchanged. Deploy only after setting provider secrets; an unconfigured provider is shown as unavailable on the phone page.
+
+The provider link is an identity association only; it does not provide the credentials used for progress sync. The app continues to authorize snapshots with its family ID and family secret. The Worker retains only the provider display name for the TV's welcome message; it does not retain email addresses, avatars, or provider tokens. The family settings page can read linked provider names with the family secret. After linking, the welcome appears beside `家庭管理` in the Profile > Family panel header, so transient status messages remain available for actions and errors.
+
 Join-code encryption also requires a private 32-byte key. Set it once per environment and never commit or log it. Keep this value stable; rotating it makes existing codes unreadable, so issue new codes afterward:
 
 ```sh
@@ -54,6 +69,7 @@ Production deployment:
 - Workers KV: not bound or used
 - Post-deploy smoke: existing Hisense family registration returned 200, snapshot GET returned 200, snapshot PUT returned 204, Durable Object authorization returned 200; no Worker exceptions observed.
 - Sony Bravia 4K UR3 installed the matching-signature APK by `adb install -r`; code generation displayed successfully on 2026-11-07.
+- 2026-11-09 Worker release `6e2462d5-bcab-43f5-bf80-c03460784e1a` includes Google/GitHub QR sign-in, stored display names, and corrected QR format bits for camera recognition. Worker tests pass. The refreshed APK is installed on the Sony UR3 and the Family panel renders; its older provider links have no saved display names, so a new phone OAuth completion is still needed to verify the personalized header on that TV (see the app patch notes).
 
 For a later deployment, confirm the configured bucket belongs to the intended account, then run:
 

@@ -12,9 +12,10 @@ function env() {
   const counts = { get: 0, put: 0, delete: 0, list: 0, coordinator: 0 };
   const fault = { failDeleteAfter: null };
   const database = new DatabaseSync(':memory:');
-  const storage = { sql: { exec: (query, ...args) => { const statement = database.prepare(query); if (/^\s*SELECT/i.test(query)) return { toArray: () => statement.all(...args) }; statement.run(...args); return { toArray: () => [] }; } }, transactionSync: callback => { database.exec('BEGIN IMMEDIATE'); try { const result = callback(); database.exec('COMMIT'); return result; } catch (error) { database.exec('ROLLBACK'); throw error; } } };
+  const storage = { sql: { exec: (query, ...args) => { const statement = database.prepare(query); if (/^\s*(SELECT|PRAGMA)/i.test(query)) return { toArray: () => statement.all(...args) }; statement.run(...args); return { toArray: () => [] }; } }, transactionSync: callback => { database.exec('BEGIN IMMEDIATE'); try { const result = callback(); database.exec('COMMIT'); return result; } catch (error) { database.exec('ROLLBACK'); throw error; } } };
   const coordinator = new RegistrationCoordinator({ storage });
   return { values, counts, database, coordinator, fault, JOIN_CODE_KEY: Buffer.alloc(32, 3).toString('base64url'),
+    FETCH: (...args) => fetch(...args),
     REGISTRATION_COORDINATOR: { getByName() { return { fetch: (input, init) => { counts.coordinator++; return coordinator.fetch(new Request(input, init)); } }; } },
     R2_BUCKET: {
       async get(key) { counts.get++; const value = values.get(`r2:${key}`); return value == null ? null : { async json() { return JSON.parse(value); } }; },
@@ -202,5 +203,108 @@ test('rejects negative progress, more than 20 records, and invalid URL schemes',
   const badUrl = { ...SNAPSHOT, records: [{ ...invalid.records[0], progressInMillis: 1, videoPageUrl: 'javascript:alert(1)' }] };
   assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: badUrl })).status, 400);
   assert.equal(e.counts.put, 0);
+  e.database.close();
+});
+
+test('creates a short-lived TV sign-in session and keeps its polling secret separate', async () => {
+  const e = env(); await create(e, FAMILY);
+  const response = await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' });
+  assert.equal(response.status, 201);
+  const session = await response.json();
+  assert.match(session.sessionId, /^[A-Za-z0-9_-]{43}$/);
+  assert.match(session.pollSecret, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(new URL(session.url).pathname, `/auth/${session.sessionId}`);
+  assert.equal((await call(e, `/v1/family-auth/sessions/${session.sessionId}`)).status, 401);
+  assert.equal((await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).status, 200);
+  const qr = await call(e, `/auth/qr/${session.sessionId}.svg`);
+  assert.equal(qr.headers.get('content-type'), 'image/svg+xml; charset=utf-8');
+  const svg = await qr.text();
+  assert.ok(svg.length > 1000);
+  const dark = new Set([...svg.matchAll(/M(\d+) (\d+)h1v1h-1z/g)].map(([, x, y]) => `${x},${y}`));
+  const at = (x, y) => dark.has(`${x},${y}`) ? 1 : 0;
+  const bits = [...Array(6)].map((_, i) => at(8, i)).concat(at(8, 7), at(8, 8), at(7, 8), [...Array(6)].map((_, i) => at(5 - i, 8)));
+  const actual = bits.reduce((value, bit, i) => value | (bit << i), 0);
+  let remainder = 8;
+  for (let i = 0; i < 10; i++) remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) * 0x537);
+  assert.equal(actual, ((8 << 10) | remainder) ^ 0x5412, 'format bits must declare QR error correction L and mask 0');
+  e.database.close();
+});
+
+test('links Google and GitHub stable IDs and rejects a provider identity already linked elsewhere', async () => {
+  const e = env(); await create(e, FAMILY);
+  e.GOOGLE_CLIENT_ID = 'google-client'; e.GOOGLE_CLIENT_SECRET = 'google-secret';
+  e.GITHUB_CLIENT_ID = 'github-client'; e.GITHUB_CLIENT_SECRET = 'github-secret';
+  const session = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
+  assert.match(await (await call(e, `/auth/${session.sessionId}`)).text(), /Google/);
+  assert.match(await (await call(e, `/auth/${session.sessionId}`)).text(), /GitHub/);
+  e.FETCH = async input => String(input).includes('oauth2.googleapis.com/token') ? Response.json({ access_token: 'google-token' }) : Response.json({ sub: 'google-subject', name: 'Alice Example' });
+  const googleStart = await call(e, `/v1/family-auth/sessions/${session.sessionId}/oauth/google`, { auth: null });
+  const googleState = new URL(googleStart.headers.get('location')).searchParams.get('state');
+  assert.equal((await call(e, `/v1/oauth/google/callback?code=good&state=${googleState}`, { auth: null })).status, 200);
+  assert.equal((await call(e, `/v1/oauth/google/callback?code=good&state=${googleState}`, { auth: null })).status, 400);
+  assert.deepEqual(await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json(), { status: 'linked', provider: 'google', displayName: 'Alice Example' });
+
+  const githubSession = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
+  e.FETCH = async input => String(input).includes('github.com/login/oauth/access_token') ? Response.json({ access_token: 'github-token' }) : Response.json({ id: 9876, name: 'Bob Example', login: 'bob' });
+  const githubStart = await call(e, `/v1/family-auth/sessions/${githubSession.sessionId}/oauth/github`, { auth: null });
+  const githubState = new URL(githubStart.headers.get('location')).searchParams.get('state');
+  assert.equal((await call(e, `/v1/oauth/github/callback?code=good&state=${githubState}`, { auth: null })).status, 200);
+  assert.deepEqual(await (await call(e, `/v1/families/${FAMILY}/accounts`)).json(), {
+    accounts: [{ provider: 'github', displayName: 'Bob Example' }, { provider: 'google', displayName: 'Alice Example' }],
+    providers: ['github', 'google']
+  });
+
+  const familyB = '323e4567-e89b-42d3-a456-426614174010', secretB = Buffer.alloc(32, 8).toString('base64url');
+  await create(e, familyB, secretB);
+  const second = await (await call(e, `/v1/family-auth/sessions?familyId=${familyB}`, { method: 'POST', auth: secretB })).json();
+  const secondStart = await call(e, `/v1/family-auth/sessions/${second.sessionId}/oauth/github`, { auth: null });
+  const secondState = new URL(secondStart.headers.get('location')).searchParams.get('state');
+  assert.equal((await call(e, `/v1/oauth/github/callback?code=good&state=${secondState}`, { auth: null })).status, 409);
+  e.database.close();
+});
+
+test('lists only linked provider names for the authenticated family', async () => {
+  const e = env(); await create(e, FAMILY);
+  const otherFamily = '323e4567-e89b-42d3-a456-426614174010';
+  const otherSecret = Buffer.alloc(32, 8).toString('base64url');
+  await create(e, otherFamily, otherSecret, '192.0.2.99');
+  e.database.prepare('INSERT INTO family_provider_links (provider,subject,family_id,linked_at,display_name) VALUES (?,?,?,?,?)').run('google', 'private-google-id', FAMILY, Date.now(), 'Alice');
+  e.database.prepare('INSERT INTO family_provider_links (provider,subject,family_id,linked_at,display_name) VALUES (?,?,?,?,?)').run('github', 'private-github-id', FAMILY, Date.now(), 'Bob');
+  assert.deepEqual(await (await call(e, `/v1/families/${FAMILY}/accounts`)).json(), {
+    accounts: [{ provider: 'github', displayName: 'Bob' }, { provider: 'google', displayName: 'Alice' }],
+    providers: ['github', 'google']
+  });
+  assert.equal((await call(e, `/v1/families/${FAMILY}/accounts`, { auth: otherSecret })).status, 401);
+  assert.equal((await call(e, `/v1/families/${FAMILY}/accounts`, { auth: null })).status, 401);
+  e.database.close();
+});
+
+test('expires and cancels sessions; rejects a missing provider configuration', async () => {
+  const e = env(); await create(e, FAMILY);
+  const oldNow = Date.now;
+  try {
+    Date.now = () => 2_000_000_000_000;
+    const session = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
+    assert.equal((await call(e, `/v1/family-auth/sessions/${session.sessionId}/oauth/google`, { auth: null })).status, 503);
+    Date.now = () => 2_000_000_000_100;
+    const pending = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
+    assert.equal((await call(e, `/v1/family-auth/sessions/${pending.sessionId}/cancel`, { method: 'POST', auth: pending.pollSecret })).status, 200);
+    assert.equal((await (await call(e, `/v1/family-auth/sessions/${pending.sessionId}`, { auth: pending.pollSecret })).json()).status, 'cancelled');
+    Date.now = () => 2_000_000_300_200;
+    assert.equal((await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json()).status, 'expired');
+  } finally { Date.now = oldNow; e.database.close(); }
+});
+
+test('shows a recoverable provider error and does not link an account when token exchange fails', async () => {
+  const e = env(); await create(e, FAMILY);
+  e.GOOGLE_CLIENT_ID = 'google-client'; e.GOOGLE_CLIENT_SECRET = 'google-secret';
+  const session = await (await call(e, `/v1/family-auth/sessions?familyId=${FAMILY}`, { method: 'POST' })).json();
+  const start = await call(e, `/v1/family-auth/sessions/${session.sessionId}/oauth/google`, { auth: null });
+  const state = new URL(start.headers.get('location')).searchParams.get('state');
+  e.FETCH = async () => new Response('{}', { status: 401 });
+  const callback = await call(e, `/v1/oauth/google/callback?code=bad&state=${state}`, { auth: null });
+  assert.equal(callback.status, 400);
+  assert.match(await callback.text(), /could not be completed/);
+  assert.equal((await (await call(e, `/v1/family-auth/sessions/${session.sessionId}`, { auth: session.pollSecret })).json()).status, 'pending');
   e.database.close();
 });
