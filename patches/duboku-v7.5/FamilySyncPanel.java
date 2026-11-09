@@ -200,7 +200,7 @@ public final class FamilySyncPanel extends ScrollView {
         page.addView(familyHeader);
         currentFamily = text("当前家庭：" + FamilyIdentity.get(host).familyId(), 15, false);
         page.addView(currentFamily);
-        authLinkButton = actionRow("关联 Google / GitHub 账号（手机扫码）", this::startAuth);
+        authLinkButton = actionRow("关联 Google / GitHub", this::startAuth);
         authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
         updateAuthLinkButton();
         refreshLinkedProviders();
@@ -330,10 +330,11 @@ public final class FamilySyncPanel extends ScrollView {
         settings.setDomStorageEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
+        authQr.setFocusable(false);
+        authQr.setFocusableInTouchMode(false);
         page.addView(authQr, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 360));
-        Button cancel = actionRow("取消并返回", this::returnFromAuth);
         addStatus();
-        cancel.requestFocus();
+        requestFocus();
     }
 
     private void pollAuth() {
@@ -387,9 +388,10 @@ public final class FamilySyncPanel extends ScrollView {
 
     private void updateAuthLinkButton() {
         if (authLinkButton == null) return;
-        String label = linkedProviders.isEmpty() ? "关联 Google / GitHub 账号（手机扫码）"
-                : "已关联 " + linkedProviders + " 账号" + (linkedDisplayName.isEmpty() ? "" : " · " + linkedDisplayName) + "（继续扫码关联）";
+        String label = linkedProviders.isEmpty() ? "关联 Google / GitHub" : "继续关联 Google / GitHub";
         authLinkButton.setText(label);
+        authLinkButton.setSingleLine(true);
+        authLinkButton.setEllipsize(android.text.TextUtils.TruncateAt.END);
         authLinkButton.setEnabled(FamilyIdentity.get(host).isCloudSyncEnabled());
     }
 

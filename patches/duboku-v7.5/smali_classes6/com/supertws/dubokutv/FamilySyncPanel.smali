@@ -1398,6 +1398,14 @@
     .line 331
     invoke-virtual {v0, v3}, Landroid/webkit/WebSettings;->setSupportZoom(Z)V
 
+    iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->authQr:Landroid/webkit/WebView;
+
+    const/4 v1, 0x0
+
+    invoke-virtual {v0, v1}, Landroid/webkit/WebView;->setFocusable(Z)V
+
+    invoke-virtual {v0, v1}, Landroid/webkit/WebView;->setFocusableInTouchMode(Z)V
+
     .line 332
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->page:Landroid/widget/LinearLayout;
 
@@ -1413,22 +1421,10 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/widget/LinearLayout;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
 
-    .line 333
-    new-instance v0, Lcom/supertws/dubokutv/FamilySyncPanel$12;
-
-    invoke-direct {v0, p0}, Lcom/supertws/dubokutv/FamilySyncPanel$12;-><init>(Lcom/supertws/dubokutv/FamilySyncPanel;)V
-
-    const-string v1, "\u53d6\u6d88\u5e76\u8fd4\u56de"
-
-    invoke-direct {p0, v1, v0}, Lcom/supertws/dubokutv/FamilySyncPanel;->actionRow(Ljava/lang/String;Ljava/lang/Runnable;)Landroid/widget/Button;
-
-    move-result-object v0
-
     .line 334
     invoke-direct {p0}, Lcom/supertws/dubokutv/FamilySyncPanel;->addStatus()V
 
-    .line 335
-    invoke-virtual {v0}, Landroid/widget/Button;->requestFocus()Z
+    invoke-virtual {p0}, Lcom/supertws/dubokutv/FamilySyncPanel;->requestFocus()Z
 
     .line 336
     return-void
@@ -2638,87 +2634,27 @@
 
     if-eqz v0, :cond_1
 
-    const-string v0, "\u5173\u8054 Google / GitHub \u8d26\u53f7\uff08\u624b\u673a\u626b\u7801\uff09"
+    const-string v0, "\u5173\u8054 Google / GitHub"
 
     goto :goto_1
 
     .line 390
     :cond_1
-    new-instance v0, Ljava/lang/StringBuilder;
-
-    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v1, "\u5df2\u5173\u8054 "
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->linkedProviders:Ljava/lang/String;
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    const-string v1, " \u8d26\u53f7"
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->linkedDisplayName:Ljava/lang/String;
-
-    invoke-virtual {v1}, Ljava/lang/String;->isEmpty()Z
-
-    move-result v1
-
-    if-eqz v1, :cond_2
-
-    const-string v1, ""
-
-    goto :goto_0
-
-    :cond_2
-    new-instance v1, Ljava/lang/StringBuilder;
-
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v2, " \u00b7 "
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    iget-object v2, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->linkedDisplayName:Ljava/lang/String;
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v1
-
-    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v1
-
-    :goto_0
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    const-string v1, "\uff08\u7ee7\u7eed\u626b\u7801\u5173\u8054\uff09"
-
-    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    move-result-object v0
-
-    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v0
+    const-string v0, "\u7ee7\u7eed\u5173\u8054 Google / GitHub"
 
     .line 391
     :goto_1
     iget-object v1, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->authLinkButton:Landroid/widget/Button;
 
     invoke-virtual {v1, v0}, Landroid/widget/Button;->setText(Ljava/lang/CharSequence;)V
+
+    const/4 v2, 0x1
+
+    invoke-virtual {v1, v2}, Landroid/widget/Button;->setSingleLine(Z)V
+
+    sget-object v2, Landroid/text/TextUtils$TruncateAt;->END:Landroid/text/TextUtils$TruncateAt;
+
+    invoke-virtual {v1, v2}, Landroid/widget/Button;->setEllipsize(Landroid/text/TextUtils$TruncateAt;)V
 
     .line 392
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel;->authLinkButton:Landroid/widget/Button;
