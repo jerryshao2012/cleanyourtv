@@ -641,6 +641,8 @@
 
     const-string v5, "already_current"
 
+    invoke-static {v0, v3, v5}, Lcom/supertws/dubokutv/LanSyncManager;->completeIncomingProgress(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+
     # invokes: Lcom/supertws/dubokutv/LanSyncManager;->sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
     invoke-static {v0, v3, v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$600(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
     :try_end_193
@@ -1138,6 +1140,8 @@
     iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$senderIp:Ljava/lang/String;
 
     const-string v5, "applied"
+
+    invoke-static {v0, v3, v5}, Lcom/supertws/dubokutv/LanSyncManager;->completeIncomingProgress(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
 
     # invokes: Lcom/supertws/dubokutv/LanSyncManager;->sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
     invoke-static {v0, v3, v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$600(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V

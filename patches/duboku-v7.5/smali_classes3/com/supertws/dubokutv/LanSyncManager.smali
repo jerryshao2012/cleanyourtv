@@ -64,6 +64,8 @@
     .end annotation
 .end field
 
+.field private static final sIncomingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+
 .field public static sRoomDb:Ljava/lang/Object;
 
 .field private static final sSyncQueue:Ljava/util/concurrent/ScheduledExecutorService;
@@ -169,6 +171,12 @@
     invoke-direct {v1}, Ljava/util/concurrent/ConcurrentHashMap;-><init>()V
 
     sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+
+    new-instance v1, Ljava/util/concurrent/ConcurrentHashMap;
+
+    invoke-direct {v1}, Ljava/util/concurrent/ConcurrentHashMap;-><init>()V
+
+    sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sIncomingProgress:Ljava/util/concurrent/ConcurrentHashMap;
 
     .line 54
     new-instance v1, Ljava/util/concurrent/ConcurrentHashMap;
@@ -2643,6 +2651,33 @@
 
     move-result-object v12
 
+    invoke-static {v12}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+    move-result v0
+    if-eqz v0, :make_snapshot_message_id
+    goto :snapshot_message_id_ready
+    :make_snapshot_message_id
+    new-instance v5, Ljava/lang/StringBuilder;
+    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+    const-string v0, "snapshot:"
+    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
+    move-object/from16 v0, v16
+    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
+    const-string v0, ":"
+    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
+    invoke-virtual {v5, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
+    const-string v0, ":"
+    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
+    invoke-virtual {v5, v10, v11}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+    move-result-object v5
+    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v12
+    :snapshot_message_id_ready
+
     .line 243
     const-string v0, "clockVersion"
 
@@ -2724,6 +2759,9 @@
 
     .line 254
     :cond_256
+    invoke-static {v9, v12, v13}, Lcom/supertws/dubokutv/LanSyncManager;->claimIncomingProgress(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z
+    move-result v2
+    if-eqz v2, :goto_299
     new-instance v2, Ljava/lang/Thread;
 
     move-object/from16 v19, v2
@@ -4525,6 +4563,63 @@
     .line 146
     :cond_72
     :goto_72
+    return-void
+.end method
+
+.method private static incomingProgressKey(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .registers 4
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-virtual {v0, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v0
+    const-string v1, ":"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v0
+    invoke-virtual {v0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v0
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v0
+    return-object v0
+.end method
+
+.method private static claimIncomingProgress(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z
+    .registers 9
+    sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sIncomingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v0}, Ljava/util/concurrent/ConcurrentHashMap;->size()I
+    move-result v1
+    const/16 v2, 0x100
+    if-le v1, v2, :claim_bounded
+    # shortcut: cache eviction may replay an idempotent DB merge; keep memory bounded.
+    invoke-virtual {v0}, Ljava/util/concurrent/ConcurrentHashMap;->clear()V
+    :claim_bounded
+    invoke-static {p0, p1}, Lcom/supertws/dubokutv/LanSyncManager;->incomingProgressKey(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v1
+    sget-object v2, Lcom/supertws/dubokutv/LanSyncManager;->sIncomingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    const-string v3, "pending"
+    invoke-virtual {v2, v1, v3}, Ljava/util/concurrent/ConcurrentHashMap;->putIfAbsent(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    move-result-object v1
+    check-cast v1, Ljava/lang/String;
+    if-eqz v1, :claim_first
+    const-string v2, "pending"
+    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v2
+    if-nez v2, :claim_duplicate
+    invoke-static {p0, p1, p2, v1}, Lcom/supertws/dubokutv/LanSyncManager;->sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    :claim_duplicate
+    const/4 v0, 0x0
+    return v0
+    :claim_first
+    const/4 v0, 0x1
+    return v0
+.end method
+
+.method static completeIncomingProgress(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    .registers 7
+    invoke-static {p0, p1}, Lcom/supertws/dubokutv/LanSyncManager;->incomingProgressKey(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v0
+    sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sIncomingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    const-string v2, "pending"
+    invoke-virtual {v1, v0, v2, p2}, Ljava/util/concurrent/ConcurrentHashMap;->replace(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z
     return-void
 .end method
 

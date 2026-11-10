@@ -33,6 +33,7 @@ class UniversalApkBuildTest(unittest.TestCase):
         self.assertIn('"$PATCH_DIR"/tests/test_*.py', source)
         self.assertIn("tests/test_lan_sync_peer_validation.py", source)
         self.assertIn("tests/test_lan_sync_ack_timeout.py", source)
+        self.assertIn("tests/test_lan_sync_message_dedup.py", source)
 
 
 if __name__ == "__main__":

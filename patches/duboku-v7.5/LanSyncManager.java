@@ -51,6 +51,7 @@ public class LanSyncManager {
     private static final long ACK_TIMEOUT_MS = 3000L;
     private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
     private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, String> sIncomingProgress = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> sClockProbes = new ConcurrentHashMap<>();
     private static volatile long sLastClockProbeAt;
     private static ConnectivityManager.NetworkCallback sNetworkCallback;
@@ -152,6 +153,29 @@ public class LanSyncManager {
         } catch (Exception e) { Log.w(TAG, "Progress ACK deferred: " + e.getClass().getSimpleName()); }
     }
 
+    private static String incomingProgressKey(String fromDevice, String messageId) {
+        return fromDevice + ":" + messageId;
+    }
+
+    private static boolean claimIncomingProgress(String fromDevice, String messageId, String senderIp) {
+        if (messageId == null || messageId.isEmpty()) return true;
+        String key = incomingProgressKey(fromDevice, messageId);
+        // shortcut: evicted retries can repeat idempotent writes; use a TTL cache if traffic grows.
+        if (sIncomingProgress.size() > 256) sIncomingProgress.clear();
+        String previous = sIncomingProgress.putIfAbsent(key, "pending");
+        if (previous == null) {
+            return true;
+        }
+        if (!"pending".equals(previous)) sendProgressAck(fromDevice, messageId, senderIp, previous);
+        return false;
+    }
+
+    static void completeIncomingProgress(String fromDevice, String messageId, String status) {
+        if (messageId != null && !messageId.isEmpty()) {
+            sIncomingProgress.replace(incomingProgressKey(fromDevice, messageId), "pending", status);
+        }
+    }
+
     public static void onLanSyncSettingChanged(boolean enabled) {
         LanSyncManager manager = sInstance;
         if (manager == null) return;
@@ -247,7 +271,9 @@ public class LanSyncManager {
             final long progressInMillis = json.optLong("progressInMillis");
             final long durationInMillis = json.optLong("durationInMillis");
             final long remoteModifiedAt = json.optLong("modifiedAt");
-            final String messageId = json.optString("messageId", "");
+            final String packetId = json.optString("messageId", "");
+            final String messageId = FamilyIdentity.validId(packetId) ? packetId
+                    : "snapshot:" + id + ":" + episode + ":" + progressInMillis;
             final JSONObject versionJson = json.optJSONObject("clockVersion");
             final String videoPageUrl = json.optString("videoPageUrl");
             final String detailPageUrl = json.optString("detailPageUrl");
@@ -258,6 +284,8 @@ public class LanSyncManager {
                 Log.w(TAG, "Rejected dummy test packet with example.com for: " + name);
                 return;
             }
+
+            if (!claimIncomingProgress(fromDevice, messageId, senderIp)) return;
 
             new Thread(new Runnable() {
                 @Override
@@ -320,6 +348,7 @@ public class LanSyncManager {
                             }
 
                             if (!accept) {
+                                completeIncomingProgress(fromDevice, messageId, "already_current");
                                 Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s [mod=" + remoteModifiedAt + "], local: " + existingEp + " @" + (existingProg/1000) + "s [mod=" + existingModAt + "])");
                                 sendProgressAck(fromDevice, messageId, senderIp, "already_current");
                                 return;
@@ -364,6 +393,7 @@ public class LanSyncManager {
                                 db = null;
                             } catch (Exception ignored) {}
                             SyncVersionStore.rememberRemote(mContext, name, finalDetail, remoteVersion, localDeviceId);
+                            completeIncomingProgress(fromDevice, messageId, "applied");
                             sendProgressAck(fromDevice, messageId, senderIp, "applied");
 
                             // Throttle UI recomposition: if same episode, only bump UI if integer percentage changed

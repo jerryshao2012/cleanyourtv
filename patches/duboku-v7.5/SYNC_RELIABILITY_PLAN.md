@@ -199,8 +199,10 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 远程覆盖安装到 Sony、Hisense Fire TV、小米盒子 5 Max，未清除应用数据。三台安装包的实测 SHA-256 均为 `89c7e4c0a55aa3ecfb07954aae7c4be2ff24ef86bb138e2ee9b418a5a22998b3`，versionCode 33 / 7.5；三台启动后云端对账均 `peers=4 attempted=4 failed=0 success=true`，Cloud PUT 成功，观看历史保留。三台历史页都显示《兰香如故》第47集 89%，修改时间 `2026-11-10 16:19:45`。新安装的小米盒子向 Sony、Hisense 发出合法 `REQUEST_SYNC`，两端均响应；Hisense 收到一个随机未知设备 ID 的 `REQUEST_SYNC` 后记录拒绝日志，未响应或广播历史。
 - 本轮补验发现 Java 常量改成 3000 ms 不会自动更新 APK 中匿名 Runnable 内联的 smali 常量（仍为 700 ms）；已新增针对实际 `LanSyncManager$5.smali` 的回归检查，并同步更新源码镜像、smali、构建门禁。新构建全量构建门禁通过，APK SHA-256 为 `131e6da1f09ea9a37b20bd50887b2549488655e506fc68b447eff3c9c6f7bffe`；Sony、Hisense、小米安装后的 APK 拉取哈希均与构建一致。
 - 最新双机实测使用非片尾的《早春晴朗》第4集（约 4%）排除片尾关键上传：Hisense 最终成功写入 Sony 的进度并发出 `Progress ACK sent`，但 ACK 约 13 秒后才处理；Sony 在 3 秒窗口后已触发云端 PUT。推断启动/历史对账期间接收端队列会延迟 ACK；LAN 写入和 ACK 发送路径工作，但“及时 ACK 后省略普通进度 PUT”在本次实机中仍未通过。超时兜底保住了云端最终记录。新增发送/接收 ACK 日志用于后续定位。
+- 本轮处理重复 LAN 历史快照：接收端在启动数据库 worker 前先 claim messageId；无 messageId 的历史快照按作品、集数、进度合并去重，重复已完成项直接回 ACK；Java、`classes3.dex` smali 和回归测试已镜像。新增测试先失败后通过，完整 `build_universal_apks.sh` 门禁通过。最终 APK versionCode 33 / 7.5，SHA-256 `02c1e985ac9a0a45a680033a08921904b2c3ab51aa5a52367dea9d8e44a1a38d`，已覆盖安装 Sony、Hisense Fire TV、小米盒子 5 Max；三台进程存活、UDP 接收器启动，无 `VerifyError`。
+- 最终 APK 实机播放观察：Sony 的《早春晴朗》第4集进度从约 650s 增至 709s；Hisense 与小米均记录多次 `Synced newer remote progress`，因此 LAN 合并路径可用。接收端 ACK 仍晚于 3s 门限，Sony 继续每约 3–4s 出现一次 `Cloud upload succeeded`；ACK 减 PUT 的实机目标仍失败。操作误选了《早春晴朗》而非计划测试的《小城良方》，播放器已退出；测试进度已同步到该记录。
 
-**仍待实机验收**：ACK 队列排空后的稳态普通进度是否能在 3 秒内 ACK 并省略本轮 PUT；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
+**仍待实机验收**：稳态普通进度能否在 3 秒内 ACK 并省略本轮 PUT（当前实测未通过）；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
 
 ## Best-practice 依据
 
