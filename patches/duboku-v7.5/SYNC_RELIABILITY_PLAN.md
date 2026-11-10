@@ -190,14 +190,15 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 
 ## 验收记录（2026-11-10）
 
-- 本机逻辑验收：Python 测试 27/27 通过；Worker 测试 28/28 通过；`PlaybackEventTest`、`SyncVersionTest`、`SyncClockMathTest`、`SyncDecisionTest` 均通过。源码/Worker 镜像一致，`git diff --check` 通过。
-- Sony、Hisense Fire TV、小米盒子 5 Max 的已安装 `com.supertws.dubokutv` APK 均为 versionCode 33 / 7.5，实际拉取 APK 的 SHA-256 均为 `04aab0bdaf84094f67dd65092b8a623ae42f2e7ed97dc7055b18f3415e12983c`。
+- 本机逻辑验收：Python 测试 28/28 通过；Worker 测试 28/28 通过；六项纯 Java 测试（ACK 门禁、handoff、播放事件、版本、时钟及上传决策）通过。源码/Worker 镜像一致，`git diff --check` 通过。
+- 初始实机矩阵使用 APK SHA-256 `04aab0bdaf84094f67dd65092b8a623ae42f2e7ed97dc7055b18f3415e12983c`；随后加入 LAN peer 接收校验并重建了 versionCode 33 / 7.5 APK，SHA-256 为 `89c7e4c0a55aa3ecfb07954aae7c4be2ff24ef86bb138e2ee9b418a5a22998b3`。
 - Sony《兰香如故》第47集暂停后按 Home：日志记录最终位置提交及 UDP 广播 `2451s`，小米盒子日志收到同设备、同集、同位置；Cloud PUT 成功。小米和 Hisense 历史页都显示第47集观看比例 89%、更新时间 2026-11-10 16:08:23，与 2451/2765 秒一致。
 - 普通进度有多个 `PROGRESS_ACK matched`；另有一次 ACK 超时后云端兜底成功。Hisense 应用未运行时启动，UDP 接收器恢复，收到 LAN 进度；云端对账 `peers=4 attempted=4 failed=0 success=true`，之后 Cloud PUT 成功。三台设备均可见相同最新记录。
 - 本次观察到可信 LAN 时钟样本（Hisense 约 `-113 ms` 至 `-709 ms`，RTT `668–2079 ms`）；这只能证明探测/采样路径工作，不能替代人为设置快慢时钟和回拨的测试。
-- 补齐 LAN 接收信任边界：只处理已登记家庭 peer 的进度包与 `REQUEST_SYNC`，同时更新 Java、实际加载的 `classes3.dex` smali 和构建镜像门禁。新回归测试先失败后通过；通用 APK 构建、签名、API 22/versionCode 33 校验通过，新三份分发 APK 的 SHA-256 均为 `89c7e4c0a55aa3ecfb07954aae7c4be2ff24ef86bb138e2ee9b418a5a22998b3`，并在 `classes3.dex` 中确认拒绝日志字符串。此 APK 尚未安装到电视。
+- 补齐 LAN 接收信任边界：只处理已登记家庭 peer 的进度包与 `REQUEST_SYNC`，同步更新 Java、实际加载的 `classes3.dex` smali 和构建门禁。回归测试先失败后通过；通用 APK 构建、签名、API 22/versionCode 33 校验通过，并在 `classes3.dex` 确认拒绝日志字符串。
+- 远程覆盖安装到 Sony、Hisense Fire TV、小米盒子 5 Max，未清除应用数据。三台安装包的实测 SHA-256 均为 `89c7e4c0a55aa3ecfb07954aae7c4be2ff24ef86bb138e2ee9b418a5a22998b3`，versionCode 33 / 7.5；三台启动后云端对账均 `peers=4 attempted=4 failed=0 success=true`，Cloud PUT 成功，观看历史保留。三台历史页都显示《兰香如故》第47集 89%，修改时间 `2026-11-10 16:19:45`。新安装的小米盒子向 Sony、Hisense 发出合法 `REQUEST_SYNC`，两端均响应；Hisense 收到一个随机未知设备 ID 的 `REQUEST_SYNC` 后记录拒绝日志，未响应或广播历史。
 
-**仍待实机验收**：新 APK 在已登记 peer 间正常互通及未知设备被拒绝、单机无 peer 时 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。本轮 ADB 三台无线地址均不可达，USB 未授权，无法安装新 APK；此前 Cloud 成功日志和其他设备云读成功不是对这些故障场景的替代证明，因此全计划尚未完成验收。
+**仍待实机验收**：单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
 
 ## Best-practice 依据
 
