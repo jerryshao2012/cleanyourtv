@@ -29,6 +29,10 @@ final class PlaybackSaveGuard {
                 && episode.equals(this.episode) && position == this.position;
     }
 
+    synchronized boolean isNewPlaybackEvent(String name, String episode) {
+        return PlaybackEvent.startsNewEpisode(this.name, this.episode, name, episode);
+    }
+
     synchronized boolean shouldSkip(String name, String episode, long position, boolean playing) {
         return isDuplicate(name, episode, position) || (!playing && name != null && name.equals(blockedName));
     }
@@ -39,6 +43,10 @@ final class PlaybackSaveGuard {
         blockedName = name;
         blockedModified = modified;
         if (prefs != null) prefs.edit().putString("blockedName", name).putLong("blockedModified", modified).apply();
+    }
+
+    synchronized boolean isBlockedByRemote(String name, long modified) {
+        return name != null && name.equals(blockedName) && modified <= blockedModified;
     }
 
     synchronized void onUserPlay(String name) {

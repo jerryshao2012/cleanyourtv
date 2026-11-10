@@ -23,14 +23,14 @@
 
 # direct methods
 .method constructor <init>(Ljava/lang/String;)V
-    .locals 0
+    .registers 2
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "()V"
         }
     .end annotation
 
-    .line 626
+    .line 776
     iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$6;->val$msg:Ljava/lang/String;
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -41,9 +41,9 @@
 
 # virtual methods
 .method public run()V
-    .locals 3
+    .registers 4
 
-    .line 630
+    .line 780
     :try_start_0
     sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveActivity:Landroid/app/Activity;
 
@@ -56,9 +56,18 @@
     move-result-object v0
 
     invoke-virtual {v0}, Landroid/widget/Toast;->show()V
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_end_c
+    .catchall {:try_start_0 .. :try_end_c} :catchall_d
 
-    :catchall_0
+    goto :goto_e
+
+    .line 781
+    :catchall_d
+    move-exception v0
+
+    :goto_e
+    nop
+
+    .line 782
     return-void
 .end method

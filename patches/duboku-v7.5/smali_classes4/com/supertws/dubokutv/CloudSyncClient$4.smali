@@ -25,14 +25,14 @@
 
 # direct methods
 .method constructor <init>(Ljavax/net/ssl/X509TrustManager;Ljavax/net/ssl/X509TrustManager;)V
-    .locals 0
+    .registers 3
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "()V"
         }
     .end annotation
 
-    .line 643
+    .line 661
     iput-object p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$platform:Ljavax/net/ssl/X509TrustManager;
 
     iput-object p2, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$extra:Ljavax/net/ssl/X509TrustManager;
@@ -45,57 +45,57 @@
 
 # virtual methods
 .method public checkClientTrusted([Ljava/security/cert/X509Certificate;Ljava/lang/String;)V
-    .locals 1
+    .registers 4
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/security/cert/CertificateException;
         }
     .end annotation
 
-    .line 645
+    .line 663
     iget-object v0, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$platform:Ljavax/net/ssl/X509TrustManager;
 
     invoke-interface {v0, p1, p2}, Ljavax/net/ssl/X509TrustManager;->checkClientTrusted([Ljava/security/cert/X509Certificate;Ljava/lang/String;)V
 
-    .line 646
+    .line 664
     return-void
 .end method
 
 .method public checkServerTrusted([Ljava/security/cert/X509Certificate;Ljava/lang/String;)V
-    .locals 1
+    .registers 4
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/security/cert/CertificateException;
         }
     .end annotation
 
-    .line 648
+    .line 666
     :try_start_0
     iget-object v0, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$platform:Ljavax/net/ssl/X509TrustManager;
 
     invoke-interface {v0, p1, p2}, Ljavax/net/ssl/X509TrustManager;->checkServerTrusted([Ljava/security/cert/X509Certificate;Ljava/lang/String;)V
-    :try_end_0
-    .catch Ljava/security/cert/CertificateException; {:try_start_0 .. :try_end_0} :catch_0
+    :try_end_5
+    .catch Ljava/security/cert/CertificateException; {:try_start_0 .. :try_end_5} :catch_6
 
-    .line 649
-    goto :goto_0
+    .line 667
+    goto :goto_c
 
-    :catch_0
+    :catch_6
     move-exception v0
 
     iget-object v0, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$extra:Ljavax/net/ssl/X509TrustManager;
 
     invoke-interface {v0, p1, p2}, Ljavax/net/ssl/X509TrustManager;->checkServerTrusted([Ljava/security/cert/X509Certificate;Ljava/lang/String;)V
 
-    .line 650
-    :goto_0
+    .line 668
+    :goto_c
     return-void
 .end method
 
 .method public getAcceptedIssuers()[Ljava/security/cert/X509Certificate;
-    .locals 1
+    .registers 2
 
-    .line 651
+    .line 669
     iget-object v0, p0, Lcom/supertws/dubokutv/CloudSyncClient$4;->val$platform:Ljavax/net/ssl/X509TrustManager;
 
     invoke-interface {v0}, Ljavax/net/ssl/X509TrustManager;->getAcceptedIssuers()[Ljava/security/cert/X509Certificate;

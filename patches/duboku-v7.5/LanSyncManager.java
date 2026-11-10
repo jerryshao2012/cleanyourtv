@@ -3,6 +3,9 @@ package com.supertws.dubokutv;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
@@ -21,6 +24,12 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class LanSyncManager {
     private static final String TAG = "LanSyncManager";
@@ -39,6 +48,12 @@ public class LanSyncManager {
     private static volatile String sLastSentEpisode = null;
     private static volatile long sLastSentProgressMs = -1;
     private static volatile long sLastRequestSyncTime = 0;
+    private static final long ACK_TIMEOUT_MS = 700L;
+    private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
+    private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Long> sClockProbes = new ConcurrentHashMap<>();
+    private static volatile long sLastClockProbeAt;
+    private static ConnectivityManager.NetworkCallback sNetworkCallback;
 
     // Active player context tracking
     public static volatile Object sActiveExoPlayer = null;
@@ -125,6 +140,17 @@ public class LanSyncManager {
         return context != null && FamilyIdentity.get(context).isLanSyncEnabled();
     }
 
+    private static void sendProgressAck(String targetDevice, String messageId, String targetIp, String status) {
+        Context context = getAppContext();
+        if (context == null || !FamilyIdentity.validId(targetDevice) || !FamilyIdentity.validId(messageId)
+                || !FamilyIdentity.get(context).peers().contains(targetDevice)) return;
+        try {
+            JSONObject ack = new JSONObject().put("action", "PROGRESS_ACK").put("from", sCurrentDeviceId)
+                    .put("to", targetDevice).put("messageId", messageId).put("status", status);
+            sendUdpPacket(ack.toString(), targetIp);
+        } catch (Exception e) { Log.w(TAG, "Progress ACK deferred: " + e.getClass().getSimpleName()); }
+    }
+
     public static void onLanSyncSettingChanged(boolean enabled) {
         LanSyncManager manager = sInstance;
         if (manager == null) return;
@@ -154,6 +180,49 @@ public class LanSyncManager {
             }
             if ("FAMILY_OFFER".equals(action)) {
                 if (identity.adopt(json)) CloudSyncClient.fetchKnownPeers(mContext);
+                syncLanClock();
+                return;
+            }
+            if ("TIME_PROBE".equals(action)) {
+                String nonce = json.optString("nonce", "");
+                String target = json.optString("to", "");
+                long t1 = json.optLong("t1", -1L);
+                if (!FamilyIdentity.validId(fromDevice) || !identity.peers().contains(fromDevice)
+                        || !FamilyIdentity.validId(nonce) || !("*".equals(target) || sCurrentDeviceId.equals(target)) || t1 < 0) return;
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(Math.abs(sCurrentDeviceId.hashCode() % 180));
+                        long t2 = FamilyClock.now(mContext), t3 = FamilyClock.now(mContext);
+                        JSONObject reply = new JSONObject().put("action", "TIME_REPLY").put("from", sCurrentDeviceId)
+                                .put("to", fromDevice).put("nonce", nonce).put("t1", t1).put("t2", t2).put("t3", t3)
+                                .put("uncertaintyMs", FamilyClock.uncertainty(mContext)).put("trusted", FamilyClock.isTrusted(mContext));
+                        sendUdpPacket(reply.toString(), senderIp);
+                    } catch (Exception e) { Log.w(TAG, "LAN clock reply deferred: " + e.getClass().getSimpleName()); }
+                }, "LanSync-TimeReply").start();
+                return;
+            }
+            if ("TIME_REPLY".equals(action)) {
+                String target = json.optString("to", ""), nonce = json.optString("nonce", "");
+                Long t1 = sClockProbes.get(nonce);
+                if (!FamilyIdentity.validId(fromDevice) || !identity.peers().contains(fromDevice)
+                        || !sCurrentDeviceId.equals(target) || !FamilyIdentity.validId(nonce) || t1 == null
+                        || t1.longValue() != json.optLong("t1", -2L)) return;
+                FamilyClock.observeLanTime(mContext, fromDevice, t1, json.optLong("t2", -1L),
+                        json.optLong("t3", -1L), System.currentTimeMillis(),
+                        json.optLong("uncertaintyMs", 86_400_000L), json.optBoolean("trusted", false));
+                Log.i(TAG, "LAN clock sample from " + fromDevice + " offset/uncertainty=" + FamilyClock.uncertainty(mContext));
+                return;
+            }
+            if ("PROGRESS_ACK".equals(action)) {
+                String messageId = json.optString("messageId", "");
+                String status = json.optString("status", "");
+                if (FamilyIdentity.validId(fromDevice) && identity.peers().contains(fromDevice)
+                        && sCurrentDeviceId.equals(json.optString("to", ""))
+                        && FamilyIdentity.validId(messageId)
+                        && ("applied".equals(status) || "already_current".equals(status))) {
+                    ScheduledFuture<?> timeout = sPendingProgress.remove(messageId);
+                    if (timeout != null) timeout.cancel(false);
+                }
                 return;
             }
             if ("REQUEST_SYNC".equals(action)) {
@@ -170,6 +239,8 @@ public class LanSyncManager {
             final long progressInMillis = json.optLong("progressInMillis");
             final long durationInMillis = json.optLong("durationInMillis");
             final long remoteModifiedAt = json.optLong("modifiedAt");
+            final String messageId = json.optString("messageId", "");
+            final JSONObject versionJson = json.optJSONObject("clockVersion");
             final String videoPageUrl = json.optString("videoPageUrl");
             final String detailPageUrl = json.optString("detailPageUrl");
             final String posterUrl = json.optString("posterUrl");
@@ -214,18 +285,22 @@ public class LanSyncManager {
                                 c.close();
                             }
 
-                            // Determine priority:
-                            // 1. If remote modified time is newer, it represents user's latest interaction
-                            //    (progress forward, episode increment, or intentional rewatch of earlier episode).
-                            // 2. Reject stale/out-of-order packets where remoteModifiedAt < existingModAt.
+                            SyncVersion remoteVersion = SyncVersionStore.fromJson(versionJson);
+                            if (remoteVersion == null) remoteVersion = new SyncVersion(Math.max(0L, remoteModifiedAt), 0L, fromDevice);
+                            String localDeviceId = identity.deviceId();
+                            SyncVersion localVersion = SyncVersionStore.get(mContext, name,
+                                    existingDetail == null || existingDetail.isEmpty() ? detailPageUrl : existingDetail,
+                                    existingModAt, localDeviceId);
+
                             boolean accept = false;
                             if (existingId == null) {
                                 accept = true;
                             } else {
-                                if (remoteModifiedAt > existingModAt) {
-                                    accept = true;
-                                } else if (remoteModifiedAt == existingModAt) {
-                                    // Equal timestamps: higher episode or higher progress wins
+                                int versionOrder = SyncVersion.compare(remoteVersion.utcMillis, remoteVersion.logicalCounter,
+                                        remoteVersion.deviceId, localVersion.utcMillis, localVersion.logicalCounter,
+                                        localVersion.deviceId);
+                                if (versionOrder > 0) accept = true;
+                                else if (versionOrder == 0 && remoteVersion.logicalCounter == 0L) {
                                     int remoteEpNum = parseEpisodeNum(episode);
                                     int localEpNum = parseEpisodeNum(existingEp);
                                     if (remoteEpNum > localEpNum) {
@@ -238,6 +313,7 @@ public class LanSyncManager {
 
                             if (!accept) {
                                 Log.d(TAG, "Ignored progress for: " + name + " (remote: " + episode + " @" + (progressInMillis/1000) + "s [mod=" + remoteModifiedAt + "], local: " + existingEp + " @" + (existingProg/1000) + "s [mod=" + existingModAt + "])");
+                                sendProgressAck(fromDevice, messageId, senderIp, "already_current");
                                 return;
                             }
 
@@ -259,15 +335,18 @@ public class LanSyncManager {
                             cv.put("progressInMillis", progressInMillis);
                             cv.put("durationInMillis", durationInMillis > 0 ? durationInMillis : existingDur);
                             cv.put("createdAt", System.currentTimeMillis());
-                            cv.put("modifiedAt", remoteModifiedAt > 0 ? remoteModifiedAt : System.currentTimeMillis());
+                            long storedModifiedAt = Math.max(remoteModifiedAt, remoteVersion.utcMillis);
+                            cv.put("modifiedAt", storedModifiedAt > 0 ? storedModifiedAt : FamilyClock.now(mContext));
                             cv.put("videoPageUrl", finalVideo);
                             cv.put("detailPageUrl", finalDetail);
                             cv.put("posterUrl", finalPoster);
                             if (!isLanSyncEnabled()) return;
-                            onRemoteProgress(name, remoteModifiedAt);
+                            onRemoteProgress(name, storedModifiedAt);
                             int updated = existingId == null ? 0 : db.updateWithOnConflict(
                                     "records", cv, "id = ?", new String[]{existingId}, SQLiteDatabase.CONFLICT_REPLACE);
-                            if (updated == 0) db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                            if (updated == 0 && db.insertWithOnConflict("records", null, cv, SQLiteDatabase.CONFLICT_REPLACE) < 0) {
+                                throw new IllegalStateException("Record write failed");
+                            }
                             sHandoff.offer(name, episode, progressInMillis, finalVideo, remoteModifiedAt);
 
                             // Close write connection first to ensure changes are flushed and locks released
@@ -276,6 +355,8 @@ public class LanSyncManager {
                                 db.close();
                                 db = null;
                             } catch (Exception ignored) {}
+                            SyncVersionStore.rememberRemote(mContext, name, finalDetail, remoteVersion, localDeviceId);
+                            sendProgressAck(fromDevice, messageId, senderIp, "applied");
 
                             // Throttle UI recomposition: if same episode, only bump UI if integer percentage changed
                             boolean shouldBumpUi = true;
@@ -332,6 +413,8 @@ public class LanSyncManager {
                             json.put("durationInMillis", c.getLong(4));
                             json.put("createdAt", c.getLong(5));
                             json.put("modifiedAt", c.getLong(6));
+                            json.put("clockVersion", SyncVersionStore.toJson(SyncVersionStore.get(mContext,
+                                    c.getString(1), c.getString(8), c.getLong(6), sCurrentDeviceId)));
                             json.put("videoPageUrl", c.getString(7));
                             json.put("detailPageUrl", c.getString(8));
                             json.put("posterUrl", c.getString(9));
@@ -380,9 +463,35 @@ public class LanSyncManager {
         requestSyncFromLan();
     }
 
-    private static void sendUdpPacket(String jsonStr, String directIp) {
+    public static synchronized void syncLanClock() {
         if (!isLanSyncEnabled()) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - sLastClockProbeAt < 30_000L) {
+            if (sLastClockProbeAt == 0L) sSyncQueue.schedule(LanSyncManager::syncLanClock, 30_000L - now, TimeUnit.MILLISECONDS);
+            return;
+        }
+        sLastClockProbeAt = now;
+        new Thread(() -> {
+            String nonce = UUID.randomUUID().toString();
+            long t1 = System.currentTimeMillis();
+            sClockProbes.put(nonce, t1);
+            sSyncQueue.schedule(() -> sClockProbes.remove(nonce), 5000L, TimeUnit.MILLISECONDS);
+            try {
+                JSONObject probe = new JSONObject().put("action", "TIME_PROBE").put("from", sCurrentDeviceId)
+                        .put("to", "*").put("nonce", nonce).put("t1", t1);
+                sendUdpPacket(probe.toString(), null);
+            } catch (Exception e) { sClockProbes.remove(nonce); Log.w(TAG, "LAN clock probe deferred: " + e.getClass().getSimpleName()); }
+        }, "LanSync-TimeProbe").start();
+    }
+
+    private static void sendUdpPacket(String jsonStr, String directIp) {
+        sendUdpPacketResult(jsonStr, directIp);
+    }
+
+    private static boolean sendUdpPacketResult(String jsonStr, String directIp) {
+        if (!isLanSyncEnabled()) return false;
         DatagramSocket socket = null;
+        boolean sent = false;
         try {
             byte[] data = jsonStr.getBytes(StandardCharsets.UTF_8);
             socket = new DatagramSocket();
@@ -392,12 +501,14 @@ public class LanSyncManager {
                 InetAddress addr = InetAddress.getByName(directIp);
                 socket.send(new DatagramPacket(data, data.length, addr, 9876));
                 socket.send(new DatagramPacket(data, data.length, addr, 9877));
+                sent = true;
             }
 
             // Global broadcast
             InetAddress globalBrd = InetAddress.getByName("255.255.255.255");
             socket.send(new DatagramPacket(data, data.length, globalBrd, 9876));
             socket.send(new DatagramPacket(data, data.length, globalBrd, 9877));
+            sent = true;
 
             // Interface-specific broadcast addresses
             try {
@@ -410,6 +521,7 @@ public class LanSyncManager {
                         if (broadcast != null) {
                             socket.send(new DatagramPacket(data, data.length, broadcast, 9876));
                             socket.send(new DatagramPacket(data, data.length, broadcast, 9877));
+                            sent = true;
                         }
                     }
                 }
@@ -421,29 +533,44 @@ public class LanSyncManager {
                 socket.close();
             }
         }
+        return sent;
     }
 
     public static void broadcastProgress(final Object recordObj) {
-        if (recordObj == null || !isLanSyncEnabled()) return;
+        publishPlaybackProgress(recordObj, false, null);
+    }
+
+    private static void publishPlaybackProgress(final Object recordObj, final boolean critical,
+                                                final SyncVersion committedVersion) {
+        if (recordObj == null) return;
+        Context context = getAppContext();
+        CloudSyncClient.markCloudDirty(context);
+        if (!isLanSyncEnabled()) {
+            if (SyncDecision.requiresCloudUpload(critical, false, false)) CloudSyncClient.onCommittedSave(true);
+            return;
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    if (!isLanSyncEnabled()) return;
+                    if (!isLanSyncEnabled()) { CloudSyncClient.onCommittedSave(true); return; }
                     pa.c rec = (pa.c) recordObj;
                     String dramaName = rec.b;
                     String episodeName = rec.c;
                     long progressMs = rec.d;
+                    String messageId = UUID.randomUUID().toString();
 
                     // Only filter if BOTH episode AND progress within 2 seconds are identical
-                    if (dramaName != null && dramaName.equals(sLastSentName) 
-                            && episodeName != null && episodeName.equals(sLastSentEpisode) 
+                    synchronized (LanSyncManager.class) {
+                    if (!critical && dramaName != null && dramaName.equals(sLastSentName)
+                            && episodeName != null && episodeName.equals(sLastSentEpisode)
                             && Math.abs(progressMs - sLastSentProgressMs) < 2000) {
                         return; // video is paused at same position, avoid spamming
                     }
                     sLastSentName = dramaName;
                     sLastSentEpisode = episodeName;
                     sLastSentProgressMs = progressMs;
+                    }
 
                     JSONObject json = new JSONObject();
                     json.put("from", sCurrentDeviceId);
@@ -453,14 +580,35 @@ public class LanSyncManager {
                     json.put("progressInMillis", rec.d);
                     json.put("durationInMillis", rec.e);
                     json.put("modifiedAt", rec.g);
+                    SyncVersion version = committedVersion == null
+                            ? SyncVersionStore.get(getAppContext(), rec.b, rec.i, rec.g, sCurrentDeviceId)
+                            : committedVersion;
+                    json.put("clockVersion", SyncVersionStore.toJson(version));
+                    json.put("messageId", messageId);
                     json.put("videoPageUrl", rec.h);
                     json.put("detailPageUrl", rec.i);
                     json.put("posterUrl", rec.j);
 
-                    sendUdpPacket(json.toString(), null);
+                    ScheduledFuture<?> timeout = null;
+                    if (!critical) {
+                        timeout = sSyncQueue.schedule(new Runnable() {
+                            @Override public void run() {
+                                if (sPendingProgress.remove(messageId) != null) CloudSyncClient.onCommittedSave(true);
+                            }
+                        }, ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        sPendingProgress.put(messageId, timeout);
+                        sSyncQueue.schedule(() -> { if (sPendingProgress.containsKey(messageId)) sendUdpPacket(json.toString(), null); }, 250L, TimeUnit.MILLISECONDS);
+                        sSyncQueue.schedule(() -> { if (sPendingProgress.containsKey(messageId)) sendUdpPacket(json.toString(), null); }, 500L, TimeUnit.MILLISECONDS);
+                    }
+                    if (!sendUdpPacketResult(json.toString(), null)) {
+                        ScheduledFuture<?> pending = sPendingProgress.remove(messageId);
+                        if (pending != null) pending.cancel(false);
+                        if (!critical) CloudSyncClient.onCommittedSave(true);
+                    }
                     Log.i(TAG, "Broadcasted progress update: " + dramaName + " " + episodeName + " @" + (progressMs/1000) + "s");
                 } catch (Exception e) {
                     Log.w(TAG, "Failed to broadcast progress: " + e.getMessage());
+                    if (!critical) CloudSyncClient.onCommittedSave(true);
                 }
             }
         }).start();
@@ -643,7 +791,9 @@ public class LanSyncManager {
         identity.ensure();
         sCurrentDeviceId = identity.deviceId();
         CloudSyncClient.initialize(manager.mContext);
+        registerCloudRecovery(manager.mContext);
         CloudSyncClient.fetchOnStartup(manager.mContext);
+        syncLanClock();
         new Thread(new Runnable() {
             @Override public void run() {
                 if (currentLanEnabled(manager.mContext)) try {
@@ -667,14 +817,82 @@ public class LanSyncManager {
         return FamilyIdentity.get(context).isLanSyncEnabled();
     }
 
+    private static synchronized void registerCloudRecovery(final Context context) {
+        if (sNetworkCallback != null || Build.VERSION.SDK_INT < 21) return;
+        ConnectivityManager connectivity = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivity == null) return;
+        sNetworkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(Network network) { CloudSyncClient.onNetworkAvailable(context); }
+        };
+        try {
+            connectivity.registerNetworkCallback(new NetworkRequest.Builder().addCapability(12).build(), sNetworkCallback);
+        } catch (RuntimeException e) {
+            sNetworkCallback = null;
+            Log.w(TAG, "Cloud recovery monitor unavailable: " + e.getClass().getSimpleName());
+        }
+    }
+
     public static void onActivityResume(Activity activity) {
         sActiveActivity = activity;
         requestSyncDebounced();
+        syncLanClock();
         CloudSyncClient.fetchOnResume(activity.getApplicationContext());
     }
 
     public static void onActivityPause(Activity activity) {
+        flushActivePlayback();
         CloudSyncClient.onActivityPause();
+    }
+
+    private static void flushActivePlayback() {
+        Object player = sActiveExoPlayer;
+        Object address = sActiveVideoAddress;
+        Context context = getAppContext();
+        if (player == null || address == null || context == null) return;
+        SQLiteDatabase db = null;
+        Cursor cursor = null;
+        try {
+            qa.f0 current = (qa.f0) address;
+            long position = PlaybackEvent.finalPosition(((androidx.media3.exoplayer.h0) player).M(), Long.MAX_VALUE);
+            if (position < 0 || current.b == null || current.c == null) return;
+            CloudSyncClient.markCloudDirty(context);
+            pa.c record;
+            synchronized (LanSyncManager.class) {
+                db = context.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
+                cursor = db.rawQuery("SELECT id,name,episode,progressInMillis,durationInMillis,createdAt,modifiedAt,videoPageUrl,detailPageUrl,posterUrl FROM records WHERE name = ? AND episode = ? ORDER BY modifiedAt DESC LIMIT 1",
+                        new String[]{current.b, current.c});
+                if (!cursor.moveToFirst()) return;
+                String id = cursor.getString(0), name = cursor.getString(1), episode = cursor.getString(2);
+                long duration = cursor.getLong(4), created = cursor.getLong(5), oldModified = cursor.getLong(6);
+                String video = cursor.getString(7), detail = cursor.getString(8), poster = cursor.getString(9);
+                cursor.close(); cursor = null;
+                if (duration <= 0 || oldModified == Long.MAX_VALUE) return;
+                position = PlaybackEvent.finalPosition(position, duration);
+                long modified = Math.max(FamilyClock.now(context), oldModified + 1L);
+                ContentValues values = new ContentValues();
+                values.put("progressInMillis", position); values.put("modifiedAt", modified);
+                db.beginTransaction();
+                try {
+                    if (db.update("records", values, "id = ?", new String[]{id}) != 1) return;
+                    db.setTransactionSuccessful();
+                } finally { db.endTransaction(); }
+                record = new pa.c(id, name, episode, position, duration, created, modified, video, detail, poster);
+            }
+            if (db != null) { db.close(); db = null; }
+            bumpSyncVersion();
+            PlaybackSaveGuard.INSTANCE.initialize(context);
+            PlaybackSaveGuard.INSTANCE.committed(record.b, record.c, record.d);
+            SyncVersion version = SyncVersionStore.localCommit(context, record.b, record.i,
+                    record.g, FamilyIdentity.get(context).deviceId());
+            publishPlaybackProgress(record, true, version);
+            CloudSyncClient.onCommittedSave(true);
+            Log.i(TAG, "Flushed final playback position before pause");
+        } catch (Throwable e) {
+            Log.w(TAG, "Final playback flush deferred: " + e.getClass().getSimpleName());
+        } finally {
+            if (cursor != null) cursor.close();
+            if (db != null) db.close();
+        }
     }
 
     public static void onHistoryOpened() {
@@ -704,9 +922,14 @@ public class LanSyncManager {
     public static void onPlaybackSaveCommitted(Object record) {
         pa.c rec = (pa.c) record;
         PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
+        boolean critical = PlaybackSaveGuard.INSTANCE.isNewPlaybackEvent(rec.b, rec.c)
+                || PlaybackEvent.nearEnd(rec.d, rec.e);
         if (!PlaybackSaveGuard.INSTANCE.committedIfCurrent(rec.b, rec.c, rec.d, rec.g)) return;
-        broadcastProgress(record);
-        CloudSyncClient.onCommittedSave();
+        Context context = getAppContext();
+        String deviceId = FamilyIdentity.get(context).deviceId();
+        SyncVersion version = SyncVersionStore.localCommit(context, rec.b, rec.i, rec.g, deviceId);
+        publishPlaybackProgress(record, critical, version);
+        if (critical) CloudSyncClient.onCommittedSave(true);
     }
 
     /** Merges one validated peer snapshot in place; stale rows never trigger any delete. */

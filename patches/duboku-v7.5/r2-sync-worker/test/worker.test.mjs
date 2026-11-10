@@ -6,7 +6,7 @@ import worker, { RegistrationCoordinator } from '../src/index.ts';
 const FAMILY = '123e4567-e89b-42d3-a456-426614174000';
 const DEVICE = '223e4567-e89b-42d3-a456-426614174000';
 const SECRET = Buffer.alloc(32, 7).toString('base64url');
-const SNAPSHOT = { schemaVersion: 1, familyId: FAMILY, deviceId: DEVICE, updatedAt: 1700000000000, records: [] };
+const SNAPSHOT = { schemaVersion: 2, familyId: FAMILY, deviceId: DEVICE, updatedAt: 1700000000000, records: [] };
 function env() {
   const values = new Map();
   const counts = { get: 0, put: 0, delete: 0, list: 0, coordinator: 0 };
@@ -60,24 +60,61 @@ test('denies Family A secret when requesting a Family B snapshot', async () => {
   const secretB = Buffer.alloc(32, 8).toString('base64url');
   assert.equal((await create(e, FAMILY, SECRET, '192.0.2.20')).status, 201);
   assert.equal((await create(e, familyB, secretB, '192.0.2.21')).status, 201);
-  assert.equal((await call(e, `/v1/sync/${familyB}/${DEVICE}`, { auth: SECRET })).status, 401);
+  assert.equal((await call(e, `/v2/sync/${familyB}/${DEVICE}`, { auth: SECRET })).status, 401);
   assert.equal(e.counts.get, 0);
   e.database.close();
 });
 test('GET returns empty schema and performs exactly one R2 get', async () => {
   const e = env(); await create(e, FAMILY);
-  const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
+  const response = await call(e, `/v2/sync/${FAMILY}/${DEVICE}`);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { schemaVersion: 1, familyId: FAMILY, deviceId: DEVICE, updatedAt: 0, records: [] });
+  assert.deepEqual(await response.json(), { schemaVersion: 2, familyId: FAMILY, deviceId: DEVICE, updatedAt: 0, records: [] });
   assert.deepEqual(e.counts, { get: 1, put: 0, delete: 0, list: 0, coordinator: 2 });
   e.database.close();
 });
-test('PUT then GET round trips with one put and one get and no list', async () => {
+test('PUT then GET round trips while merging the current snapshot', async () => {
   const e = env(); await create(e, FAMILY);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: SNAPSHOT })).status, 204);
-  const response = await call(e, `/v1/sync/${FAMILY}/${DEVICE}`);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: SNAPSHOT })).status, 204);
+  const response = await call(e, `/v2/sync/${FAMILY}/${DEVICE}`);
   assert.deepEqual(await response.json(), SNAPSHOT);
-  assert.deepEqual(e.counts, { get: 1, put: 1, delete: 0, list: 0, coordinator: 3 });
+  assert.deepEqual(e.counts, { get: 2, put: 1, delete: 0, list: 0, coordinator: 3 });
+  e.database.close();
+});
+
+test('v2 sync orders rows by UTC time, logical counter, then device id', async () => {
+  const e = env(); await create(e, FAMILY);
+  const base = { id: 'episode-1', name: 'Clock test', episode: '第1集', progressInMillis: 1000, durationInMillis: 10000, createdAt: 1, modifiedAt: 100, videoPageUrl: '', detailPageUrl: '', posterUrl: '' };
+  const v2 = (clockVersion, row = base) => ({ schemaVersion: 2, familyId: FAMILY, deviceId: DEVICE, updatedAt: clockVersion.utcMillis, records: [{ ...row, clockVersion }] });
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: v2({ utcMillis: 1000, logicalCounter: 3, deviceId: DEVICE }) })).status, 204);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: v2({ utcMillis: 1000, logicalCounter: 2, deviceId: '323e4567-e89b-42d3-a456-426614174000' }, { ...base, episode: '第9集', progressInMillis: 9000 }) })).status, 204);
+  let current = await (await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).json();
+  assert.equal(current.records[0].episode, '第1集');
+  assert.deepEqual(current.records[0].clockVersion, { utcMillis: 1000, logicalCounter: 3, deviceId: DEVICE });
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: v2({ utcMillis: 1000, logicalCounter: 4, deviceId: DEVICE }, { ...base, episode: '第2集', progressInMillis: 2000 }) })).status, 204);
+  current = await (await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).json();
+  assert.equal(current.records[0].episode, '第2集');
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: v2({ utcMillis: 1000, logicalCounter: 4, deviceId: '323e4567-e89b-42d3-a456-426614174000' }, { ...base, episode: '第3集', progressInMillis: 3000 }) })).status, 204);
+  current = await (await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).json();
+  assert.equal(current.records[0].episode, '第3集');
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: v2({ utcMillis: 1000, logicalCounter: 4, deviceId: '323e4567-e89b-42d3-a456-426614174000' }, { ...base, episode: '第9集', progressInMillis: 9000 }) })).status, 204);
+  current = await (await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).json();
+  assert.equal(current.records[0].episode, '第3集', 'episode/progress cannot override an equal non-legacy version');
+  e.database.close();
+});
+
+test('v1 sync endpoint is removed and v2 rejects legacy schema bodies', async () => {
+  const e = env(); await create(e, FAMILY);
+  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`)).status, 404);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: { ...SNAPSHOT, schemaVersion: 1 } })).status, 400);
+  assert.equal(e.counts.put, 0);
+  e.database.close();
+});
+
+test('v2 sync rejects malformed logical clock metadata', async () => {
+  const e = env(); await create(e, FAMILY);
+  const row = { id: 'x', name: 'show', episode: '1', progressInMillis: 1, durationInMillis: 2, createdAt: 1, modifiedAt: 1, videoPageUrl: '', detailPageUrl: '', posterUrl: '', clockVersion: { utcMillis: 1, logicalCounter: -1, deviceId: DEVICE } };
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: { schemaVersion: 2, familyId: FAMILY, deviceId: DEVICE, updatedAt: 1, records: [row] } })).status, 400);
+  assert.equal(e.counts.put, 0);
   e.database.close();
 });
 
@@ -132,9 +169,17 @@ test('copies every source snapshot into the canonical family and deletes source 
   assert.equal((await create(e, sourceFamily, sourceSecret)).status, 201);
   const codeResponse = await call(e, `/v1/families/${sourceFamily}/join-code`, { method: 'POST', auth: sourceSecret });
   const sourceCode = (await codeResponse.json()).joinCode;
-  const sourceSnapshot = { ...SNAPSHOT, familyId: sourceFamily, deviceId: sourceDevice, records: [{ id: 'show-1', name: 'Test Show', episode: '第5集', progressInMillis: 2000, durationInMillis: 10000, createdAt: 1, modifiedAt: 5, videoPageUrl: '', detailPageUrl: '', posterUrl: '' }] };
-  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', body: sourceSnapshot, auth: sourceSecret })).status, 204);
-  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice2}`, { method: 'PUT', body: { ...sourceSnapshot, deviceId: sourceDevice2, records: [{ ...sourceSnapshot.records[0], id: 'show-2', name: 'Other Show' }] }, auth: sourceSecret })).status, 204);
+  const sourceRow = { id: 'show-1', name: 'Test Show', episode: '第5集', progressInMillis: 2000, durationInMillis: 10000, createdAt: 1, modifiedAt: 5, videoPageUrl: '', detailPageUrl: '', posterUrl: '' };
+  const sourceSnapshot = { schemaVersion: 2, familyId: sourceFamily, deviceId: sourceDevice, updatedAt: 20000,
+    records: [{ ...sourceRow, clockVersion: { utcMillis: 20000, logicalCounter: 1, deviceId: sourceDevice } }] };
+  const targetSnapshot = { schemaVersion: 2, familyId: FAMILY, deviceId: sourceDevice, updatedAt: 10000,
+    records: [{ ...sourceRow, episode: '第9集', progressInMillis: 9000, modifiedAt: 999999,
+      clockVersion: { utcMillis: 10000, logicalCounter: 1, deviceId: sourceDevice } }] };
+  assert.equal((await call(e, `/v2/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', body: sourceSnapshot, auth: sourceSecret })).status, 204);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${sourceDevice}`, { method: 'PUT', body: targetSnapshot })).status, 204);
+  const secondSourcePut = await call(e, `/v2/sync/${sourceFamily}/${sourceDevice2}`, { method: 'PUT', auth: sourceSecret,
+    body: { ...sourceSnapshot, deviceId: sourceDevice2, records: [{ ...sourceSnapshot.records[0], id: 'show-2', name: 'Other Show', clockVersion: { ...sourceSnapshot.records[0].clockVersion, deviceId: sourceDevice2 } }] } });
+  assert.equal(secondSourcePut.status, 204, await secondSourcePut.text());
   const joined = await call(e, '/v1/families/join', { method: 'POST', body: { joinCode: sourceCode }, auth: null });
   assert.deepEqual((await joined.json()).deviceIds, [sourceDevice, sourceDevice2].sort());
   const preview = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'preview', sourceCodes: [sourceCode] } });
@@ -143,39 +188,40 @@ test('copies every source snapshot into the canonical family and deletes source 
   assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 409);
   const copied = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'copy', sourceCodes: [sourceCode] } });
   assert.equal(copied.status, 200);
-  const mergedSnapshot = await call(e, `/v1/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET });
+  const mergedSnapshot = await call(e, `/v2/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET });
   assert.equal(mergedSnapshot.status, 200);
   assert.equal((await mergedSnapshot.json()).records[0].episode, '第5集');
-  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 200);
-  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', auth: sourceSecret, body: { ...sourceSnapshot, records: [{ ...sourceSnapshot.records[0], progressInMillis: 3000, modifiedAt: 6 }] } })).status, 204);
+  assert.equal((await call(e, `/v2/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 200);
+  assert.equal((await call(e, `/v2/sync/${sourceFamily}/${sourceDevice}`, { method: 'PUT', auth: sourceSecret,
+    body: { ...SNAPSHOT, familyId: sourceFamily, deviceId: sourceDevice, records: [{ ...sourceRow, clockVersion: sourceSnapshot.records[0].clockVersion, progressInMillis: 3000, modifiedAt: 6 }] } })).status, 204);
   assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 409);
   assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'copy', sourceCodes: [sourceCode] } })).status, 200);
   e.fault.failDeleteAfter = 1;
   assert.equal((await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } })).status, 500);
   const cleaned = await call(e, `/v1/families/${FAMILY}/merge`, { method: 'POST', body: { action: 'cleanup', sourceCodes: [sourceCode], confirmed: true } });
   assert.equal(cleaned.status, 200);
-  assert.equal((await call(e, `/v1/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 401);
+  assert.equal((await call(e, `/v2/sync/${sourceFamily}/${sourceDevice}`, { auth: sourceSecret })).status, 401);
   assert.equal((await create(e, sourceFamily, sourceSecret)).status, 410);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET })).status, 200);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${sourceDevice}`, { auth: SECRET })).status, 200);
   e.database.close();
 });
 test('rejects invalid stored R2 schema and path identity', async () => {
   const e = env(); await create(e, FAMILY);
   e.values.set(`r2:v1/${FAMILY}/${DEVICE}.json`, JSON.stringify({ ...SNAPSHOT, familyId: DEVICE }));
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`)).status, 500);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).status, 500);
   assert.equal(e.counts.get, 1);
   e.values.set(`r2:v1/${FAMILY}/${DEVICE}.json`, '{broken');
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`)).status, 500);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).status, 500);
   assert.equal(e.counts.get, 2);
   e.database.close();
 });
 test('rejects bad auth, path mismatch, oversized payload and unknown routes', async () => {
   const e = env(); await create(e, FAMILY);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { auth: Buffer.alloc(32, 9).toString('base64url') })).status, 401);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: { ...SNAPSHOT, familyId: DEVICE } })).status, 400);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: 'x'.repeat(65537) })).status, 413);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { auth: Buffer.alloc(32, 9).toString('base64url') })).status, 401);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: { ...SNAPSHOT, familyId: DEVICE } })).status, 400);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: 'x'.repeat(65537) })).status, 413);
   assert.equal((await call(e, '/not-a-route')).status, 404);
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/%ZZ`)).status, 400);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/%ZZ`)).status, 400);
   assert.equal(e.counts.put, 0); assert.equal(e.counts.list, 0);
   e.database.close();
 });
@@ -196,12 +242,12 @@ test('enforces ten registrations in a rolling hour, including across the hour bo
 });
 test('rejects negative progress, more than 20 records, and invalid URL schemes', async () => {
   const e = env(); await create(e, FAMILY);
-  const invalid = { ...SNAPSHOT, records: [{ id: 'x', name: 'show', episode: '1', progressInMillis: -1, durationInMillis: 2, createdAt: 1, modifiedAt: 1, videoPageUrl: '', detailPageUrl: '', posterUrl: '' }] };
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: invalid })).status, 400);
+  const invalid = { ...SNAPSHOT, records: [{ id: 'x', name: 'show', episode: '1', progressInMillis: -1, durationInMillis: 2, createdAt: 1, modifiedAt: 1, videoPageUrl: '', detailPageUrl: '', posterUrl: '', clockVersion: { utcMillis: 1, logicalCounter: 0, deviceId: DEVICE } }] };
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: invalid })).status, 400);
   const many = { ...SNAPSHOT, records: Array.from({ length: 21 }, () => ({ ...invalid.records[0], progressInMillis: 1 })) };
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: many })).status, 400);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: many })).status, 400);
   const badUrl = { ...SNAPSHOT, records: [{ ...invalid.records[0], progressInMillis: 1, videoPageUrl: 'javascript:alert(1)' }] };
-  assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: badUrl })).status, 400);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: badUrl })).status, 400);
   assert.equal(e.counts.put, 0);
   e.database.close();
 });

@@ -222,6 +222,10 @@
     return-object v3
     :save_changed_record
 
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v5
+    invoke-static {v5}, Lcom/supertws/dubokutv/CloudSyncClient;->markCloudDirty(Landroid/content/Context;)V
+
     .line 32
     .line 33
     .line 34

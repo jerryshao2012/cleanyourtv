@@ -46,6 +46,8 @@ public final class PlaybackSaveGuardAndroidTest {
         if (!restarted.isDuplicate("show", "47", 12000)) throw new AssertionError("Paused position was not retained");
         if (restarted.isDuplicate("show", "28", 12000) || restarted.isDuplicate("show", "47", 12001)) throw new AssertionError("New playback was suppressed");
         if (!restarted.shouldSkip("show", "47", 13000, false)) throw new AssertionError("Paused stale write allowed");
+        if (!restarted.isBlockedByRemote("show", 200)) throw new AssertionError("Remote version was not marked newer");
+        if (restarted.isBlockedByRemote("show", 201)) throw new AssertionError("Newer local version stayed blocked");
         if (restarted.committedIfCurrent("show", "47", 13000, 100)) throw new AssertionError("Queued stale save accepted");
         if (!restarted.shouldSkip("show", "47", 13000, false)) throw new AssertionError("Stale completion cleared remote guard");
         if (restarted.shouldSkip("show", "47", 13000, true)) throw new AssertionError("Actual playback suppressed");

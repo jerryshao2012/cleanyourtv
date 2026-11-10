@@ -100,19 +100,36 @@ public final class CloudSyncClient {
         onCommittedSave(false);
     }
 
+    public static void markCloudDirty(Context context) {
+        initialize(context);
+        if (cloudSyncEnabled()) dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
+    }
+
+    public static void onNetworkAvailable(Context context) {
+        initialize(context);
+        if (cloudSyncEnabled() && dirtyPrefs().getBoolean("cloudDirty", false)) fetchKnownPeers(context);
+    }
+
+    public static boolean needsPersistentSync(Context context) {
+        initialize(context);
+        return cloudSyncEnabled() && dirtyPrefs().getBoolean("cloudDirty", false)
+                && !dirtyPrefs().getBoolean("cloudAuthRejected", false);
+    }
+
     /** Queue the last committed snapshot at app pause, then treat a completing final save as urgent. */
     public static void onActivityPause() {
         pauseUrgentUntilMs = SystemClock.elapsedRealtime() + 10_000L;
         onCommittedSave(true);
     }
 
-    private static void onCommittedSave(boolean immediate) {
+    public static void onCommittedSave(boolean immediate) {
         Context context = appContext;
         if (context == null) context = LanSyncManager.getAppContext();
         if (context == null) return;
         initialize(context);
         if (!FamilyIdentity.get(context).isCloudSyncEnabled()) return;
         dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
+        ProgressSyncJobService.schedule(context);
         final Context captureContext = context.getApplicationContext();
         synchronized (LOCK) {
             captureVersion++;
@@ -157,13 +174,15 @@ public final class CloudSyncClient {
                 row.put("id", id); row.put("name", name); row.put("episode", boundedText(cursor.getString(2)));
                 row.put("progressInMillis", cursor.getLong(3)); row.put("durationInMillis", cursor.getLong(4));
                 row.put("createdAt", cursor.getLong(5)); row.put("modifiedAt", cursor.getLong(6));
+                row.put("clockVersion", SyncVersionStore.toJson(SyncVersionStore.get(context, name,
+                        cursor.getString(8), cursor.getLong(6), identity.deviceId())));
                 row.put("videoPageUrl", ProgressSnapshot.normalizeUrl(cursor.getString(7)));
                 row.put("detailPageUrl", ProgressSnapshot.normalizeUrl(cursor.getString(8)));
                 row.put("posterUrl", ProgressSnapshot.normalizeUrl(cursor.getString(9)));
                 records.put(row);
             }
             boolean pauseUrgent = SystemClock.elapsedRealtime() < pauseUrgentUntilMs;
-            enqueueUpload(context, new ProgressSnapshot(identity.familyId(), identity.deviceId(), System.currentTimeMillis(), records), immediate || pauseUrgent);
+            enqueueUpload(context, new ProgressSnapshot(identity.familyId(), identity.deviceId(), FamilyClock.now(context), records), immediate || pauseUrgent);
         } catch (Exception e) { Log.w(TAG, "Committed snapshot unavailable: " + e.getClass().getSimpleName()); }
         finally { if (cursor != null) cursor.close(); if (db != null) db.close(); }
     }
@@ -485,7 +504,7 @@ public final class CloudSyncClient {
         requireCloudSyncEnabled();
         int code = 0; HttpURLConnection c = null;
         try {
-            c = open("GET", "/v1/sync/" + enc(familyId) + "/" + enc(deviceId), secret);
+            c = open("GET", "/v2/sync/" + enc(familyId) + "/" + enc(deviceId), secret);
             code = c.getResponseCode();
             if (code != 200) {
                 Log.w(TAG, "Cloud read HTTP " + code);
@@ -506,7 +525,7 @@ public final class CloudSyncClient {
                 return false;
             }
             String payload = body.toString();
-            RequestResult result = requestDetailed("PUT", "/v1/sync/" + enc(snapshot.familyId) + "/" + enc(snapshot.deviceId), secret, payload);
+            RequestResult result = requestDetailed("PUT", "/v2/sync/" + enc(snapshot.familyId) + "/" + enc(snapshot.deviceId), secret, payload);
             if (result.code == 204) return true;
             Log.w(TAG, "Snapshot upload HTTP " + result.code + " body=" + safeWorkerErrorBody(result.errorBody));
         } catch (Exception e) { Log.w(TAG, "Snapshot upload deferred: " + e.getClass().getSimpleName()); }
@@ -555,6 +574,7 @@ public final class CloudSyncClient {
 
     private static RequestResult requestDetailed(String method, String path, String secret, String body) throws Exception {
         HttpURLConnection c = null;
+        long startedWall = System.currentTimeMillis();
         try {
             c = open(method, path, secret);
             if (body != null) {
@@ -567,6 +587,11 @@ public final class CloudSyncClient {
             String responseBody = "";
             if (response != null) {
                 try { responseBody = read(response); } finally { response.close(); }
+            }
+            long serverDate = c.getHeaderFieldDate("Date", -1L);
+            if (serverDate > 0) {
+                FamilyClock.observeServerTime(appContext, serverDate, startedWall, System.currentTimeMillis());
+                LanSyncManager.syncLanClock();
             }
             return new RequestResult(code, responseBody);
         } finally { if (c != null) c.disconnect(); }

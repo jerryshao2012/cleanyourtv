@@ -30,6 +30,10 @@
 
 .field final synthetic val$id:Ljava/lang/String;
 
+.field final synthetic val$identity:Lcom/supertws/dubokutv/FamilyIdentity;
+
+.field final synthetic val$messageId:Ljava/lang/String;
+
 .field final synthetic val$name:Ljava/lang/String;
 
 .field final synthetic val$posterUrl:Ljava/lang/String;
@@ -38,40 +42,56 @@
 
 .field final synthetic val$remoteModifiedAt:J
 
+.field final synthetic val$senderIp:Ljava/lang/String;
+
+.field final synthetic val$versionJson:Lorg/json/JSONObject;
+
 .field final synthetic val$videoPageUrl:Ljava/lang/String;
 
 
 # direct methods
-.method constructor <init>(Lcom/supertws/dubokutv/LanSyncManager;Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;)V
-    .locals 0
+.method constructor <init>(Lcom/supertws/dubokutv/LanSyncManager;Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONObject;JLjava/lang/String;Lcom/supertws/dubokutv/FamilyIdentity;Ljava/lang/String;JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+    .registers 19
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "()V"
         }
     .end annotation
 
-    .line 183
+    .line 254
     iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
     iput-object p2, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
     iput-object p3, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    iput-wide p4, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+    iput-object p4, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$versionJson:Lorg/json/JSONObject;
 
-    iput-object p6, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+    iput-wide p5, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
 
-    iput-wide p7, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
+    iput-object p7, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
 
-    iput-object p9, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
+    iput-object p8, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$identity:Lcom/supertws/dubokutv/FamilyIdentity;
 
-    iput-object p10, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
+    iput-object p9, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
 
-    iput-object p11, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
+    iput-wide p10, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
-    iput-wide p12, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+    iput-object p12, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$messageId:Ljava/lang/String;
 
-    iput-object p14, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
+    iput-object p13, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$senderIp:Ljava/lang/String;
+
+    iput-object p14, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
+
+    iput-object p15, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
+
+    move-object/from16 p1, p16
+
+    iput-object p1, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
+
+    move-wide/from16 p1, p17
+
+    iput-wide p1, p0, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -81,953 +101,1355 @@
 
 # virtual methods
 .method public run()V
-    .locals 33
+    .registers 38
 
+    .line 257
     move-object/from16 v1, p0
 
-    const-string v0, "Synced newer remote progress for: "
+    const-class v2, Lcom/supertws/dubokutv/LanSyncManager;
 
-    const-string v2, "Ignored progress for: "
+    monitor-enter v2
 
-    const-string v3, "Error writing sync record: "
-
-    .line 186
-    const-class v4, Lcom/supertws/dubokutv/LanSyncManager;
-
-    monitor-enter v4
-
-    .line 187
-    :try_start_0
+    .line 258
+    :try_start_5
+    # invokes: Lcom/supertws/dubokutv/LanSyncManager;->isLanSyncEnabled()Z
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$400()Z
 
-    move-result v5
+    move-result v0
 
-    if-nez v5, :cond_0
+    if-nez v0, :cond_d
 
-    monitor-exit v4
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_2
+    monitor-exit v2
+    :try_end_c
+    .catchall {:try_start_5 .. :try_end_c} :catchall_3db
 
     return-void
 
-    :cond_0
+    .line 259
+    :cond_d
+    nop
+
+    .line 261
+    const/4 v3, 0x0
+
+    :try_start_f
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
+
+    # getter for: Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
+
+    move-result-object v0
+
+    const-string v4, "record_database"
+
     const/4 v5, 0x0
 
-    .line 190
-    :try_start_1
-    iget-object v6, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
-
-    invoke-static {v6}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
+    invoke-virtual {v0, v4, v5, v3}, Landroid/content/Context;->openOrCreateDatabase(Ljava/lang/String;ILandroid/database/sqlite/SQLiteDatabase$CursorFactory;)Landroid/database/sqlite/SQLiteDatabase;
 
     move-result-object v6
+    :try_end_1c
+    .catch Ljava/lang/Exception; {:try_start_f .. :try_end_1c} :catch_3ab
+    .catchall {:try_start_f .. :try_end_1c} :catchall_3a7
 
-    const-string v7, "record_database"
+    .line 262
+    if-nez v6, :cond_27
 
-    const/4 v8, 0x0
+    .line 381
+    if-eqz v6, :cond_25
 
-    invoke-virtual {v6, v7, v8, v5}, Landroid/content/Context;->openOrCreateDatabase(Ljava/lang/String;ILandroid/database/sqlite/SQLiteDatabase$CursorFactory;)Landroid/database/sqlite/SQLiteDatabase;
-
-    move-result-object v6
-    :try_end_1
-    .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_5
-    .catchall {:try_start_1 .. :try_end_1} :catchall_1
-
-    if-nez v6, :cond_2
-
-    if-eqz v6, :cond_1
-
-    .line 299
-    :try_start_2
+    .line 382
+    :try_start_20
     invoke-virtual {v6}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_2
-    .catch Ljava/lang/Exception; {:try_start_2 .. :try_end_2} :catch_0
-    .catchall {:try_start_2 .. :try_end_2} :catchall_2
+    :try_end_23
+    .catch Ljava/lang/Exception; {:try_start_20 .. :try_end_23} :catch_24
+    .catchall {:try_start_20 .. :try_end_23} :catchall_3db
 
-    :catch_0
-    :cond_1
-    :try_start_3
-    monitor-exit v4
-    :try_end_3
-    .catchall {:try_start_3 .. :try_end_3} :catchall_2
+    goto :goto_25
 
+    :catch_24
+    move-exception v0
+
+    :cond_25
+    :goto_25
+    :try_start_25
+    monitor-exit v2
+    :try_end_26
+    .catchall {:try_start_25 .. :try_end_26} :catchall_3db
+
+    .line 262
     return-void
 
-    :cond_2
-    :try_start_4
-    const-string v7, "SELECT id, episode, progressInMillis, modifiedAt, durationInMillis, videoPageUrl, detailPageUrl, posterUrl FROM records WHERE name = ? OR (detailPageUrl != \'\' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1"
+    .line 264
+    :cond_27
+    :try_start_27
+    const-string v0, "SELECT id, episode, progressInMillis, modifiedAt, durationInMillis, videoPageUrl, detailPageUrl, posterUrl FROM records WHERE name = ? OR (detailPageUrl != \'\' AND detailPageUrl = ?) ORDER BY modifiedAt DESC LIMIT 1"
 
-    const/4 v9, 0x2
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    new-array v10, v9, [Ljava/lang/String;
+    iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    .line 193
-    iget-object v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    filled-new-array {v4, v7}, [Ljava/lang/String;
 
-    aput-object v11, v10, v8
+    move-result-object v4
 
-    iget-object v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
+    invoke-virtual {v6, v0, v4}, Landroid/database/sqlite/SQLiteDatabase;->rawQuery(Ljava/lang/String;[Ljava/lang/String;)Landroid/database/Cursor;
+
+    move-result-object v0
+
+    .line 266
+    nop
+
+    .line 267
+    nop
+
+    .line 268
+    nop
+
+    .line 269
+    nop
+
+    .line 270
+    nop
+
+    .line 271
+    nop
+
+    .line 272
+    nop
+
+    .line 273
+    nop
+
+    .line 274
+    const/4 v4, 0x5
 
     const/4 v12, 0x1
 
-    aput-object v11, v10, v12
+    const-wide/16 v13, 0x0
 
-    invoke-virtual {v6, v7, v10}, Landroid/database/sqlite/SQLiteDatabase;->rawQuery(Ljava/lang/String;[Ljava/lang/String;)Landroid/database/Cursor;
+    if-eqz v0, :cond_85
+
+    .line 275
+    invoke-interface {v0}, Landroid/database/Cursor;->moveToFirst()Z
+
+    move-result v7
+
+    if-eqz v7, :cond_6f
+
+    .line 276
+    invoke-interface {v0, v5}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
 
     move-result-object v7
 
-    const/4 v10, 0x5
-
-    if-eqz v7, :cond_4
-
-    .line 204
-    invoke-interface {v7}, Landroid/database/Cursor;->moveToFirst()Z
-
-    move-result v11
-
-    if-eqz v11, :cond_3
-
-    .line 205
-    invoke-interface {v7, v8}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
-
-    move-result-object v11
-
-    .line 206
-    invoke-interface {v7, v12}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
-
-    move-result-object v15
-
-    .line 207
-    invoke-interface {v7, v9}, Landroid/database/Cursor;->getLong(I)J
-
-    move-result-wide v16
-
-    const/4 v9, 0x3
-
-    .line 208
-    invoke-interface {v7, v9}, Landroid/database/Cursor;->getLong(I)J
-
-    move-result-wide v18
-
-    const/4 v9, 0x4
-
-    .line 209
-    invoke-interface {v7, v9}, Landroid/database/Cursor;->getLong(I)J
-
-    move-result-wide v20
-
-    .line 210
-    invoke-interface {v7, v10}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
-
-    move-result-object v9
-
-    const/4 v8, 0x6
-
-    .line 211
-    invoke-interface {v7, v8}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
+    .line 277
+    invoke-interface {v0, v12}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
 
     move-result-object v8
 
+    .line 278
+    const/4 v9, 0x2
+
+    invoke-interface {v0, v9}, Landroid/database/Cursor;->getLong(I)J
+
+    move-result-wide v9
+
+    .line 279
+    const/4 v11, 0x3
+
+    invoke-interface {v0, v11}, Landroid/database/Cursor;->getLong(I)J
+
+    move-result-wide v15
+
+    .line 280
+    const/4 v11, 0x4
+
+    invoke-interface {v0, v11}, Landroid/database/Cursor;->getLong(I)J
+
+    move-result-wide v17
+
+    .line 281
+    invoke-interface {v0, v4}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
+
+    move-result-object v11
+
+    .line 282
+    const/4 v5, 0x6
+
+    invoke-interface {v0, v5}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
+
+    move-result-object v5
+
+    .line 283
     const/4 v12, 0x7
 
-    .line 212
-    invoke-interface {v7, v12}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
+    invoke-interface {v0, v12}, Landroid/database/Cursor;->getString(I)Ljava/lang/String;
 
     move-result-object v12
 
-    goto :goto_0
+    goto :goto_78
 
-    :cond_3
-    move-object v8, v5
+    .line 275
+    :cond_6f
+    move-object v5, v3
 
-    move-object v9, v8
+    move-object v7, v5
 
-    move-object v11, v9
+    move-object v8, v7
+
+    move-object v11, v8
+
+    move-object v12, v11
+
+    move-wide v9, v13
+
+    move-wide v15, v9
+
+    move-wide/from16 v17, v15
+
+    .line 285
+    :goto_78
+    invoke-interface {v0}, Landroid/database/Cursor;->close()V
+
+    move-object v0, v12
+
+    move-wide/from16 v22, v15
+
+    move-wide/from16 v25, v17
+
+    move-object v12, v7
+
+    move-object v15, v8
+
+    move-wide/from16 v16, v9
+
+    goto :goto_90
+
+    .line 274
+    :cond_85
+    move-object v0, v3
+
+    move-object v5, v0
+
+    move-object v11, v5
 
     move-object v12, v11
 
     move-object v15, v12
 
-    const-wide/16 v16, 0x0
+    move-wide/from16 v16, v13
 
-    const-wide/16 v18, 0x0
+    move-wide/from16 v22, v16
 
-    const-wide/16 v20, 0x0
+    move-wide/from16 v25, v22
 
-    .line 214
-    :goto_0
-    invoke-interface {v7}, Landroid/database/Cursor;->close()V
+    .line 288
+    :goto_90
+    iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$versionJson:Lorg/json/JSONObject;
 
-    move-wide/from16 v13, v18
+    invoke-static {v7}, Lcom/supertws/dubokutv/SyncVersionStore;->fromJson(Lorg/json/JSONObject;)Lcom/supertws/dubokutv/SyncVersion;
 
-    goto :goto_1
+    move-result-object v7
 
-    :cond_4
-    move-object v8, v5
+    .line 289
+    if-nez v7, :cond_ab
 
-    move-object v9, v8
+    new-instance v27, Lcom/supertws/dubokutv/SyncVersion;
 
-    move-object v11, v9
+    iget-wide v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
 
-    move-object v12, v11
+    invoke-static {v13, v14, v7, v8}, Ljava/lang/Math;->max(JJ)J
 
-    move-object v15, v12
+    move-result-wide v28
 
-    const-wide/16 v13, 0x0
+    iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
 
-    const-wide/16 v16, 0x0
+    const-wide/16 v30, 0x0
 
-    const-wide/16 v20, 0x0
+    move-object/from16 v32, v7
 
-    :goto_1
-    if-nez v11, :cond_5
+    invoke-direct/range {v27 .. v32}, Lcom/supertws/dubokutv/SyncVersion;-><init>(JJLjava/lang/String;)V
 
-    move-object/from16 v22, v11
+    move-object/from16 v7, v27
 
-    :goto_2
-    const/4 v10, 0x1
+    .line 290
+    :cond_ab
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$identity:Lcom/supertws/dubokutv/FamilyIdentity;
 
-    goto :goto_4
+    invoke-virtual {v8}, Lcom/supertws/dubokutv/FamilyIdentity;->deviceId()Ljava/lang/String;
 
-    :cond_5
-    move-object/from16 v22, v11
+    move-result-object v24
 
-    .line 225
-    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+    .line 291
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    cmp-long v23, v10, v13
+    # getter for: Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v8}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
 
-    if-lez v23, :cond_6
+    move-result-object v19
 
-    :goto_3
-    goto :goto_2
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    :cond_6
-    cmp-long v23, v10, v13
+    .line 292
+    if-eqz v5, :cond_c5
 
-    if-nez v23, :cond_8
+    invoke-virtual {v5}, Ljava/lang/String;->isEmpty()Z
 
-    .line 229
-    iget-object v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+    move-result v9
 
-    invoke-static {v10}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
+    if-eqz v9, :cond_c2
 
-    move-result v10
+    goto :goto_c5
 
-    .line 230
+    :cond_c2
+    move-object/from16 v21, v5
+
+    goto :goto_c9
+
+    :cond_c5
+    :goto_c5
+    iget-object v9, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
+
+    move-object/from16 v21, v9
+
+    .line 291
+    :goto_c9
+    move-object/from16 v20, v8
+
+    invoke-static/range {v19 .. v24}, Lcom/supertws/dubokutv/SyncVersionStore;->get(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;)Lcom/supertws/dubokutv/SyncVersion;
+
+    move-result-object v8
+
+    move-wide/from16 v9, v22
+
+    .line 295
+    nop
+
+    .line 296
+    if-nez v12, :cond_da
+
+    .line 297
+    move-object/from16 v22, v0
+
+    move-wide/from16 v19, v13
+
+    const/4 v0, 0x1
+
+    goto :goto_11f
+
+    .line 299
+    :cond_da
+    move-wide/from16 v19, v13
+
+    iget-wide v13, v7, Lcom/supertws/dubokutv/SyncVersion;->utcMillis:J
+
+    iget-wide v3, v7, Lcom/supertws/dubokutv/SyncVersion;->logicalCounter:J
+
+    move-object/from16 v22, v0
+
+    iget-object v0, v7, Lcom/supertws/dubokutv/SyncVersion;->deviceId:Ljava/lang/String;
+
+    move-wide/from16 v29, v3
+
+    iget-wide v3, v8, Lcom/supertws/dubokutv/SyncVersion;->utcMillis:J
+
+    move-wide/from16 v32, v3
+
+    iget-wide v3, v8, Lcom/supertws/dubokutv/SyncVersion;->logicalCounter:J
+
+    iget-object v8, v8, Lcom/supertws/dubokutv/SyncVersion;->deviceId:Ljava/lang/String;
+
+    move-object/from16 v31, v0
+
+    move-wide/from16 v34, v3
+
+    move-object/from16 v36, v8
+
+    move-wide/from16 v27, v13
+
+    invoke-static/range {v27 .. v36}, Lcom/supertws/dubokutv/SyncVersion;->compare(JJLjava/lang/String;JJLjava/lang/String;)I
+
+    move-result v0
+
+    .line 302
+    if-lez v0, :cond_fe
+
+    const/4 v0, 0x1
+
+    goto :goto_11f
+
+    .line 303
+    :cond_fe
+    if-nez v0, :cond_11e
+
+    iget-wide v3, v7, Lcom/supertws/dubokutv/SyncVersion;->logicalCounter:J
+
+    cmp-long v0, v3, v19
+
+    if-nez v0, :cond_11e
+
+    .line 304
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
+
+    move-result v0
+
+    .line 305
     invoke-static {v15}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
 
-    move-result v11
+    move-result v3
 
-    if-le v10, v11, :cond_7
+    .line 306
+    if-le v0, v3, :cond_114
 
-    goto :goto_3
+    .line 307
+    const/4 v0, 0x1
 
-    :cond_7
-    if-ne v10, v11, :cond_8
+    goto :goto_11f
 
-    .line 233
-    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
+    .line 308
+    :cond_114
+    if-ne v0, v3, :cond_11e
 
-    cmp-long v23, v10, v16
+    iget-wide v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
-    if-lez v23, :cond_8
+    cmp-long v0, v3, v16
 
-    goto :goto_3
+    if-lez v0, :cond_11e
 
-    :cond_8
-    const/4 v10, 0x0
+    .line 309
+    const/4 v0, 0x1
 
-    :goto_4
-    const-wide/16 v23, 0x3e8
+    goto :goto_11f
 
-    if-nez v10, :cond_a
+    .line 314
+    :cond_11e
+    const/4 v0, 0x0
 
+    :goto_11f
+    const-wide/16 v3, 0x3e8
+
+    if-nez v0, :cond_19c
+
+    .line 315
     const-string v0, "LanSyncManager"
 
-    .line 240
     new-instance v5, Ljava/lang/StringBuilder;
 
-    invoke-direct {v5, v2}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    const-string v7, "Ignored progress for: "
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    const-string v2, " (remote: "
+    move-result-object v5
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v5
 
-    const-string v2, " @"
+    const-string v7, " (remote: "
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
+
+    iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
+
+    const-string v7, " @"
+
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
 
     iget-wide v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
-    div-long v7, v7, v23
+    div-long/2addr v7, v3
 
     invoke-virtual {v5, v7, v8}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
 
-    const-string v2, "s [mod="
+    move-result-object v5
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v7, "s [mod="
+
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
 
     iget-wide v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
 
     invoke-virtual {v5, v7, v8}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
 
-    const-string v2, "], local: "
+    move-result-object v5
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v7, "], local: "
+
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
 
     invoke-virtual {v5, v15}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    const-string v2, " @"
+    move-result-object v5
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v7, " @"
 
-    div-long v7, v16, v23
+    invoke-virtual {v5, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    invoke-virtual {v5, v7, v8}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+    move-result-object v5
 
-    const-string v2, "s [mod="
+    div-long v3, v16, v3
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v5, v3, v4}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
 
-    invoke-virtual {v5, v13, v14}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+    move-result-object v3
 
-    const-string v2, "])"
+    const-string v4, "s [mod="
 
-    invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v3
 
-    move-result-object v2
+    invoke-virtual {v3, v9, v10}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
 
-    invoke-static {v0, v2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_4
-    .catch Ljava/lang/Exception; {:try_start_4 .. :try_end_4} :catch_4
-    .catchall {:try_start_4 .. :try_end_4} :catchall_0
+    move-result-object v3
 
-    if-eqz v6, :cond_9
+    const-string v4, "])"
 
-    .line 299
-    :try_start_5
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-static {v0, v3}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
+
+    .line 316
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
+
+    iget-object v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$messageId:Ljava/lang/String;
+
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$senderIp:Ljava/lang/String;
+
+    const-string v5, "already_current"
+
+    # invokes: Lcom/supertws/dubokutv/LanSyncManager;->sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    invoke-static {v0, v3, v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$600(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    :try_end_193
+    .catch Ljava/lang/Exception; {:try_start_27 .. :try_end_193} :catch_3a4
+    .catchall {:try_start_27 .. :try_end_193} :catchall_3a2
+
+    .line 381
+    if-eqz v6, :cond_19a
+
+    .line 382
+    :try_start_195
     invoke-virtual {v6}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_5
-    .catch Ljava/lang/Exception; {:try_start_5 .. :try_end_5} :catch_1
-    .catchall {:try_start_5 .. :try_end_5} :catchall_2
+    :try_end_198
+    .catch Ljava/lang/Exception; {:try_start_195 .. :try_end_198} :catch_199
+    .catchall {:try_start_195 .. :try_end_198} :catchall_3db
 
-    :catch_1
-    :cond_9
-    :try_start_6
-    monitor-exit v4
-    :try_end_6
-    .catchall {:try_start_6 .. :try_end_6} :catchall_2
+    goto :goto_19a
 
+    :catch_199
+    move-exception v0
+
+    :cond_19a
+    :goto_19a
+    :try_start_19a
+    monitor-exit v2
+    :try_end_19b
+    .catchall {:try_start_19a .. :try_end_19b} :catchall_3db
+
+    .line 317
     return-void
 
-    .line 245
-    :cond_a
-    :try_start_7
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
+    .line 321
+    :cond_19c
+    :try_start_19c
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
 
-    if-eqz v2, :cond_c
+    if-eqz v0, :cond_1b7
 
-    const-string v10, "http://"
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
 
-    invoke-virtual {v2, v10}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+    const-string v8, "http://"
 
-    move-result v2
+    invoke-virtual {v0, v8}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
 
-    if-nez v2, :cond_b
+    move-result v0
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
+    if-nez v0, :cond_1b4
 
-    const-string v10, "https://"
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
 
-    invoke-virtual {v2, v10}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+    const-string v8, "https://"
 
-    move-result v2
+    invoke-virtual {v0, v8}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
 
-    if-eqz v2, :cond_c
+    move-result v0
 
-    .line 246
-    :cond_b
-    iget-object v12, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
+    if-eqz v0, :cond_1b7
 
-    goto :goto_5
+    .line 322
+    :cond_1b4
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$posterUrl:Ljava/lang/String;
 
-    :cond_c
-    if-eqz v12, :cond_d
+    goto :goto_1be
 
-    goto :goto_5
+    :cond_1b7
+    if-eqz v22, :cond_1bc
 
-    :cond_d
-    const-string v12, ""
+    move-object/from16 v0, v22
 
-    .line 247
-    :goto_5
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
+    goto :goto_1be
 
-    if-eqz v2, :cond_e
+    :cond_1bc
+    const-string v0, ""
 
-    invoke-virtual {v2}, Ljava/lang/String;->isEmpty()Z
-
-    move-result v2
-
-    if-nez v2, :cond_e
-
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
-
-    const-string v10, "example.com"
-
-    invoke-virtual {v2, v10}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
-
-    move-result v2
-
-    if-nez v2, :cond_e
-
-    .line 248
+    .line 323
+    :goto_1be
     iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    goto :goto_6
+    if-eqz v8, :cond_1d7
 
-    :cond_e
-    if-eqz v8, :cond_f
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    goto :goto_6
+    invoke-virtual {v8}, Ljava/lang/String;->isEmpty()Z
 
-    :cond_f
-    const-string v8, ""
+    move-result v8
 
-    .line 249
-    :goto_6
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
+    if-nez v8, :cond_1d7
 
-    if-eqz v2, :cond_10
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    invoke-virtual {v2}, Ljava/lang/String;->isEmpty()Z
+    const-string v9, "example.com"
 
-    move-result v2
+    invoke-virtual {v8, v9}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
 
-    if-nez v2, :cond_10
+    move-result v8
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
+    if-nez v8, :cond_1d7
 
-    const-string v10, "example.com"
+    .line 324
+    iget-object v5, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$detailPageUrl:Ljava/lang/String;
 
-    invoke-virtual {v2, v10}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    goto :goto_1dc
 
-    move-result v2
+    :cond_1d7
+    if-eqz v5, :cond_1da
 
-    if-nez v2, :cond_10
+    goto :goto_1dc
 
-    .line 250
-    iget-object v9, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
+    :cond_1da
+    const-string v5, ""
 
-    goto :goto_7
+    .line 325
+    :goto_1dc
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
 
-    :cond_10
-    if-eqz v9, :cond_11
+    if-eqz v8, :cond_1f5
 
-    goto :goto_7
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
 
-    :cond_11
-    const-string v9, ""
+    invoke-virtual {v8}, Ljava/lang/String;->isEmpty()Z
 
-    :goto_7
-    .line 252
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
+    move-result v8
 
-    if-eqz v2, :cond_12
+    if-nez v8, :cond_1f5
 
-    invoke-virtual {v2}, Ljava/lang/String;->isEmpty()Z
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
 
-    move-result v2
+    const-string v9, "example.com"
 
-    if-nez v2, :cond_12
+    invoke-virtual {v8, v9}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
+    move-result v8
 
-    goto :goto_8
+    if-nez v8, :cond_1f5
 
-    :cond_12
-    if-eqz v22, :cond_13
+    .line 326
+    iget-object v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$videoPageUrl:Ljava/lang/String;
 
-    move-object/from16 v2, v22
+    goto :goto_1fa
 
-    goto :goto_8
+    :cond_1f5
+    if-eqz v11, :cond_1f8
 
-    :cond_13
-    move-object v2, v5
+    goto :goto_1fa
 
-    :goto_8
-    if-eqz v2, :cond_14
+    :cond_1f8
+    const-string v11, ""
 
-    .line 253
-    invoke-virtual {v2}, Ljava/lang/String;->isEmpty()Z
+    :goto_1fa
+    move-object v13, v11
 
-    move-result v10
+    .line 328
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
 
-    if-eqz v10, :cond_15
+    if-eqz v8, :cond_20a
 
-    :cond_14
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
 
-    .line 255
-    :cond_15
-    new-instance v10, Landroid/content/ContentValues;
+    invoke-virtual {v8}, Ljava/lang/String;->isEmpty()Z
 
-    invoke-direct {v10}, Landroid/content/ContentValues;-><init>()V
+    move-result v8
 
-    const-string v11, "id"
+    if-nez v8, :cond_20a
 
-    .line 256
-    invoke-virtual {v10, v11, v2}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$id:Ljava/lang/String;
 
-    const-string v2, "name"
+    goto :goto_20b
 
-    .line 257
-    iget-object v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    :cond_20a
+    move-object v8, v12
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    .line 329
+    :goto_20b
+    if-eqz v8, :cond_213
 
-    const-string v2, "episode"
+    invoke-virtual {v8}, Ljava/lang/String;->isEmpty()Z
 
-    .line 258
-    iget-object v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+    move-result v9
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    if-eqz v9, :cond_215
 
-    const-string v2, "progressInMillis"
+    :cond_213
+    iget-object v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    .line 259
-    iget-wide v13, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
+    .line 331
+    :cond_215
+    new-instance v9, Landroid/content/ContentValues;
 
-    invoke-static {v13, v14}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+    invoke-direct {v9}, Landroid/content/ContentValues;-><init>()V
 
-    move-result-object v11
+    .line 332
+    const-string v10, "id"
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+    invoke-virtual {v9, v10, v8}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 
-    const-string v2, "durationInMillis"
+    .line 333
+    const-string v8, "name"
 
-    .line 260
-    iget-wide v13, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+    iget-object v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    const-wide/16 v18, 0x0
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 
-    cmp-long v11, v13, v18
+    .line 334
+    const-string v8, "episode"
 
-    if-lez v11, :cond_16
+    iget-object v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
 
-    goto :goto_9
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
 
-    :cond_16
-    move-wide/from16 v13, v20
+    .line 335
+    const-string v8, "progressInMillis"
 
-    :goto_9
-    invoke-static {v13, v14}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
-    move-result-object v11
+    invoke-static {v10, v11}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+    move-result-object v10
 
-    const-string v2, "createdAt"
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
 
-    .line 261
+    .line 336
+    const-string v8, "durationInMillis"
+
+    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+
+    cmp-long v14, v10, v19
+
+    if-lez v14, :cond_243
+
+    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+
+    goto :goto_245
+
+    :cond_243
+    move-wide/from16 v10, v25
+
+    :goto_245
+    invoke-static {v10, v11}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+
+    move-result-object v10
+
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+
+    .line 337
+    const-string v8, "createdAt"
+
     invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
 
-    move-result-wide v13
+    move-result-wide v10
 
-    invoke-static {v13, v14}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+    invoke-static {v10, v11}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
 
-    move-result-object v11
+    move-result-object v10
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
 
-    const-string v2, "modifiedAt"
+    .line 338
+    iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
 
-    .line 262
-    iget-wide v13, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+    move-wide/from16 v22, v3
 
-    const-wide/16 v18, 0x0
+    iget-wide v3, v7, Lcom/supertws/dubokutv/SyncVersion;->utcMillis:J
 
-    cmp-long v11, v13, v18
+    invoke-static {v10, v11, v3, v4}, Ljava/lang/Math;->max(JJ)J
 
-    if-lez v11, :cond_17
+    move-result-wide v3
 
-    goto :goto_a
+    .line 339
+    const-string v8, "modifiedAt"
 
-    :cond_17
-    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+    cmp-long v10, v3, v19
 
-    move-result-wide v13
+    if-lez v10, :cond_26b
 
-    :goto_a
-    invoke-static {v13, v14}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+    move-wide v10, v3
 
-    move-result-object v11
+    goto :goto_275
 
-    invoke-virtual {v10, v2, v11}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+    :cond_26b
+    iget-object v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    const-string v2, "videoPageUrl"
+    # getter for: Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v10}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
 
-    .line 263
-    invoke-virtual {v10, v2, v9}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    move-result-object v10
 
-    const-string v2, "detailPageUrl"
+    invoke-static {v10}, Lcom/supertws/dubokutv/FamilyClock;->now(Landroid/content/Context;)J
 
-    .line 264
-    invoke-virtual {v10, v2, v8}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    move-result-wide v10
 
-    const-string v2, "posterUrl"
+    :goto_275
+    invoke-static {v10, v11}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
 
-    .line 265
-    invoke-virtual {v10, v2, v12}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+    move-result-object v10
 
-    .line 266
+    invoke-virtual {v9, v8, v10}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/Long;)V
+
+    .line 340
+    const-string v8, "videoPageUrl"
+
+    invoke-virtual {v9, v8, v13}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 341
+    const-string v8, "detailPageUrl"
+
+    invoke-virtual {v9, v8, v5}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 342
+    const-string v8, "posterUrl"
+
+    invoke-virtual {v9, v8, v0}, Landroid/content/ContentValues;->put(Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 343
+    # invokes: Lcom/supertws/dubokutv/LanSyncManager;->isLanSyncEnabled()Z
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$400()Z
 
-    move-result v2
-    :try_end_7
-    .catch Ljava/lang/Exception; {:try_start_7 .. :try_end_7} :catch_4
-    .catchall {:try_start_7 .. :try_end_7} :catchall_0
+    move-result v0
+    :try_end_28f
+    .catch Ljava/lang/Exception; {:try_start_19c .. :try_end_28f} :catch_3a4
+    .catchall {:try_start_19c .. :try_end_28f} :catchall_3a2
 
-    if-nez v2, :cond_19
+    if-nez v0, :cond_29a
 
-    if-eqz v6, :cond_18
+    .line 381
+    if-eqz v6, :cond_298
 
-    .line 299
-    :try_start_8
+    .line 382
+    :try_start_293
     invoke-virtual {v6}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_8
-    .catch Ljava/lang/Exception; {:try_start_8 .. :try_end_8} :catch_2
-    .catchall {:try_start_8 .. :try_end_8} :catchall_2
+    :try_end_296
+    .catch Ljava/lang/Exception; {:try_start_293 .. :try_end_296} :catch_297
+    .catchall {:try_start_293 .. :try_end_296} :catchall_3db
 
-    :catch_2
-    :cond_18
-    :try_start_9
-    monitor-exit v4
-    :try_end_9
-    .catchall {:try_start_9 .. :try_end_9} :catchall_2
+    goto :goto_298
 
+    :catch_297
+    move-exception v0
+
+    :cond_298
+    :goto_298
+    :try_start_298
+    monitor-exit v2
+    :try_end_299
+    .catchall {:try_start_298 .. :try_end_299} :catchall_3db
+
+    .line 343
     return-void
 
-    .line 267
-    :cond_19
-    :try_start_a
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    .line 344
+    :cond_29a
+    :try_start_29a
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    iget-wide v11, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+    invoke-static {v0, v3, v4}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
 
-    invoke-static {v2, v11, v12}, Lcom/supertws/dubokutv/LanSyncManager;->onRemoteProgress(Ljava/lang/String;J)V
+    .line 345
+    if-nez v12, :cond_2a7
 
-    if-eqz v22, :insert_remote_record
+    move-object v4, v7
 
-    const-string v2, "records"
+    move-object v8, v9
 
-    const-string v7, "id = ?"
+    move-object/from16 v3, v24
 
-    const/4 v13, 0x1
+    const/4 v0, 0x0
 
-    new-array v14, v13, [Ljava/lang/String;
+    goto :goto_2bb
 
-    const/4 v13, 0x0
+    :cond_2a7
+    move-object/from16 v27, v7
 
-    aput-object v22, v14, v13
+    const-string v7, "records"
 
-    move-object/from16 v27, v6
+    move-object v8, v9
 
-    const-string v28, "records"
+    const-string v9, "id = ?"
 
-    move-object/from16 v29, v10
+    filled-new-array {v12}, [Ljava/lang/String;
 
-    move-object/from16 v30, v7
+    move-result-object v10
 
-    move-object/from16 v31, v14
+    const/4 v11, 0x5
 
-    const/16 v32, 0x5
+    move-object/from16 v3, v24
 
-    invoke-virtual/range {v27 .. v32}, Landroid/database/sqlite/SQLiteDatabase;->updateWithOnConflict(Ljava/lang/String;Landroid/content/ContentValues;Ljava/lang/String;[Ljava/lang/String;I)I
+    move-object/from16 v4, v27
 
-    move-result v13
+    invoke-virtual/range {v6 .. v11}, Landroid/database/sqlite/SQLiteDatabase;->updateWithOnConflict(Ljava/lang/String;Landroid/content/ContentValues;Ljava/lang/String;[Ljava/lang/String;I)I
 
-    if-lez v13, :insert_remote_record
+    move-result v0
 
-    goto :remote_record_written
+    .line 347
+    :goto_2bb
+    if-nez v0, :cond_2d2
 
-    :insert_remote_record
-    const-string v2, "records"
+    const-string v0, "records"
 
     const/4 v7, 0x5
 
-    .line 268
-    invoke-virtual {v6, v2, v5, v10, v7}, Landroid/database/sqlite/SQLiteDatabase;->insertWithOnConflict(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;I)J
+    const/4 v9, 0x0
 
-    :remote_record_written
-    .line 269
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$600()Lcom/supertws/dubokutv/HandoffProgress;
+    invoke-virtual {v6, v0, v9, v8, v7}, Landroid/database/sqlite/SQLiteDatabase;->insertWithOnConflict(Ljava/lang/String;Ljava/lang/String;Landroid/content/ContentValues;I)J
 
-    move-result-object v25
+    move-result-wide v7
 
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+    cmp-long v0, v7, v19
+
+    if-ltz v0, :cond_2ca
+
+    goto :goto_2d3
+
+    .line 348
+    :cond_2ca
+    new-instance v0, Ljava/lang/IllegalStateException;
+
+    const-string v3, "Record write failed"
+
+    invoke-direct {v0, v3}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/String;)V
+
+    throw v0
+
+    .line 347
+    :cond_2d2
+    const/4 v9, 0x0
+
+    .line 350
+    :goto_2d3
+    # getter for: Lcom/supertws/dubokutv/LanSyncManager;->sHandoff:Lcom/supertws/dubokutv/HandoffProgress;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->access$700()Lcom/supertws/dubokutv/HandoffProgress;
+
+    move-result-object v27
+
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
     iget-object v7, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
 
     iget-wide v10, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
 
-    iget-wide v12, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
+    move-wide/from16 v30, v10
 
-    move-object/from16 v26, v2
+    iget-wide v9, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$remoteModifiedAt:J
 
-    move-object/from16 v27, v7
+    move-object/from16 v28, v0
 
-    move-wide/from16 v28, v10
+    move-object/from16 v29, v7
 
-    move-object/from16 v30, v9
+    move-wide/from16 v33, v9
 
-    move-wide/from16 v31, v12
+    move-object/from16 v32, v13
 
-    invoke-virtual/range {v25 .. v32}, Lcom/supertws/dubokutv/HandoffProgress;->offer(Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;J)V
-    :try_end_a
-    .catch Ljava/lang/Exception; {:try_start_a .. :try_end_a} :catch_4
-    .catchall {:try_start_a .. :try_end_a} :catchall_0
+    invoke-virtual/range {v27 .. v34}, Lcom/supertws/dubokutv/HandoffProgress;->offer(Ljava/lang/String;Ljava/lang/String;JLjava/lang/String;J)V
+    :try_end_2ec
+    .catch Ljava/lang/Exception; {:try_start_29a .. :try_end_2ec} :catch_3a4
+    .catchall {:try_start_29a .. :try_end_2ec} :catchall_3a2
 
-    .line 274
-    :try_start_b
+    .line 355
+    :try_start_2ec
     invoke-virtual {v6}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_b
-    .catch Ljava/lang/Exception; {:try_start_b .. :try_end_b} :catch_3
-    .catchall {:try_start_b .. :try_end_b} :catchall_0
+    :try_end_2ef
+    .catch Ljava/lang/Exception; {:try_start_2ec .. :try_end_2ef} :catch_2f3
+    .catchall {:try_start_2ec .. :try_end_2ef} :catchall_3a2
 
-    goto :goto_b
-
-    :catch_3
+    .line 356
     nop
 
-    move-object v5, v6
+    .line 357
+    const/16 v18, 0x0
 
-    :goto_b
-    if-eqz v22, :cond_1b
+    goto :goto_2f6
 
-    .line 280
-    :try_start_c
-    iget-object v2, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+    :catch_2f3
+    move-exception v0
 
-    if-eqz v2, :cond_1b
+    move-object/from16 v18, v6
 
-    invoke-virtual {v2, v15}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    .line 358
+    :goto_2f6
+    :try_start_2f6
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->this$0:Lcom/supertws/dubokutv/LanSyncManager;
 
-    move-result v2
-
-    if-eqz v2, :cond_1b
-
-    .line 281
-    iget-wide v6, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
-
-    const-wide/16 v8, 0x0
-
-    cmp-long v2, v6, v8
-
-    if-lez v2, :cond_1a
-
-    move-wide/from16 v20, v6
-
-    :cond_1a
-    cmp-long v2, v20, v8
-
-    if-lez v2, :cond_1b
-
-    const-wide/16 v6, 0x64
-
-    mul-long v16, v16, v6
-
-    .line 283
-    div-long v8, v16, v20
-
-    long-to-int v2, v8
-
-    .line 284
-    iget-wide v8, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
-
-    mul-long v8, v8, v6
-
-    div-long v8, v8, v20
-
-    long-to-int v6, v8
-
-    if-ne v2, v6, :cond_1b
-
-    const/4 v8, 0x0
-
-    goto :goto_c
-
-    :cond_1b
-    const/4 v8, 0x1
-
-    :goto_c
-    if-eqz v8, :cond_1c
-
-    .line 292
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->bumpSyncVersion()V
-
-    :cond_1c
-    const-string v2, "LanSyncManager"
-
-    .line 294
-    new-instance v6, Ljava/lang/StringBuilder;
-
-    invoke-direct {v6, v0}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
-
-    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    const-string v0, " "
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    const-string v0, " @"
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    iget-wide v9, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
-
-    div-long v9, v9, v23
-
-    invoke-virtual {v6, v9, v10}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
-
-    const-string v0, "s from "
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    const-string v0, " (bumpUi="
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {v6, v8}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
-
-    const-string v0, ")"
-
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {v6}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    # getter for: Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->access$500(Lcom/supertws/dubokutv/LanSyncManager;)Landroid/content/Context;
 
     move-result-object v0
 
-    invoke-static {v2, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_c
-    .catch Ljava/lang/Exception; {:try_start_c .. :try_end_c} :catch_5
-    .catchall {:try_start_c .. :try_end_c} :catchall_1
+    iget-object v6, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
 
-    if-eqz v5, :cond_1d
+    invoke-static {v0, v6, v5, v4, v3}, Lcom/supertws/dubokutv/SyncVersionStore;->rememberRemote(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Lcom/supertws/dubokutv/SyncVersion;Ljava/lang/String;)V
 
-    .line 299
-    :goto_d
-    :try_start_d
-    invoke-virtual {v5}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_d
-    .catch Ljava/lang/Exception; {:try_start_d .. :try_end_d} :catch_6
-    .catchall {:try_start_d .. :try_end_d} :catchall_2
+    .line 359
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
 
-    goto :goto_f
+    iget-object v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$messageId:Ljava/lang/String;
 
-    :catchall_0
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$senderIp:Ljava/lang/String;
+
+    const-string v5, "applied"
+
+    # invokes: Lcom/supertws/dubokutv/LanSyncManager;->sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    invoke-static {v0, v3, v4, v5}, Lcom/supertws/dubokutv/LanSyncManager;->access$600(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+
+    .line 362
+    nop
+
+    .line 363
+    if-eqz v12, :cond_33b
+
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+
+    if-eqz v0, :cond_33b
+
+    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+
+    invoke-virtual {v0, v15}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :cond_33b
+
+    .line 364
+    iget-wide v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+
+    cmp-long v0, v3, v19
+
+    if-lez v0, :cond_325
+
+    iget-wide v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$durationInMillis:J
+
+    move-wide/from16 v25, v3
+
+    .line 365
+    :cond_325
+    cmp-long v0, v25, v19
+
+    if-lez v0, :cond_33b
+
+    .line 366
+    const-wide/16 v3, 0x64
+
+    mul-long v16, v16, v3
+
+    div-long v5, v16, v25
+
+    long-to-int v0, v5
+
+    .line 367
+    iget-wide v5, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
+
+    mul-long v5, v5, v3
+
+    div-long v5, v5, v25
+
+    long-to-int v3, v5
+
+    .line 368
+    if-ne v0, v3, :cond_33b
+
+    .line 369
+    const/4 v5, 0x0
+
+    goto :goto_33c
+
+    .line 374
+    :cond_33b
+    const/4 v5, 0x1
+
+    :goto_33c
+    if-eqz v5, :cond_341
+
+    .line 375
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->bumpSyncVersion()V
+
+    .line 377
+    :cond_341
+    const-string v0, "LanSyncManager"
+
+    new-instance v3, Ljava/lang/StringBuilder;
+
+    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v4, "Synced newer remote progress for: "
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$name:Ljava/lang/String;
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    const-string v4, " "
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    const-string v4, " @"
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    iget-wide v6, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
+
+    div-long v6, v6, v22
+
+    invoke-virtual {v3, v6, v7}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    const-string v4, "s from "
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    iget-object v4, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$fromDevice:Ljava/lang/String;
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    const-string v4, " (bumpUi="
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    invoke-virtual {v3, v5}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    const-string v4, ")"
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v3
+
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-static {v0, v3}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    :try_end_391
+    .catch Ljava/lang/Exception; {:try_start_2f6 .. :try_end_391} :catch_39e
+    .catchall {:try_start_2f6 .. :try_end_391} :catchall_399
+
+    .line 381
+    if-eqz v18, :cond_3ce
+
+    .line 382
+    :try_start_393
+    invoke-virtual/range {v18 .. v18}, Landroid/database/sqlite/SQLiteDatabase;->close()V
+    :try_end_396
+    .catch Ljava/lang/Exception; {:try_start_393 .. :try_end_396} :catch_397
+    .catchall {:try_start_393 .. :try_end_396} :catchall_3db
+
+    goto :goto_3ce
+
+    :catch_397
     move-exception v0
 
-    move-object v5, v6
+    goto :goto_3ce
 
-    goto :goto_10
-
-    :catch_4
+    .line 381
+    :catchall_399
     move-exception v0
 
-    move-object v5, v6
+    move-object v3, v0
 
-    goto :goto_e
+    move-object/from16 v6, v18
 
-    :catchall_1
+    goto :goto_3d3
+
+    .line 378
+    :catch_39e
     move-exception v0
 
-    goto :goto_10
+    move-object/from16 v3, v18
 
-    :catch_5
+    goto :goto_3ad
+
+    .line 381
+    :catchall_3a2
     move-exception v0
 
-    :goto_e
-    :try_start_e
-    const-string v2, "LanSyncManager"
+    goto :goto_3d2
 
-    .line 296
-    new-instance v6, Ljava/lang/StringBuilder;
+    .line 378
+    :catch_3a4
+    move-exception v0
 
-    invoke-direct {v6, v3}, Ljava/lang/StringBuilder;-><init>(Ljava/lang/String;)V
+    move-object v3, v6
+
+    goto :goto_3ad
+
+    .line 381
+    :catchall_3a7
+    move-exception v0
+
+    move-object v3, v0
+
+    const/4 v6, 0x0
+
+    goto :goto_3d3
+
+    .line 378
+    :catch_3ab
+    move-exception v0
+
+    const/4 v3, 0x0
+
+    .line 379
+    :goto_3ad
+    :try_start_3ad
+    const-string v4, "LanSyncManager"
+
+    new-instance v5, Ljava/lang/StringBuilder;
+
+    invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v6, "Error writing sync record: "
+
+    invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v5
 
     invoke-virtual {v0}, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
 
     move-result-object v0
 
-    invoke-virtual {v6, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {v6}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    invoke-virtual {v5, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v0
 
-    invoke-static {v2, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_e
-    .catchall {:try_start_e .. :try_end_e} :catchall_1
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
-    if-eqz v5, :cond_1d
+    move-result-object v0
 
-    goto :goto_d
+    invoke-static {v4, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
+    :try_end_3c9
+    .catchall {:try_start_3ad .. :try_end_3c9} :catchall_3d0
 
-    .line 302
-    :catch_6
-    :cond_1d
-    :goto_f
-    :try_start_f
-    monitor-exit v4
-    :try_end_f
-    .catchall {:try_start_f .. :try_end_f} :catchall_2
+    .line 381
+    if-eqz v3, :cond_3ce
 
+    .line 382
+    :try_start_3cb
+    invoke-virtual {v3}, Landroid/database/sqlite/SQLiteDatabase;->close()V
+    :try_end_3ce
+    .catch Ljava/lang/Exception; {:try_start_3cb .. :try_end_3ce} :catch_397
+    .catchall {:try_start_3cb .. :try_end_3ce} :catchall_3db
+
+    .line 385
+    :cond_3ce
+    :goto_3ce
+    :try_start_3ce
+    monitor-exit v2
+    :try_end_3cf
+    .catchall {:try_start_3ce .. :try_end_3cf} :catchall_3db
+
+    .line 386
     return-void
 
-    :goto_10
-    if-eqz v5, :cond_1e
-
-    .line 299
-    :try_start_10
-    invoke-virtual {v5}, Landroid/database/sqlite/SQLiteDatabase;->close()V
-    :try_end_10
-    .catch Ljava/lang/Exception; {:try_start_10 .. :try_end_10} :catch_7
-    .catchall {:try_start_10 .. :try_end_10} :catchall_2
-
-    .line 301
-    :catch_7
-    :cond_1e
-    :try_start_11
-    throw v0
-
-    :catchall_2
+    .line 381
+    :catchall_3d0
     move-exception v0
 
-    .line 302
-    monitor-exit v4
-    :try_end_11
-    .catchall {:try_start_11 .. :try_end_11} :catchall_2
+    move-object v6, v3
+
+    :goto_3d2
+    move-object v3, v0
+
+    :goto_3d3
+    if-eqz v6, :cond_3da
+
+    .line 382
+    :try_start_3d5
+    invoke-virtual {v6}, Landroid/database/sqlite/SQLiteDatabase;->close()V
+    :try_end_3d8
+    .catch Ljava/lang/Exception; {:try_start_3d5 .. :try_end_3d8} :catch_3d9
+    .catchall {:try_start_3d5 .. :try_end_3d8} :catchall_3db
+
+    goto :goto_3da
+
+    :catch_3d9
+    move-exception v0
+
+    .line 384
+    :cond_3da
+    :goto_3da
+    :try_start_3da
+    throw v3
+
+    .line 385
+    :catchall_3db
+    move-exception v0
+
+    monitor-exit v2
+    :try_end_3dd
+    .catchall {:try_start_3da .. :try_end_3dd} :catchall_3db
 
     throw v0
 .end method

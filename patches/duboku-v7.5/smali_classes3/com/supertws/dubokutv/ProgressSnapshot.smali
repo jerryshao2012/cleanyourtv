@@ -19,7 +19,7 @@
 
 # direct methods
 .method public constructor <init>(Ljava/lang/String;Ljava/lang/String;JLorg/json/JSONArray;)V
-    .locals 0
+    .registers 6
 
     .line 17
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -32,13 +32,13 @@
     iput-wide p3, p0, Lcom/supertws/dubokutv/ProgressSnapshot;->updatedAt:J
 
     .line 19
-    if-nez p5, :cond_0
+    if-nez p5, :cond_10
 
     new-instance p5, Lorg/json/JSONArray;
 
     invoke-direct {p5}, Lorg/json/JSONArray;-><init>()V
 
-    :cond_0
+    :cond_10
     iput-object p5, p0, Lcom/supertws/dubokutv/ProgressSnapshot;->records:Lorg/json/JSONArray;
 
     .line 20
@@ -46,52 +46,50 @@
 .end method
 
 .method public static fromJson(Lorg/json/JSONObject;)Lcom/supertws/dubokutv/ProgressSnapshot;
-    .locals 7
+    .registers 8
 
     .line 30
     invoke-static {p0}, Lcom/supertws/dubokutv/ProgressSnapshot;->valid(Lorg/json/JSONObject;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_0
+    if-eqz v0, :cond_24
 
     .line 31
-    new-instance v0, Lcom/supertws/dubokutv/ProgressSnapshot;
+    new-instance v1, Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    const-string v1, "familyId"
+    const-string v0, "familyId"
 
-    invoke-virtual {p0, v1}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    invoke-virtual {p0, v0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v2
 
-    const-string v1, "deviceId"
+    const-string v0, "deviceId"
 
-    invoke-virtual {p0, v1}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    invoke-virtual {p0, v0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v3
 
     .line 32
-    const-string v1, "updatedAt"
+    const-string v0, "updatedAt"
 
-    invoke-virtual {p0, v1}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;)J
+    invoke-virtual {p0, v0}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;)J
 
     move-result-wide v4
 
-    const-string v1, "records"
+    const-string v0, "records"
 
-    invoke-virtual {p0, v1}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    invoke-virtual {p0, v0}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
 
     move-result-object v6
-
-    move-object v1, v0
 
     invoke-direct/range {v1 .. v6}, Lcom/supertws/dubokutv/ProgressSnapshot;-><init>(Ljava/lang/String;Ljava/lang/String;JLorg/json/JSONArray;)V
 
     .line 31
-    return-object v0
+    return-object v1
 
     .line 30
-    :cond_0
+    :cond_24
     new-instance p0, Ljava/lang/IllegalArgumentException;
 
     const-string v0, "invalid snapshot"
@@ -102,9 +100,9 @@
 .end method
 
 .method static isWorkerCompatibleUrl(Ljava/lang/String;)Z
-    .locals 0
+    .registers 1
 
-    .line 72
+    .line 78
     invoke-static {p0}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
 
     move-result p0
@@ -113,27 +111,27 @@
 .end method
 
 .method public static normalizeUrl(Ljava/lang/String;)Ljava/lang/String;
-    .locals 4
+    .registers 5
 
-    .line 55
+    .line 61
     const-string v0, ""
 
-    if-nez p0, :cond_0
+    if-nez p0, :cond_5
 
     return-object v0
 
-    .line 56
-    :cond_0
+    .line 62
+    :cond_5
     invoke-virtual {p0}, Ljava/lang/String;->trim()Ljava/lang/String;
 
     move-result-object p0
 
-    .line 57
+    .line 63
     invoke-virtual {p0}, Ljava/lang/String;->isEmpty()Z
 
     move-result v1
 
-    if-nez v1, :cond_4
+    if-nez v1, :cond_5b
 
     invoke-virtual {p0}, Ljava/lang/String;->length()I
 
@@ -141,11 +139,11 @@
 
     const/16 v2, 0x800
 
-    if-gt v1, v2, :cond_4
+    if-gt v1, v2, :cond_5b
 
     sget-object v1, Ljava/util/Locale;->US:Ljava/util/Locale;
 
-    .line 58
+    .line 64
     invoke-virtual {p0, v1}, Ljava/lang/String;->toLowerCase(Ljava/util/Locale;)Ljava/lang/String;
 
     move-result-object v1
@@ -156,18 +154,18 @@
 
     move-result v1
 
-    if-eqz v1, :cond_1
+    if-eqz v1, :cond_26
 
-    goto :goto_1
+    goto :goto_5b
 
-    .line 60
-    :cond_1
-    :try_start_0
+    .line 66
+    :cond_26
+    :try_start_26
     new-instance v1, Ljava/net/URL;
 
     invoke-direct {v1, p0}, Ljava/net/URL;-><init>(Ljava/lang/String;)V
 
-    .line 61
+    .line 67
     invoke-virtual {v1}, Ljava/net/URL;->getProtocol()Ljava/lang/String;
 
     move-result-object v2
@@ -178,14 +176,14 @@
 
     move-result-object v2
 
-    .line 62
+    .line 68
     const-string v3, "http"
 
     invoke-virtual {v2, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v3
 
-    if-nez v3, :cond_2
+    if-nez v3, :cond_45
 
     const-string v3, "https"
 
@@ -193,15 +191,15 @@
 
     move-result v2
 
-    if-eqz v2, :cond_3
+    if-eqz v2, :cond_57
 
-    .line 63
-    :cond_2
+    .line 69
+    :cond_45
     invoke-virtual {v1}, Ljava/net/URL;->getHost()Ljava/lang/String;
 
     move-result-object v2
 
-    if-eqz v2, :cond_3
+    if-eqz v2, :cond_57
 
     invoke-virtual {v1}, Ljava/net/URL;->getHost()Ljava/lang/String;
 
@@ -210,312 +208,380 @@
     invoke-virtual {v1}, Ljava/lang/String;->isEmpty()Z
 
     move-result v1
-    :try_end_0
-    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+    :try_end_53
+    .catch Ljava/lang/Exception; {:try_start_26 .. :try_end_53} :catch_59
 
-    if-nez v1, :cond_3
+    if-nez v1, :cond_57
 
     move-object v0, p0
 
-    goto :goto_0
+    goto :goto_58
 
-    :cond_3
+    :cond_57
     nop
 
-    .line 62
-    :goto_0
+    .line 68
+    :goto_58
     return-object v0
 
-    .line 64
-    :catch_0
+    .line 70
+    :catch_59
     move-exception p0
 
     return-object v0
 
-    .line 58
-    :cond_4
-    :goto_1
+    .line 64
+    :cond_5b
+    :goto_5b
     return-object v0
 .end method
 
 .method public static valid(Lorg/json/JSONObject;)Z
-    .locals 12
+    .registers 15
 
     .line 36
-    const/4 v0, 0x0
+    const/4 v0, -0x1
 
-    if-eqz p0, :cond_6
+    if-nez p0, :cond_4
 
+    goto :goto_a
+
+    :cond_4
     const-string v1, "schemaVersion"
 
-    const/4 v2, -0x1
+    invoke-virtual {p0, v1, v0}, Lorg/json/JSONObject;->optInt(Ljava/lang/String;I)I
 
-    invoke-virtual {p0, v1, v2}, Lorg/json/JSONObject;->optInt(Ljava/lang/String;I)I
-
-    move-result v1
-
-    const/4 v2, 0x1
-
-    if-ne v1, v2, :cond_6
-
-    const-string v1, "updatedAt"
-
-    const-wide/16 v3, -0x1
-
-    invoke-virtual {p0, v1, v3, v4}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
-
-    move-result-wide v5
-
-    const-wide/16 v7, 0x0
-
-    cmp-long v1, v5, v7
-
-    if-ltz v1, :cond_6
+    move-result v0
 
     .line 37
-    const-string v1, "familyId"
+    :goto_a
+    const/4 v1, 0x0
 
-    const-string v5, ""
+    if-eqz p0, :cond_116
 
-    invoke-virtual {p0, v1, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    invoke-virtual {p0}, Lorg/json/JSONObject;->length()I
 
-    move-result-object v1
+    move-result v2
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+    const/4 v3, 0x5
 
-    move-result v1
+    if-ne v2, v3, :cond_116
 
-    if-eqz v1, :cond_6
+    const/4 v2, 0x2
+
+    const/4 v3, 0x1
+
+    if-eq v0, v3, :cond_1a
+
+    if-ne v0, v2, :cond_116
+
+    :cond_1a
+    const-string v4, "updatedAt"
+
+    const-wide/16 v5, -0x1
+
+    invoke-virtual {p0, v4, v5, v6}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+
+    move-result-wide v7
+
+    const-wide/16 v9, 0x0
+
+    cmp-long v4, v7, v9
+
+    if-ltz v4, :cond_116
 
     .line 38
-    const-string v1, "deviceId"
+    const-string v4, "familyId"
 
-    invoke-virtual {p0, v1, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    const-string v7, ""
 
-    move-result-object v1
+    invoke-virtual {p0, v4, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+    move-result-object v4
 
-    move-result v1
+    invoke-static {v4}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
 
-    if-nez v1, :cond_0
+    move-result v4
 
-    goto/16 :goto_3
+    if-eqz v4, :cond_116
 
     .line 39
-    :cond_0
-    const-string v1, "records"
+    const-string v4, "deviceId"
 
-    invoke-virtual {p0, v1}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    invoke-virtual {p0, v4, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v4
+
+    invoke-static {v4}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+
+    move-result v4
+
+    if-nez v4, :cond_44
+
+    goto/16 :goto_116
+
+    .line 40
+    :cond_44
+    const-string v4, "records"
+
+    invoke-virtual {p0, v4}, Lorg/json/JSONObject;->optJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
 
     move-result-object p0
 
-    .line 40
-    if-eqz p0, :cond_5
-
-    invoke-virtual {p0}, Lorg/json/JSONArray;->length()I
-
-    move-result v1
-
-    const/16 v6, 0x14
-
-    if-le v1, v6, :cond_1
-
-    goto/16 :goto_2
-
     .line 41
-    :cond_1
-    const/4 v1, 0x0
+    if-eqz p0, :cond_115
 
-    :goto_0
     invoke-virtual {p0}, Lorg/json/JSONArray;->length()I
 
-    move-result v6
+    move-result v4
 
-    if-ge v1, v6, :cond_4
+    const/16 v8, 0x14
+
+    if-le v4, v8, :cond_56
+
+    goto/16 :goto_115
 
     .line 42
-    invoke-virtual {p0, v1}, Lorg/json/JSONArray;->optJSONObject(I)Lorg/json/JSONObject;
+    :cond_56
+    const/4 v4, 0x0
 
-    move-result-object v6
+    :goto_57
+    invoke-virtual {p0}, Lorg/json/JSONArray;->length()I
+
+    move-result v8
+
+    if-ge v4, v8, :cond_114
 
     .line 43
-    if-eqz v6, :cond_3
+    invoke-virtual {p0, v4}, Lorg/json/JSONArray;->optJSONObject(I)Lorg/json/JSONObject;
 
-    const-string v9, "id"
+    move-result-object v8
 
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .line 44
+    if-eqz v8, :cond_113
 
-    move-result-object v10
-
-    invoke-virtual {v10}, Ljava/lang/String;->isEmpty()Z
-
-    move-result v10
-
-    if-nez v10, :cond_3
-
-    const-string v10, "name"
-
-    invoke-virtual {v6, v10, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v11
-
-    invoke-virtual {v11}, Ljava/lang/String;->isEmpty()Z
+    invoke-virtual {v8}, Lorg/json/JSONObject;->length()I
 
     move-result v11
 
-    if-nez v11, :cond_3
+    if-ne v0, v2, :cond_6c
 
-    .line 44
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    const/16 v12, 0xb
 
-    move-result-object v9
+    goto :goto_6e
 
-    invoke-virtual {v9}, Ljava/lang/String;->length()I
+    :cond_6c
+    const/16 v12, 0xa
 
-    move-result v9
-
-    const/16 v11, 0x200
-
-    if-gt v9, v11, :cond_3
-
-    invoke-virtual {v6, v10, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v9
-
-    invoke-virtual {v9}, Ljava/lang/String;->length()I
-
-    move-result v9
-
-    if-gt v9, v11, :cond_3
+    :goto_6e
+    if-ne v11, v12, :cond_113
 
     .line 45
-    const-string v9, "episode"
+    const-string v11, "id"
 
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    move-result-object v9
+    move-result-object v12
 
-    invoke-virtual {v9}, Ljava/lang/String;->length()I
+    invoke-virtual {v12}, Ljava/lang/String;->isEmpty()Z
 
-    move-result v9
+    move-result v12
 
-    if-gt v9, v11, :cond_3
+    if-nez v12, :cond_113
 
-    const-string v9, "progressInMillis"
+    const-string v12, "name"
 
-    invoke-virtual {v6, v9, v3, v4}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+    invoke-virtual {v8, v12, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    move-result-wide v9
+    move-result-object v13
 
-    cmp-long v11, v9, v7
+    invoke-virtual {v13}, Ljava/lang/String;->isEmpty()Z
 
-    if-ltz v11, :cond_3
+    move-result v13
+
+    if-nez v13, :cond_113
 
     .line 46
-    const-string v9, "durationInMillis"
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    invoke-virtual {v6, v9, v3, v4}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+    move-result-object v11
 
-    move-result-wide v9
+    invoke-virtual {v11}, Ljava/lang/String;->length()I
 
-    cmp-long v11, v9, v7
+    move-result v11
 
-    if-ltz v11, :cond_3
+    const/16 v13, 0x200
 
-    const-string v9, "createdAt"
+    if-gt v11, v13, :cond_113
 
-    invoke-virtual {v6, v9, v3, v4}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+    invoke-virtual {v8, v12, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    move-result-wide v9
+    move-result-object v11
 
-    cmp-long v11, v9, v7
+    invoke-virtual {v11}, Ljava/lang/String;->length()I
 
-    if-ltz v11, :cond_3
+    move-result v11
+
+    if-gt v11, v13, :cond_113
 
     .line 47
-    const-string v9, "modifiedAt"
+    const-string v11, "episode"
 
-    invoke-virtual {v6, v9, v3, v4}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    move-result-wide v9
+    move-result-object v11
 
-    cmp-long v11, v9, v7
+    invoke-virtual {v11}, Ljava/lang/String;->length()I
 
-    if-ltz v11, :cond_3
+    move-result v11
 
-    const-string v9, "videoPageUrl"
+    if-gt v11, v13, :cond_113
 
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    const-string v11, "progressInMillis"
 
-    move-result-object v9
+    invoke-virtual {v8, v11, v5, v6}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
 
-    invoke-static {v9}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
+    move-result-wide v11
 
-    move-result v9
+    cmp-long v13, v11, v9
 
-    if-eqz v9, :cond_3
-
-    .line 48
-    const-string v9, "detailPageUrl"
-
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v9
-
-    invoke-static {v9}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
-
-    move-result v9
-
-    if-eqz v9, :cond_3
-
-    const-string v9, "posterUrl"
-
-    invoke-virtual {v6, v9, v5}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v6
-
-    invoke-static {v6}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
-
-    move-result v6
-
-    if-nez v6, :cond_2
-
-    goto :goto_1
-
-    .line 41
-    :cond_2
-    add-int/lit8 v1, v1, 0x1
-
-    goto/16 :goto_0
+    if-ltz v13, :cond_113
 
     .line 48
-    :cond_3
-    :goto_1
-    return v0
+    const-string v11, "durationInMillis"
+
+    invoke-virtual {v8, v11, v5, v6}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+
+    move-result-wide v11
+
+    cmp-long v13, v11, v9
+
+    if-ltz v13, :cond_113
+
+    const-string v11, "createdAt"
+
+    invoke-virtual {v8, v11, v5, v6}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+
+    move-result-wide v11
+
+    cmp-long v13, v11, v9
+
+    if-ltz v13, :cond_113
+
+    .line 49
+    const-string v11, "modifiedAt"
+
+    invoke-virtual {v8, v11, v5, v6}, Lorg/json/JSONObject;->optLong(Ljava/lang/String;J)J
+
+    move-result-wide v11
+
+    cmp-long v13, v11, v9
+
+    if-ltz v13, :cond_113
+
+    const-string v11, "videoPageUrl"
+
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v11
+
+    invoke-static {v11}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
+
+    move-result v11
+
+    if-eqz v11, :cond_113
 
     .line 50
-    :cond_4
-    return v2
+    const-string v11, "detailPageUrl"
 
-    .line 40
-    :cond_5
-    :goto_2
-    return v0
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
-    .line 38
-    :cond_6
-    :goto_3
-    return v0
+    move-result-object v11
+
+    invoke-static {v11}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
+
+    move-result v11
+
+    if-eqz v11, :cond_113
+
+    const-string v11, "posterUrl"
+
+    invoke-virtual {v8, v11, v7}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v11
+
+    invoke-static {v11}, Lcom/supertws/dubokutv/ProgressSnapshot;->validUrl(Ljava/lang/String;)Z
+
+    move-result v11
+
+    if-nez v11, :cond_f7
+
+    goto :goto_113
+
+    .line 51
+    :cond_f7
+    if-ne v0, v2, :cond_10f
+
+    .line 52
+    const-string v11, "clockVersion"
+
+    invoke-virtual {v8, v11}, Lorg/json/JSONObject;->optJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+
+    move-result-object v8
+
+    .line 53
+    if-eqz v8, :cond_10e
+
+    invoke-virtual {v8}, Lorg/json/JSONObject;->length()I
+
+    move-result v11
+
+    const/4 v12, 0x3
+
+    if-ne v11, v12, :cond_10e
+
+    invoke-static {v8}, Lcom/supertws/dubokutv/SyncVersionStore;->fromJson(Lorg/json/JSONObject;)Lcom/supertws/dubokutv/SyncVersion;
+
+    move-result-object v8
+
+    if-nez v8, :cond_10f
+
+    :cond_10e
+    return v1
+
+    .line 42
+    :cond_10f
+    add-int/lit8 v4, v4, 0x1
+
+    goto/16 :goto_57
+
+    .line 50
+    :cond_113
+    :goto_113
+    return v1
+
+    .line 56
+    :cond_114
+    return v3
+
+    .line 41
+    :cond_115
+    :goto_115
+    return v1
+
+    .line 39
+    :cond_116
+    :goto_116
+    return v1
 .end method
 
 .method private static validUrl(Ljava/lang/String;)Z
-    .locals 3
+    .registers 4
 
-    .line 68
+    .line 74
     const/4 v0, 0x0
 
-    if-eqz p0, :cond_3
+    if-eqz p0, :cond_1e
 
     invoke-virtual {p0}, Ljava/lang/String;->length()I
 
@@ -523,17 +589,17 @@
 
     const/16 v2, 0x800
 
-    if-le v1, v2, :cond_0
+    if-le v1, v2, :cond_c
 
-    goto :goto_0
+    goto :goto_1e
 
-    .line 69
-    :cond_0
+    .line 75
+    :cond_c
     invoke-virtual {p0}, Ljava/lang/String;->isEmpty()Z
 
     move-result v1
 
-    if-nez v1, :cond_1
+    if-nez v1, :cond_1c
 
     invoke-static {p0}, Lcom/supertws/dubokutv/ProgressSnapshot;->normalizeUrl(Ljava/lang/String;)Ljava/lang/String;
 
@@ -543,51 +609,51 @@
 
     move-result p0
 
-    if-eqz p0, :cond_2
+    if-eqz p0, :cond_1d
 
-    :cond_1
+    :cond_1c
     const/4 v0, 0x1
 
-    :cond_2
+    :cond_1d
     return v0
 
-    .line 68
-    :cond_3
-    :goto_0
+    .line 74
+    :cond_1e
+    :goto_1e
     return v0
 .end method
 
 .method public static winsEqualTimestamp(IIJJ)Z
-    .locals 0
+    .registers 6
 
-    .line 76
-    if-gt p0, p1, :cond_1
+    .line 82
+    if-gt p0, p1, :cond_b
 
-    if-ne p0, p1, :cond_0
+    if-ne p0, p1, :cond_9
 
     cmp-long p0, p2, p4
 
-    if-lez p0, :cond_0
+    if-lez p0, :cond_9
 
-    goto :goto_0
+    goto :goto_b
 
-    :cond_0
+    :cond_9
     const/4 p0, 0x0
 
-    goto :goto_1
+    goto :goto_c
 
-    :cond_1
-    :goto_0
+    :cond_b
+    :goto_b
     const/4 p0, 0x1
 
-    :goto_1
+    :goto_c
     return p0
 .end method
 
 
 # virtual methods
 .method public toJson()Lorg/json/JSONObject;
-    .locals 4
+    .registers 5
     .annotation system Ldalvik/annotation/Throws;
         value = {
             Ljava/lang/Exception;
@@ -601,7 +667,7 @@
 
     const-string v1, "schemaVersion"
 
-    const/4 v2, 0x1
+    const/4 v2, 0x2
 
     invoke-virtual {v0, v1, v2}, Lorg/json/JSONObject;->put(Ljava/lang/String;I)Lorg/json/JSONObject;
 
@@ -645,13 +711,13 @@
 
     move-result v1
 
-    if-eqz v1, :cond_0
+    if-eqz v1, :cond_33
 
     .line 26
     return-object v0
 
     .line 25
-    :cond_0
+    :cond_33
     new-instance v0, Ljava/lang/IllegalArgumentException;
 
     const-string v1, "invalid snapshot"

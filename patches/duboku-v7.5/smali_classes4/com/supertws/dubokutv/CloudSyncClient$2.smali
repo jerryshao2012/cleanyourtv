@@ -23,14 +23,14 @@
 
 # direct methods
 .method constructor <init>(J)V
-    .locals 0
+    .registers 3
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "()V"
         }
     .end annotation
 
-    .line 197
+    .line 209
     iput-wide p1, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -41,78 +41,86 @@
 
 # virtual methods
 .method public run()V
-    .locals 15
+    .registers 16
 
-    .line 199
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 211
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v0
 
     monitor-enter v0
 
-    .line 200
-    :try_start_0
+    .line 212
+    :try_start_5
     iget-wide v1, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v3
 
     cmp-long v5, v1, v3
 
-    if-nez v5, :cond_2b
+    if-nez v5, :cond_3a9
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v1
 
-    if-nez v1, :cond_0
+    if-nez v1, :cond_17
 
-    goto/16 :goto_10
+    goto/16 :goto_3a9
 
-    .line 201
-    :cond_0
+    .line 213
+    :cond_17
     const/4 v1, 0x0
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 202
+    .line 214
     const/4 v2, 0x0
 
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledRetryBackoff(Z)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledRetryBackoff:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$802(Z)Z
 
-    .line 203
+    .line 215
     monitor-exit v0
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_a
+    :try_end_20
+    .catchall {:try_start_5 .. :try_end_20} :catchall_3ab
 
-    .line 204
+    .line 216
     nop
 
-    .line 207
-    :goto_0
+    .line 219
+    :goto_21
     const-wide/16 v3, 0x0
 
     const/4 v0, 0x1
 
-    :try_start_1
+    :try_start_24
     iget-wide v5, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v7
 
     cmp-long v9, v5, v7
 
-    if-nez v9, :cond_17
+    if-nez v9, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v5
 
-    if-eqz v5, :cond_17
+    if-eqz v5, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v5
 
@@ -120,104 +128,115 @@
 
     move-result v5
 
-    if-nez v5, :cond_1
+    if-nez v5, :cond_40
 
-    goto/16 :goto_7
+    goto/16 :goto_1f6
 
-    .line 211
-    :cond_1
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 223
+    :cond_40
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_1
-    .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_0
-    .catchall {:try_start_1 .. :try_end_1} :catchall_7
+    :try_end_45
+    .catch Ljava/lang/Exception; {:try_start_24 .. :try_end_45} :catch_283
+    .catchall {:try_start_24 .. :try_end_45} :catchall_280
 
-    .line 212
-    :try_start_2
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 224
+    :try_start_45
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-eqz v6, :cond_2
+    if-eqz v6, :cond_4d
 
     const/4 v6, 0x1
 
-    goto :goto_1
+    goto :goto_4e
 
-    :cond_2
+    :cond_4d
     const/4 v6, 0x0
 
-    .line 213
-    :goto_1
-    if-eqz v6, :cond_3
+    .line 225
+    :goto_4e
+    if-eqz v6, :cond_55
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
-
-    move-result-object v7
-
-    goto :goto_2
-
-    :cond_3
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v7
 
-    .line 214
-    :goto_2
-    if-eqz v6, :cond_4
+    goto :goto_59
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    :cond_55
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    goto :goto_3
+    move-result-object v7
 
-    :cond_4
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 226
+    :goto_59
+    if-eqz v6, :cond_5f
 
-    .line 215
-    :goto_3
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatestImmediate()Z
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
+
+    goto :goto_62
+
+    :cond_5f
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
+
+    .line 227
+    :goto_62
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Z
 
     move-result v8
 
-    .line 216
-    if-eqz v6, :cond_5
+    .line 228
+    if-eqz v6, :cond_6e
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-nez v6, :cond_6
+    if-nez v6, :cond_71
 
-    :cond_5
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatestImmediate(Z)V
+    :cond_6e
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1202(Z)Z
 
-    .line 217
-    :cond_6
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcaptureVersion()J
+    .line 229
+    :cond_71
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->captureVersion:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$100()J
 
     move-result-wide v9
 
-    .line 218
+    .line 230
     monitor-exit v5
-    :try_end_2
-    .catchall {:try_start_2 .. :try_end_2} :catchall_5
+    :try_end_76
+    .catchall {:try_start_45 .. :try_end_76} :catchall_1f3
 
-    .line 219
-    if-nez v7, :cond_7
+    .line 231
+    if-nez v7, :cond_7a
 
-    goto/16 :goto_7
+    goto/16 :goto_1f6
 
-    .line 220
-    :cond_7
-    :try_start_3
+    .line 232
+    :cond_7a
+    :try_start_7a
     invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
 
     move-result-wide v5
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlastUploadAt()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->lastUploadAt:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1300()J
 
     move-result-wide v11
 
@@ -227,122 +246,134 @@
 
     sub-long/2addr v11, v5
 
-    .line 221
-    if-nez v8, :cond_c
+    .line 233
+    if-nez v8, :cond_c1
 
     cmp-long v5, v11, v3
 
-    if-lez v5, :cond_c
+    if-lez v5, :cond_c1
 
-    .line 223
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 235
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_3
-    .catch Ljava/lang/Exception; {:try_start_3 .. :try_end_3} :catch_0
-    .catchall {:try_start_3 .. :try_end_3} :catchall_7
+    :try_end_91
+    .catch Ljava/lang/Exception; {:try_start_7a .. :try_end_91} :catch_283
+    .catchall {:try_start_7a .. :try_end_91} :catchall_280
 
-    .line 224
-    :try_start_4
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatestImmediate()Z
+    .line 236
+    :try_start_91
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Z
 
     move-result v6
 
-    .line 225
-    if-eqz v6, :cond_9
+    .line 237
+    if-eqz v6, :cond_a8
 
-    .line 226
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 238
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v8
 
-    if-eqz v8, :cond_8
+    if-eqz v8, :cond_a4
 
-    .line 227
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 239
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v7
 
-    .line 228
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 240
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 230
-    :cond_8
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatestImmediate(Z)V
+    .line 242
+    :cond_a4
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1202(Z)Z
 
-    goto :goto_4
+    goto :goto_b7
 
-    .line 231
-    :cond_9
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
-
-    move-result-object v8
-
-    if-nez v8, :cond_a
-
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 243
+    :cond_a8
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v8
 
-    if-nez v8, :cond_a
+    if-nez v8, :cond_b7
 
-    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 232
-    :cond_a
-    :goto_4
+    move-result-object v8
+
+    if-nez v8, :cond_b7
+
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
+
+    .line 244
+    :cond_b7
+    :goto_b7
     monitor-exit v5
 
-    .line 233
-    if-nez v6, :cond_b
+    .line 245
+    if-nez v6, :cond_bd
 
-    .line 234
+    .line 246
     nop
 
-    .line 235
-    goto/16 :goto_8
+    .line 247
+    goto/16 :goto_1f7
 
-    .line 237
-    :cond_b
-    goto :goto_5
+    .line 249
+    :cond_bd
+    goto :goto_c1
 
-    .line 232
-    :catchall_0
+    .line 244
+    :catchall_be
     move-exception v6
 
     monitor-exit v5
-    :try_end_4
-    .catchall {:try_start_4 .. :try_end_4} :catchall_0
+    :try_end_c0
+    .catchall {:try_start_91 .. :try_end_c0} :catchall_be
 
-    :try_start_5
+    :try_start_c0
     throw v6
 
-    .line 239
-    :cond_c
-    :goto_5
+    .line 251
+    :cond_c1
+    :goto_c1
     iget-wide v5, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v11
 
     cmp-long v8, v5, v11
 
-    if-nez v8, :cond_17
+    if-nez v8, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v5
 
-    if-nez v5, :cond_d
+    if-nez v5, :cond_d3
 
-    goto/16 :goto_7
+    goto/16 :goto_1f6
 
-    .line 240
-    :cond_d
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetappContext()Landroid/content/Context;
+    .line 252
+    :cond_d3
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->appContext:Landroid/content/Context;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1400()Landroid/content/Context;
 
     move-result-object v5
 
@@ -354,38 +385,41 @@
 
     move-result-object v5
 
-    .line 241
+    .line 253
     iget-object v6, v7, Lcom/supertws/dubokutv/ProgressSnapshot;->familyId:Ljava/lang/String;
 
     invoke-static {v6, v5}, Lcom/supertws/dubokutv/CloudSyncClient;->registerFamily(Ljava/lang/String;Ljava/lang/String;)Z
 
     move-result v6
 
-    .line 242
+    .line 254
     iget-wide v11, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v13
 
     cmp-long v8, v11, v13
 
-    if-nez v8, :cond_17
+    if-nez v8, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v8
 
-    if-nez v8, :cond_e
+    if-nez v8, :cond_f7
 
-    goto/16 :goto_7
+    goto/16 :goto_1f6
 
-    .line 243
-    :cond_e
-    if-nez v6, :cond_f
+    .line 255
+    :cond_f7
+    if-nez v6, :cond_128
 
-    .line 244
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smdirtyPrefs()Landroid/content/SharedPreferences;
+    .line 256
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1500()Landroid/content/SharedPreferences;
 
     move-result-object v5
 
@@ -401,8 +435,9 @@
 
     invoke-interface {v5}, Landroid/content/SharedPreferences$Editor;->apply()V
 
-    .line 245
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smdirtyPrefs()Landroid/content/SharedPreferences;
+    .line 257
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1500()Landroid/content/SharedPreferences;
 
     move-result-object v5
 
@@ -412,67 +447,73 @@
 
     move-result v5
 
-    if-nez v5, :cond_17
+    if-nez v5, :cond_1f6
 
-    .line 246
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 258
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_5
-    .catch Ljava/lang/Exception; {:try_start_5 .. :try_end_5} :catch_0
-    .catchall {:try_start_5 .. :try_end_5} :catchall_7
+    :try_end_11b
+    .catch Ljava/lang/Exception; {:try_start_c0 .. :try_end_11b} :catch_283
+    .catchall {:try_start_c0 .. :try_end_11b} :catchall_280
 
-    :try_start_6
-    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    :try_start_11b
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
     monitor-exit v5
-    :try_end_6
-    .catchall {:try_start_6 .. :try_end_6} :catchall_1
+    :try_end_11f
+    .catchall {:try_start_11b .. :try_end_11f} :catchall_125
 
-    .line 247
-    :try_start_7
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smnextBackoff()J
+    .line 259
+    :try_start_11f
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->nextBackoff()J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1600()J
 
     move-result-wide v11
-    :try_end_7
-    .catch Ljava/lang/Exception; {:try_start_7 .. :try_end_7} :catch_0
-    .catchall {:try_start_7 .. :try_end_7} :catchall_7
+    :try_end_123
+    .catch Ljava/lang/Exception; {:try_start_11f .. :try_end_123} :catch_283
+    .catchall {:try_start_11f .. :try_end_123} :catchall_280
 
-    goto/16 :goto_8
+    goto/16 :goto_1f7
 
-    .line 246
-    :catchall_1
+    .line 258
+    :catchall_125
     move-exception v6
 
-    :try_start_8
+    :try_start_126
     monitor-exit v5
-    :try_end_8
-    .catchall {:try_start_8 .. :try_end_8} :catchall_1
+    :try_end_127
+    .catchall {:try_start_126 .. :try_end_127} :catchall_125
 
-    :try_start_9
+    :try_start_127
     throw v6
 
-    .line 251
-    :cond_f
+    .line 263
+    :cond_128
     iget-wide v11, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v13
 
     cmp-long v6, v11, v13
 
-    if-nez v6, :cond_15
+    if-nez v6, :cond_1e0
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v6
 
-    if-eqz v6, :cond_15
+    if-eqz v6, :cond_1e0
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v6
 
@@ -480,94 +521,104 @@
 
     move-result v6
 
-    if-nez v6, :cond_10
+    if-nez v6, :cond_144
 
-    goto/16 :goto_6
+    goto/16 :goto_1e0
 
-    .line 255
-    :cond_10
+    .line 267
+    :cond_144
     invoke-static {v7, v5}, Lcom/supertws/dubokutv/CloudSyncClient;->put(Lcom/supertws/dubokutv/ProgressSnapshot;Ljava/lang/String;)Z
 
     move-result v5
 
-    if-eqz v5, :cond_13
+    if-eqz v5, :cond_1ad
 
-    .line 256
+    .line 268
     iget-wide v5, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v7
 
     cmp-long v11, v5, v7
 
-    if-nez v11, :cond_17
+    if-nez v11, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v5
 
-    if-nez v5, :cond_11
+    if-nez v5, :cond_15c
 
-    goto/16 :goto_7
+    goto/16 :goto_1f6
 
-    .line 257
-    :cond_11
+    .line 269
+    :cond_15c
     const-string v5, "R2Sync"
 
     const-string v6, "Cloud upload succeeded"
 
     invoke-static {v5, v6}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 258
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretryCount(I)V
+    .line 270
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retryCount:I
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1702(I)I
 
-    .line 259
+    .line 271
     invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
 
     move-result-wide v5
 
-    invoke-static {v5, v6}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlastUploadAt(J)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->lastUploadAt:J
+    invoke-static {v5, v6}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1302(J)J
 
-    .line 260
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 272
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_9
-    .catch Ljava/lang/Exception; {:try_start_9 .. :try_end_9} :catch_0
-    .catchall {:try_start_9 .. :try_end_9} :catchall_7
+    :try_end_172
+    .catch Ljava/lang/Exception; {:try_start_127 .. :try_end_172} :catch_283
+    .catchall {:try_start_127 .. :try_end_172} :catchall_280
 
-    .line 261
-    :try_start_a
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcaptureVersion()J
+    .line 273
+    :try_start_172
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->captureVersion:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$100()J
 
     move-result-wide v6
 
     cmp-long v8, v9, v6
 
-    if-nez v8, :cond_12
+    if-nez v8, :cond_1a7
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcapturePending()Z
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->capturePending:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$400()Z
 
     move-result v6
 
-    if-nez v6, :cond_12
+    if-nez v6, :cond_1a7
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
-
-    move-result-object v6
-
-    if-nez v6, :cond_12
-
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-nez v6, :cond_12
+    if-nez v6, :cond_1a7
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
+
+    move-result-object v6
+
+    if-nez v6, :cond_1a7
+
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v6
 
@@ -575,10 +626,11 @@
 
     move-result v6
 
-    if-eqz v6, :cond_12
+    if-eqz v6, :cond_1a7
 
-    .line 262
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smdirtyPrefs()Landroid/content/SharedPreferences;
+    .line 274
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1500()Landroid/content/SharedPreferences;
 
     move-result-object v6
 
@@ -594,47 +646,50 @@
 
     invoke-interface {v6}, Landroid/content/SharedPreferences$Editor;->apply()V
 
-    .line 264
-    :cond_12
+    .line 276
+    :cond_1a7
     monitor-exit v5
 
-    .line 272
-    goto/16 :goto_0
+    .line 284
+    goto/16 :goto_21
 
-    .line 264
-    :catchall_2
+    .line 276
+    :catchall_1aa
     move-exception v6
 
     monitor-exit v5
-    :try_end_a
-    .catchall {:try_start_a .. :try_end_a} :catchall_2
+    :try_end_1ac
+    .catchall {:try_start_172 .. :try_end_1ac} :catchall_1aa
 
-    :try_start_b
+    :try_start_1ac
     throw v6
 
-    .line 266
-    :cond_13
+    .line 278
+    :cond_1ad
     iget-wide v5, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v8
 
     cmp-long v10, v5, v8
 
-    if-nez v10, :cond_17
+    if-nez v10, :cond_1f6
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v5
 
-    if-nez v5, :cond_14
+    if-nez v5, :cond_1be
 
-    goto :goto_7
+    goto :goto_1f6
 
-    .line 267
-    :cond_14
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smdirtyPrefs()Landroid/content/SharedPreferences;
+    .line 279
+    :cond_1be
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1500()Landroid/content/SharedPreferences;
 
     move-result-object v5
 
@@ -650,160 +705,176 @@
 
     invoke-interface {v5}, Landroid/content/SharedPreferences$Editor;->apply()V
 
-    .line 268
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 280
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_b
-    .catch Ljava/lang/Exception; {:try_start_b .. :try_end_b} :catch_0
-    .catchall {:try_start_b .. :try_end_b} :catchall_7
+    :try_end_1d4
+    .catch Ljava/lang/Exception; {:try_start_1ac .. :try_end_1d4} :catch_283
+    .catchall {:try_start_1ac .. :try_end_1d4} :catchall_280
 
-    :try_start_c
-    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    :try_start_1d4
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
     monitor-exit v5
-    :try_end_c
-    .catchall {:try_start_c .. :try_end_c} :catchall_3
+    :try_end_1d8
+    .catchall {:try_start_1d4 .. :try_end_1d8} :catchall_1dd
 
-    .line 269
-    :try_start_d
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smnextBackoff()J
+    .line 281
+    :try_start_1d8
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->nextBackoff()J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1600()J
 
     move-result-wide v11
-    :try_end_d
-    .catch Ljava/lang/Exception; {:try_start_d .. :try_end_d} :catch_0
-    .catchall {:try_start_d .. :try_end_d} :catchall_7
+    :try_end_1dc
+    .catch Ljava/lang/Exception; {:try_start_1d8 .. :try_end_1dc} :catch_283
+    .catchall {:try_start_1d8 .. :try_end_1dc} :catchall_280
 
-    .line 270
-    goto :goto_8
+    .line 282
+    goto :goto_1f7
 
-    .line 268
-    :catchall_3
+    .line 280
+    :catchall_1dd
     move-exception v6
 
-    :try_start_e
+    :try_start_1de
     monitor-exit v5
-    :try_end_e
-    .catchall {:try_start_e .. :try_end_e} :catchall_3
+    :try_end_1df
+    .catchall {:try_start_1de .. :try_end_1df} :catchall_1dd
 
-    :try_start_f
+    :try_start_1df
     throw v6
 
-    .line 252
-    :cond_15
-    :goto_6
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 264
+    :cond_1e0
+    :goto_1e0
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
-    :try_end_f
-    .catch Ljava/lang/Exception; {:try_start_f .. :try_end_f} :catch_0
-    .catchall {:try_start_f .. :try_end_f} :catchall_7
+    :try_end_1e5
+    .catch Ljava/lang/Exception; {:try_start_1df .. :try_end_1e5} :catch_283
+    .catchall {:try_start_1df .. :try_end_1e5} :catchall_280
 
-    :try_start_10
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    :try_start_1e5
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-nez v6, :cond_16
+    if-nez v6, :cond_1ee
 
-    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v7}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    :cond_16
+    :cond_1ee
     monitor-exit v5
 
-    .line 253
-    goto :goto_7
+    .line 265
+    goto :goto_1f6
 
-    .line 252
-    :catchall_4
+    .line 264
+    :catchall_1f0
     move-exception v6
 
     monitor-exit v5
-    :try_end_10
-    .catchall {:try_start_10 .. :try_end_10} :catchall_4
+    :try_end_1f2
+    .catchall {:try_start_1e5 .. :try_end_1f2} :catchall_1f0
 
-    :try_start_11
+    :try_start_1f2
     throw v6
-    :try_end_11
-    .catch Ljava/lang/Exception; {:try_start_11 .. :try_end_11} :catch_0
-    .catchall {:try_start_11 .. :try_end_11} :catchall_7
+    :try_end_1f3
+    .catch Ljava/lang/Exception; {:try_start_1f2 .. :try_end_1f3} :catch_283
+    .catchall {:try_start_1f2 .. :try_end_1f3} :catchall_280
 
-    .line 218
-    :catchall_5
+    .line 230
+    :catchall_1f3
     move-exception v6
 
-    :try_start_12
+    :try_start_1f4
     monitor-exit v5
-    :try_end_12
-    .catchall {:try_start_12 .. :try_end_12} :catchall_5
+    :try_end_1f5
+    .catchall {:try_start_1f4 .. :try_end_1f5} :catchall_1f3
 
-    :try_start_13
+    :try_start_1f5
     throw v6
-    :try_end_13
-    .catch Ljava/lang/Exception; {:try_start_13 .. :try_end_13} :catch_0
-    .catchall {:try_start_13 .. :try_end_13} :catchall_7
+    :try_end_1f6
+    .catch Ljava/lang/Exception; {:try_start_1f5 .. :try_end_1f6} :catch_283
+    .catchall {:try_start_1f5 .. :try_end_1f6} :catchall_280
 
-    .line 275
-    :cond_17
-    :goto_7
+    .line 287
+    :cond_1f6
+    :goto_1f6
     move-wide v11, v3
 
-    :goto_8
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    :goto_1f7
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
 
-    .line 276
-    :try_start_14
+    .line 288
+    :try_start_1fc
     iget-wide v6, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v8
 
     cmp-long v10, v6, v8
 
-    if-eqz v10, :cond_18
+    if-eqz v10, :cond_208
 
-    goto/16 :goto_a
+    goto/16 :goto_27a
 
-    .line 278
-    :cond_18
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    .line 290
+    :cond_208
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v6
 
-    if-nez v6, :cond_19
+    if-nez v6, :cond_221
 
-    .line 279
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 291
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 280
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 292
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 281
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatestImmediate(Z)V
+    .line 293
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1202(Z)Z
 
-    .line 282
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 294
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 283
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 295
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 284
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 296
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    goto :goto_a
+    goto :goto_27a
 
-    .line 285
-    :cond_19
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 297
+    :cond_221
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v6
 
@@ -811,57 +882,66 @@
 
     move-result v6
 
-    if-nez v6, :cond_1a
+    if-nez v6, :cond_232
 
-    .line 286
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 298
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 287
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 299
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_a
+    goto :goto_27a
 
-    .line 288
-    :cond_1a
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 300
+    :cond_232
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-eqz v6, :cond_1c
+    if-eqz v6, :cond_248
 
-    .line 289
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 301
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 290
+    .line 302
     cmp-long v1, v11, v3
 
-    if-lez v1, :cond_1b
+    if-lez v1, :cond_240
 
-    goto :goto_9
+    goto :goto_244
 
-    :cond_1b
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smnextBackoff()J
+    :cond_240
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->nextBackoff()J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1600()J
 
     move-result-wide v11
 
-    :goto_9
-    invoke-static {v11, v12, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    :goto_244
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v11, v12, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_a
+    goto :goto_27a
 
-    .line 291
-    :cond_1c
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 303
+    :cond_248
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v3
 
-    if-eqz v3, :cond_1e
+    if-eqz v3, :cond_26e
 
-    .line 292
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 304
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 293
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 305
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v0
 
@@ -869,9 +949,10 @@
 
     move-result v0
 
-    if-eqz v0, :cond_1d
+    if-eqz v0, :cond_267
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatestImmediate()Z
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Z
 
     move-result v0
 
@@ -879,69 +960,68 @@
 
     move-result-wide v0
 
-    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_a
+    goto :goto_27a
 
-    .line 294
-    :cond_1d
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 306
+    :cond_267
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_a
+    goto :goto_27a
 
-    .line 296
-    :cond_1e
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 308
+    :cond_26e
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 297
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 309
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 298
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 310
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 299
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledRetryBackoff(Z)V
+    .line 311
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledRetryBackoff:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$802(Z)Z
 
-    .line 301
-    :goto_a
+    .line 313
+    :goto_27a
     monitor-exit v5
 
-    .line 302
-    :goto_b
-    goto/16 :goto_d
+    .line 314
+    :goto_27b
+    goto/16 :goto_324
 
-    .line 301
-    :catchall_6
+    .line 313
+    :catchall_27d
     move-exception v0
 
     monitor-exit v5
-    :try_end_14
-    .catchall {:try_start_14 .. :try_end_14} :catchall_6
+    :try_end_27f
+    .catchall {:try_start_1fc .. :try_end_27f} :catchall_27d
 
     throw v0
 
-    .line 275
-    :catchall_7
+    .line 287
+    :catchall_280
     move-exception v5
 
-    goto/16 :goto_e
+    goto/16 :goto_328
 
-    .line 273
-    :catch_0
+    .line 285
+    :catch_283
     move-exception v5
 
-    :try_start_15
+    :try_start_284
     const-string v6, "R2Sync"
-
-    invoke-virtual {v5}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
-
-    move-result-object v5
-
-    invoke-virtual {v5}, Ljava/lang/Class;->getSimpleName()Ljava/lang/String;
-
-    move-result-object v5
 
     new-instance v7, Ljava/lang/StringBuilder;
 
@@ -953,6 +1033,14 @@
 
     move-result-object v7
 
+    invoke-virtual {v5}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
+
+    move-result-object v5
+
+    invoke-virtual {v5}, Ljava/lang/Class;->getSimpleName()Ljava/lang/String;
+
+    move-result-object v5
+
     invoke-virtual {v7, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object v5
@@ -962,61 +1050,71 @@
     move-result-object v5
 
     invoke-static {v6, v5}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
-    :try_end_15
-    .catchall {:try_start_15 .. :try_end_15} :catchall_7
+    :try_end_2a4
+    .catchall {:try_start_284 .. :try_end_2a4} :catchall_280
 
-    .line 275
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 287
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v5
 
     monitor-enter v5
 
-    .line 276
-    :try_start_16
+    .line 288
+    :try_start_2a9
     iget-wide v6, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v8
 
     cmp-long v10, v6, v8
 
-    if-eqz v10, :cond_1f
+    if-eqz v10, :cond_2b4
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 278
-    :cond_1f
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    .line 290
+    :cond_2b4
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v6
 
-    if-nez v6, :cond_20
+    if-nez v6, :cond_2cd
 
-    .line 279
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 291
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 280
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 292
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 281
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatestImmediate(Z)V
+    .line 293
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1202(Z)Z
 
-    .line 282
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 294
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 283
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 295
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 284
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 296
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 285
-    :cond_20
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 297
+    :cond_2cd
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v6
 
@@ -1024,49 +1122,58 @@
 
     move-result v6
 
-    if-nez v6, :cond_21
+    if-nez v6, :cond_2de
 
-    .line 286
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 298
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 287
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 299
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 288
-    :cond_21
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 300
+    :cond_2de
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-eqz v6, :cond_22
+    if-eqz v6, :cond_2ef
 
-    .line 289
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 301
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 290
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smnextBackoff()J
+    .line 302
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->nextBackoff()J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1600()J
 
     move-result-wide v1
 
-    invoke-static {v1, v2, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v1, v2, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 291
-    :cond_22
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 303
+    :cond_2ef
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v6
 
-    if-eqz v6, :cond_24
+    if-eqz v6, :cond_315
 
-    .line 292
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 304
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 293
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 305
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v0
 
@@ -1074,9 +1181,10 @@
 
     move-result v0
 
-    if-eqz v0, :cond_23
+    if-eqz v0, :cond_30e
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatestImmediate()Z
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Z
 
     move-result v0
 
@@ -1084,80 +1192,91 @@
 
     move-result-wide v0
 
-    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 294
-    :cond_23
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 306
+    :cond_30e
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_c
+    goto :goto_321
 
-    .line 296
-    :cond_24
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 308
+    :cond_315
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 297
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 309
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 298
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 310
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 299
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledRetryBackoff(Z)V
+    .line 311
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledRetryBackoff:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$802(Z)Z
 
-    .line 301
-    :goto_c
+    .line 313
+    :goto_321
     monitor-exit v5
 
-    goto/16 :goto_b
+    goto/16 :goto_27b
 
-    .line 303
-    :goto_d
+    .line 315
+    :goto_324
     return-void
 
-    .line 301
-    :catchall_8
+    .line 313
+    :catchall_325
     move-exception v0
 
     monitor-exit v5
-    :try_end_16
-    .catchall {:try_start_16 .. :try_end_16} :catchall_8
+    :try_end_327
+    .catchall {:try_start_2a9 .. :try_end_327} :catchall_325
 
     throw v0
 
-    .line 275
-    :goto_e
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetLOCK()Ljava/lang/Object;
+    .line 287
+    :goto_328
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->LOCK:Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$000()Ljava/lang/Object;
 
     move-result-object v6
 
     monitor-enter v6
 
-    .line 276
-    :try_start_17
+    .line 288
+    :try_start_32d
     iget-wide v7, p0, Lcom/supertws/dubokutv/CloudSyncClient$2;->val$generation:J
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetcloudGeneration()J
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->cloudGeneration:J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$500()J
 
     move-result-wide v9
 
     cmp-long v11, v7, v9
 
-    if-nez v11, :cond_2a
+    if-nez v11, :cond_3a4
 
-    .line 278
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smcloudSyncEnabled()Z
+    .line 290
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$600()Z
 
     move-result v7
 
-    if-eqz v7, :cond_29
+    if-eqz v7, :cond_392
 
-    .line 285
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    .line 297
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v7
 
@@ -1165,27 +1284,31 @@
 
     move-result v7
 
-    if-eqz v7, :cond_28
+    if-eqz v7, :cond_38b
 
-    .line 288
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetretrySnapshot()Lcom/supertws/dubokutv/ProgressSnapshot;
-
-    move-result-object v7
-
-    if-nez v7, :cond_27
-
-    .line 291
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatest()Lcom/supertws/dubokutv/ProgressSnapshot;
+    .line 300
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1000()Lcom/supertws/dubokutv/ProgressSnapshot;
 
     move-result-object v7
 
-    if-eqz v7, :cond_26
+    if-nez v7, :cond_380
 
-    .line 292
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 303
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1100()Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 293
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetREAD_GATE()Lcom/supertws/dubokutv/CloudSyncGate;
+    move-result-object v7
+
+    if-eqz v7, :cond_373
+
+    .line 304
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
+
+    .line 305
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->READ_GATE:Lcom/supertws/dubokutv/CloudSyncGate;
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$900()Lcom/supertws/dubokutv/CloudSyncGate;
 
     move-result-object v0
 
@@ -1193,9 +1316,10 @@
 
     move-result v0
 
-    if-eqz v0, :cond_25
+    if-eqz v0, :cond_36c
 
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfgetlatestImmediate()Z
+    # getter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1200()Z
 
     move-result v0
 
@@ -1203,110 +1327,128 @@
 
     move-result-wide v0
 
-    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_f
+    goto :goto_3a4
 
-    .line 294
-    :cond_25
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 306
+    :cond_36c
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_f
+    goto :goto_3a4
 
-    .line 296
-    :cond_26
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 308
+    :cond_373
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 297
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 309
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 298
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 310
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 299
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledRetryBackoff(Z)V
+    .line 311
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledRetryBackoff:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$802(Z)Z
 
-    goto :goto_f
+    goto :goto_3a4
 
-    .line 289
-    :cond_27
-    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 301
+    :cond_380
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 290
-    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smnextBackoff()J
+    .line 302
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->nextBackoff()J
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1600()J
 
     move-result-wide v1
 
-    invoke-static {v1, v2, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$smscheduleDrainLocked(JZ)V
+    # invokes: Lcom/supertws/dubokutv/CloudSyncClient;->scheduleDrainLocked(JZ)V
+    invoke-static {v1, v2, v0}, Lcom/supertws/dubokutv/CloudSyncClient;->access$2000(JZ)V
 
-    goto :goto_f
+    goto :goto_3a4
 
-    .line 286
-    :cond_28
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 298
+    :cond_38b
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 287
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 299
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    goto :goto_f
+    goto :goto_3a4
 
-    .line 279
-    :cond_29
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatest(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 291
+    :cond_392
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latest:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1102(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 280
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputretrySnapshot(Lcom/supertws/dubokutv/ProgressSnapshot;)V
+    .line 292
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->retrySnapshot:Lcom/supertws/dubokutv/ProgressSnapshot;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1002(Lcom/supertws/dubokutv/ProgressSnapshot;)Lcom/supertws/dubokutv/ProgressSnapshot;
 
-    .line 281
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputlatestImmediate(Z)V
+    .line 293
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->latestImmediate:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1202(Z)Z
 
-    .line 282
-    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdraining(Z)V
+    .line 294
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->draining:Z
+    invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1802(Z)Z
 
-    .line 283
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputdrainRunnable(Ljava/lang/Runnable;)V
+    .line 295
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->drainRunnable:Ljava/lang/Runnable;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
-    .line 284
-    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->-$$Nest$sfputscheduledDrain(Ljava/util/concurrent/ScheduledFuture;)V
+    .line 296
+    # setter for: Lcom/supertws/dubokutv/CloudSyncClient;->scheduledDrain:Ljava/util/concurrent/ScheduledFuture;
+    invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->access$702(Ljava/util/concurrent/ScheduledFuture;)Ljava/util/concurrent/ScheduledFuture;
 
-    .line 301
-    :cond_2a
-    :goto_f
+    .line 313
+    :cond_3a4
+    :goto_3a4
     monitor-exit v6
-    :try_end_17
-    .catchall {:try_start_17 .. :try_end_17} :catchall_9
+    :try_end_3a5
+    .catchall {:try_start_32d .. :try_end_3a5} :catchall_3a6
 
-    .line 302
+    .line 314
     throw v5
 
-    .line 301
-    :catchall_9
+    .line 313
+    :catchall_3a6
     move-exception v0
 
-    :try_start_18
+    :try_start_3a7
     monitor-exit v6
-    :try_end_18
-    .catchall {:try_start_18 .. :try_end_18} :catchall_9
+    :try_end_3a8
+    .catchall {:try_start_3a7 .. :try_end_3a8} :catchall_3a6
 
     throw v0
 
-    .line 200
-    :cond_2b
-    :goto_10
-    :try_start_19
+    .line 212
+    :cond_3a9
+    :goto_3a9
+    :try_start_3a9
     monitor-exit v0
 
     return-void
 
-    .line 203
-    :catchall_a
+    .line 215
+    :catchall_3ab
     move-exception v1
 
     monitor-exit v0
-    :try_end_19
-    .catchall {:try_start_19 .. :try_end_19} :catchall_a
+    :try_end_3ad
+    .catchall {:try_start_3a9 .. :try_end_3ad} :catchall_3ab
 
     throw v1
 .end method

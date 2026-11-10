@@ -16,15 +16,15 @@ interface Env {
   GITHUB_CLIENT_SECRET?: string;
   FETCH?: typeof fetch;
 }
-interface RecordItem {
+interface RecordItemBase {
   id: string; name: string; episode: string;
   progressInMillis: number; durationInMillis: number;
   createdAt: number; modifiedAt: number;
   videoPageUrl: string; detailPageUrl: string; posterUrl: string;
 }
-interface Snapshot {
-  schemaVersion: 1; familyId: string; deviceId: string; updatedAt: number; records: RecordItem[];
-}
+interface ClockVersion { utcMillis: number; logicalCounter: number; deviceId: string }
+interface RecordItem extends RecordItemBase { clockVersion: ClockVersion }
+interface Snapshot { schemaVersion: 2; familyId: string; deviceId: string; updatedAt: number; records: RecordItem[] }
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const error = (status: number, code: string) => json({ error: code }, status);
@@ -204,21 +204,31 @@ function isUrl(value: unknown): value is string {
   try { const url = new URL(value); return (url.protocol === 'http:' || url.protocol === 'https:') && !!url.hostname; }
   catch { return false; }
 }
+function validRecordBase(r: Record<string, unknown>): boolean {
+  return ['id', 'name', 'episode'].every(k => typeof r[k] === 'string' && (r[k] as string).length <= 512)
+    && ['progressInMillis', 'durationInMillis', 'createdAt', 'modifiedAt'].every(k => Number.isSafeInteger(r[k]) && (r[k] as number) >= 0)
+    && ['videoPageUrl', 'detailPageUrl', 'posterUrl'].every(k => isUrl(r[k]));
+}
+function validClockVersion(value: unknown): value is ClockVersion {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const v = value as Record<string, unknown>;
+  return Object.keys(v).sort().join(',') === 'deviceId,logicalCounter,utcMillis'
+    && Number.isSafeInteger(v.utcMillis) && (v.utcMillis as number) >= 0
+    && Number.isSafeInteger(v.logicalCounter) && (v.logicalCounter as number) >= 0
+    && typeof v.deviceId === 'string' && validId(v.deviceId);
+}
 function validSnapshot(value: unknown, familyId: string, deviceId: string): value is Snapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const s = value as Record<string, unknown>;
   if (Object.keys(s).sort().join(',') !== 'deviceId,familyId,records,schemaVersion,updatedAt') return false;
-  if (s.schemaVersion !== 1 || s.familyId !== familyId || s.deviceId !== deviceId || !Number.isSafeInteger(s.updatedAt) || (s.updatedAt as number) < 0 || !Array.isArray(s.records) || s.records.length > 20) return false;
+  if (s.schemaVersion !== 2 || s.familyId !== familyId || s.deviceId !== deviceId || !Number.isSafeInteger(s.updatedAt) || (s.updatedAt as number) < 0 || !Array.isArray(s.records) || s.records.length > 20) return false;
   return s.records.every(item => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
     const r = item as Record<string, unknown>;
-    if (Object.keys(r).sort().join(',') !== 'createdAt,detailPageUrl,durationInMillis,episode,id,modifiedAt,name,posterUrl,progressInMillis,videoPageUrl') return false;
-    return ['id', 'name', 'episode'].every(k => typeof r[k] === 'string' && (r[k] as string).length <= 512)
-      && ['progressInMillis', 'durationInMillis', 'createdAt', 'modifiedAt'].every(k => Number.isSafeInteger(r[k]) && (r[k] as number) >= 0)
-      && ['videoPageUrl', 'detailPageUrl', 'posterUrl'].every(k => isUrl(r[k]));
+    return Object.keys(r).sort().join(',') === 'clockVersion,createdAt,detailPageUrl,durationInMillis,episode,id,modifiedAt,name,posterUrl,progressInMillis,videoPageUrl'
+      && validRecordBase(r) && validClockVersion(r.clockVersion);
   });
 }
-
 async function register(request: Request, env: Env): Promise<Response> {
   const body = await readBody(request);
   if ('status' in body) return error(body.status, body.status === 413 ? 'payload_too_large' : 'invalid_json');
@@ -523,9 +533,13 @@ async function redeemJoinCode(request: Request, env: Env): Promise<Response> {
 
 function episodeNum(value: string): number { const match = /(\d+)/.exec(value); return match ? Number(match[1]) : 0; }
 function wins(incoming: RecordItem, current: RecordItem): boolean {
+  const a = incoming.clockVersion, b = current.clockVersion;
+  if (a.utcMillis !== b.utcMillis) return a.utcMillis > b.utcMillis;
+  if (a.logicalCounter !== b.logicalCounter) return a.logicalCounter > b.logicalCounter;
+  if (a.deviceId !== b.deviceId) return a.deviceId > b.deviceId;
+  if (a.logicalCounter !== 0) return false;
   const incomingEpisode = episodeNum(incoming.episode), currentEpisode = episodeNum(current.episode);
-  return incoming.modifiedAt > current.modifiedAt || (incoming.modifiedAt === current.modifiedAt &&
-    (incomingEpisode > currentEpisode || (incomingEpisode === currentEpisode && incoming.progressInMillis > current.progressInMillis)));
+  return incomingEpisode > currentEpisode || (incomingEpisode === currentEpisode && incoming.progressInMillis > current.progressInMillis);
 }
 function mergeRecord(rows: RecordItem[], incoming: RecordItem): void {
   const index = rows.findIndex(row => row.name === incoming.name || (!!incoming.detailPageUrl && row.detailPageUrl === incoming.detailPageUrl));
@@ -537,6 +551,14 @@ function mergeRecord(rows: RecordItem[], incoming: RecordItem): void {
     videoPageUrl: incoming.videoPageUrl || old.videoPageUrl,
     detailPageUrl: incoming.detailPageUrl || old.detailPageUrl,
     posterUrl: incoming.posterUrl || old.posterUrl };
+}
+function mergeSnapshots(current: Snapshot | null, incoming: Snapshot): Snapshot {
+  const records = current?.records.map(row => ({ ...row })) ?? [];
+  for (const row of incoming.records) mergeRecord(records, row);
+  records.sort((a, b) => b.clockVersion.utcMillis - a.clockVersion.utcMillis
+    || b.clockVersion.logicalCounter - a.clockVersion.logicalCounter
+    || b.clockVersion.deviceId.localeCompare(a.clockVersion.deviceId));
+  return { ...incoming, schemaVersion: 2, updatedAt: Math.max(current?.updatedAt ?? 0, incoming.updatedAt), records: records.slice(0, 20) };
 }
 
 async function listFamilySnapshots(env: Env, familyId: string): Promise<{ snapshots: Snapshot[]; fingerprintParts: string[] }> {
@@ -614,8 +636,10 @@ async function mergeFamilies(request: Request, env: Env, targetFamilyId: string)
         const records: RecordItem[] = [];
         let updatedAt = 0;
         for (const snapshot of group) { updatedAt = Math.max(updatedAt, snapshot.updatedAt); for (const row of snapshot.records) mergeRecord(records, row); }
-        records.sort((a, b) => b.modifiedAt - a.modifiedAt);
-        const merged: Snapshot = { schemaVersion: 1, familyId: targetFamilyId, deviceId, updatedAt, records: records.slice(0, 20) };
+        records.sort((a, b) => b.clockVersion.utcMillis - a.clockVersion.utcMillis
+          || b.clockVersion.logicalCounter - a.clockVersion.logicalCounter
+          || b.clockVersion.deviceId.localeCompare(a.clockVersion.deviceId));
+        const merged: Snapshot = { schemaVersion: 2, familyId: targetFamilyId, deviceId, updatedAt, records: records.slice(0, 20) };
         await env.R2_BUCKET.put(key, JSON.stringify(merged), { httpMetadata: { contentType: 'application/json; charset=utf-8' } });
         const verified = await env.R2_BUCKET.get(key);
         if (!verified) throw new Error('merge copy verification failed');
@@ -764,10 +788,11 @@ async function sync(request: Request, env: Env, familyId: string, deviceId: stri
   const key = `v1/${familyId}/${deviceId}.json`;
   if (request.method === 'GET') {
     const object = await env.R2_BUCKET.get(key);
-    if (!object) return json({ schemaVersion: 1, familyId, deviceId, updatedAt: 0, records: [] });
+    if (!object) return json({ schemaVersion: 2, familyId, deviceId, updatedAt: 0, records: [] });
     try {
       const stored: unknown = await object.json();
-      return validSnapshot(stored, familyId, deviceId) ? json(stored) : error(500, 'internal_error');
+      if (!validSnapshot(stored, familyId, deviceId)) return error(500, 'internal_error');
+      return json(stored);
     } catch { return error(500, 'internal_error'); }
   }
   if (request.method === 'PUT') {
@@ -776,7 +801,15 @@ async function sync(request: Request, env: Env, familyId: string, deviceId: stri
     let data: unknown;
     try { data = JSON.parse(body.text); } catch { return error(400, 'invalid_json'); }
     if (!validSnapshot(data, familyId, deviceId)) return error(400, 'invalid_snapshot');
-    await env.R2_BUCKET.put(key, JSON.stringify(data), { httpMetadata: { contentType: 'application/json; charset=utf-8' } });
+    let current: Snapshot | null = null;
+    const object = await env.R2_BUCKET.get(key);
+    if (object) {
+      const stored: unknown = await object.json();
+      if (!validSnapshot(stored, familyId, deviceId)) return error(500, 'internal_error');
+      current = stored;
+    }
+    const merged = mergeSnapshots(current, data as Snapshot);
+    await env.R2_BUCKET.put(key, JSON.stringify(merged), { httpMetadata: { contentType: 'application/json; charset=utf-8' } });
     return new Response(null, { status: 204 });
   }
   return error(404, 'not_found');
@@ -810,7 +843,7 @@ export default {
       if (accountsMatch) return request.method === 'GET' ? await familyLinkedAccounts(request, env, accountsMatch[1]) : error(404, 'not_found');
       const mergeMatch = /^\/v1\/families\/([^/]+)\/merge$/.exec(url.pathname);
       if (mergeMatch) return request.method === 'POST' ? await mergeFamilies(request, env, mergeMatch[1]) : error(404, 'not_found');
-      const match = /^\/v1\/sync\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+      const match = /^\/v2\/sync\/([^/]+)\/([^/]+)$/.exec(url.pathname);
       if (match) return ['GET', 'PUT'].includes(request.method) ? await sync(request, env, match[1], match[2]) : error(404, 'not_found');
       return error(404, 'not_found');
     } catch { return error(500, 'internal_error'); }

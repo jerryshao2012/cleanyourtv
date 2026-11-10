@@ -25,7 +25,7 @@
 
 # direct methods
 .method static constructor <clinit>()V
-    .locals 1
+    .registers 1
 
     .line 7
     new-instance v0, Lcom/supertws/dubokutv/PlaybackSaveGuard;
@@ -38,7 +38,7 @@
 .end method
 
 .method constructor <init>()V
-    .locals 0
+    .registers 1
 
     .line 6
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
@@ -49,64 +49,69 @@
 
 # virtual methods
 .method declared-synchronized committed(Ljava/lang/String;Ljava/lang/String;J)V
-    .locals 7
+    .registers 13
 
     monitor-enter p0
 
-    .line 53
-    const-wide v5, 0x7fffffffffffffffL
+    .line 57
+    const-wide v6, 0x7fffffffffffffffL
 
-    move-object v0, p0
+    move-object v1, p0
 
-    move-object v1, p1
+    move-object v2, p1
 
-    move-object v2, p2
+    move-object v3, p2
 
-    move-wide v3, p3
+    move-wide v4, p3
 
-    :try_start_0
-    invoke-virtual/range {v0 .. v6}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->committedIfCurrent(Ljava/lang/String;Ljava/lang/String;JJ)Z
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_start_a
+    invoke-virtual/range {v1 .. v7}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->committedIfCurrent(Ljava/lang/String;Ljava/lang/String;JJ)Z
+    :try_end_d
+    .catchall {:try_start_a .. :try_end_d} :catchall_f
 
-    .line 54
+    .line 58
     monitor-exit p0
 
     return-void
 
-    .line 52
-    :catchall_0
-    move-exception p1
+    .line 56
+    :catchall_f
+    move-exception v0
 
+    move-object p1, v0
+
+    :try_start_11
     monitor-exit p0
+    :try_end_12
+    .catchall {:try_start_11 .. :try_end_12} :catchall_f
 
     throw p1
 .end method
 
 .method declared-synchronized committedIfCurrent(Ljava/lang/String;Ljava/lang/String;JJ)Z
-    .locals 3
+    .registers 10
 
     monitor-enter p0
 
-    .line 57
-    if-eqz p1, :cond_0
+    .line 61
+    if-eqz p1, :cond_14
 
-    :try_start_0
+    :try_start_3
     iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_0
+    if-eqz v0, :cond_14
 
     iget-wide v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_end_d
+    .catchall {:try_start_3 .. :try_end_d} :catchall_5d
 
     cmp-long v2, p5, v0
 
-    if-gtz v2, :cond_0
+    if-gtz v2, :cond_14
 
     monitor-exit p0
 
@@ -114,19 +119,19 @@
 
     return p1
 
-    .line 58
-    :cond_0
-    :try_start_1
+    .line 62
+    :cond_14
+    :try_start_14
     iput-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->name:Ljava/lang/String;
 
-    .line 59
+    .line 63
     iput-object p2, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->episode:Ljava/lang/String;
 
-    .line 60
+    .line 64
     iput-wide p3, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->position:J
 
-    .line 61
-    if-eqz p1, :cond_1
+    .line 65
+    if-eqz p1, :cond_2b
 
     iget-object p5, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
@@ -134,7 +139,7 @@
 
     move-result p5
 
-    if-eqz p5, :cond_1
+    if-eqz p5, :cond_2b
 
     const/4 p5, 0x0
 
@@ -144,11 +149,13 @@
 
     iput-wide p5, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
 
-    .line 62
-    :cond_1
+    .line 66
+    :cond_2b
     iget-object p5, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
-    if-eqz p5, :cond_2
+    if-eqz p5, :cond_5a
+
+    iget-object p5, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
     invoke-interface {p5}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
@@ -189,43 +196,46 @@
     move-result-object p1
 
     invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
+    :try_end_5a
+    .catchall {:try_start_14 .. :try_end_5a} :catchall_5d
 
-    .line 63
-    :cond_2
+    .line 67
+    :cond_5a
     monitor-exit p0
 
     const/4 p1, 0x1
 
     return p1
 
-    .line 56
-    :catchall_0
+    .line 60
+    :catchall_5d
     move-exception p1
 
+    :try_start_5e
     monitor-exit p0
+    :try_end_5f
+    .catchall {:try_start_5e .. :try_end_5f} :catchall_5d
 
     throw p1
 .end method
 
 .method declared-synchronized initialize(Landroid/content/Context;)V
-    .locals 6
+    .registers 8
 
     monitor-enter p0
 
     .line 17
-    :try_start_0
+    :try_start_1
     iget-boolean v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialized:Z
 
-    if-nez v0, :cond_1
+    if-nez v0, :cond_4b
 
-    if-nez p1, :cond_0
+    if-nez p1, :cond_8
 
-    goto :goto_0
+    goto :goto_4b
 
     .line 18
-    :cond_0
+    :cond_8
     const-string v0, "playback_save_guard"
 
     const/4 v1, 0x0
@@ -237,6 +247,8 @@
     iput-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
     .line 19
+    iget-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
+
     const-string v0, "name"
 
     const/4 v1, 0x0
@@ -297,8 +309,8 @@
     const/4 p1, 0x1
 
     iput-boolean p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->initialized:Z
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_end_49
+    .catchall {:try_start_1 .. :try_end_49} :catchall_4d
 
     .line 25
     monitor-exit p0
@@ -306,39 +318,42 @@
     return-void
 
     .line 17
-    :cond_1
-    :goto_0
+    :cond_4b
+    :goto_4b
     monitor-exit p0
 
     return-void
 
     .line 16
-    :catchall_0
+    :catchall_4d
     move-exception p1
 
+    :try_start_4e
     monitor-exit p0
+    :try_end_4f
+    .catchall {:try_start_4e .. :try_end_4f} :catchall_4d
 
     throw p1
 .end method
 
 .method declared-synchronized isDuplicate(Ljava/lang/String;Ljava/lang/String;J)Z
-    .locals 1
+    .registers 6
 
     monitor-enter p0
 
     .line 28
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_20
 
-    if-eqz p2, :cond_0
+    if-eqz p2, :cond_20
 
-    :try_start_0
+    :try_start_5
     iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->name:Ljava/lang/String;
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result p1
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_20
 
     iget-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->episode:Ljava/lang/String;
 
@@ -347,70 +362,127 @@
 
     move-result p1
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_20
 
     iget-wide p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->position:J
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
     cmp-long v0, p3, p1
 
-    if-nez v0, :cond_0
+    if-nez v0, :cond_20
 
     const/4 p1, 0x1
 
-    goto :goto_0
+    goto :goto_21
 
     .line 27
-    :catchall_0
+    :catchall_1d
     move-exception p1
 
     monitor-exit p0
+    :try_end_1f
+    .catchall {:try_start_5 .. :try_end_1f} :catchall_1d
 
     throw p1
 
     .line 29
-    :cond_0
+    :cond_20
     const/4 p1, 0x0
 
     .line 28
-    :goto_0
+    :goto_21
     monitor-exit p0
 
     return p1
 .end method
 
-.method declared-synchronized onUserPlay(Ljava/lang/String;)V
-    .locals 2
+.method declared-synchronized isNewPlaybackEvent(Ljava/lang/String;Ljava/lang/String;)Z
+    .registers 5
 
     monitor-enter p0
 
-    .line 45
-    if-eqz p1, :cond_0
+    .line 33
+    :try_start_1
+    iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->name:Ljava/lang/String;
 
-    :try_start_0
+    iget-object v1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->episode:Ljava/lang/String;
+
+    invoke-static {v0, v1, p1, p2}, Lcom/supertws/dubokutv/PlaybackEvent;->startsNewEpisode(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z
+
+    move-result p1
+    :try_end_9
+    .catchall {:try_start_1 .. :try_end_9} :catchall_b
+
+    monitor-exit p0
+
+    return p1
+
+    .line 33
+    :catchall_b
+    move-exception p1
+
+    :try_start_c
+    monitor-exit p0
+    :try_end_d
+    .catchall {:try_start_c .. :try_end_d} :catchall_b
+
+    throw p1
+.end method
+
+.method declared-synchronized isBlockedByRemote(Ljava/lang/String;J)Z
+    .registers 5
+
+    if-eqz p1, :cond_13
+    iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
+    invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :cond_13
+    iget-wide v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
+    cmp-long v0, p2, v0
+    if-lez v0, :cond_11
+    goto :cond_13
+
+    :cond_11
+    const/4 v0, 0x1
+    return v0
+
+    :cond_13
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method declared-synchronized onUserPlay(Ljava/lang/String;)V
+    .registers 4
+
+    monitor-enter p0
+
+    .line 49
+    if-eqz p1, :cond_2f
+
+    :try_start_3
     iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result p1
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_2f
 
-    .line 46
+    .line 50
     const/4 p1, 0x0
 
     iput-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
-    .line 47
+    .line 51
     const-wide/16 v0, 0x0
 
     iput-wide v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
 
-    .line 48
+    .line 52
     iget-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_2f
+
+    iget-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
     invoke-interface {p1}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
@@ -429,78 +501,80 @@
     move-result-object p1
 
     invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    goto :goto_0
+    goto :goto_2f
 
-    .line 44
-    :catchall_0
+    .line 48
+    :catchall_2c
     move-exception p1
 
     monitor-exit p0
+    :try_end_2e
+    .catchall {:try_start_3 .. :try_end_2e} :catchall_2c
 
     throw p1
 
-    .line 50
-    :cond_0
-    :goto_0
+    .line 54
+    :cond_2f
+    :goto_2f
     monitor-exit p0
 
     return-void
 .end method
 
 .method declared-synchronized remoteUpdated(Ljava/lang/String;J)V
-    .locals 3
+    .registers 7
 
     monitor-enter p0
 
-    .line 37
-    if-eqz p1, :cond_3
+    .line 41
+    if-eqz p1, :cond_3c
 
-    :try_start_0
+    :try_start_3
     invoke-virtual {p1}, Ljava/lang/String;->isEmpty()Z
 
     move-result v0
 
-    if-eqz v0, :cond_0
+    if-eqz v0, :cond_a
 
-    goto :goto_0
+    goto :goto_3c
 
-    .line 38
-    :cond_0
+    .line 42
+    :cond_a
     iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
     invoke-virtual {p1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v0
 
-    if-eqz v0, :cond_1
+    if-eqz v0, :cond_1a
 
     iget-wide v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_end_14
+    .catchall {:try_start_3 .. :try_end_14} :catchall_39
 
     cmp-long v2, p2, v0
 
-    if-gtz v2, :cond_1
+    if-gtz v2, :cond_1a
 
     monitor-exit p0
 
     return-void
 
-    .line 39
-    :cond_1
-    :try_start_1
+    .line 43
+    :cond_1a
+    :try_start_1a
     iput-object p1, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
-    .line 40
+    .line 44
     iput-wide p2, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedModified:J
 
-    .line 41
+    .line 45
     iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
-    if-eqz v0, :cond_2
+    if-eqz v0, :cond_37
+
+    iget-object v0, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->prefs:Landroid/content/SharedPreferences;
 
     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
 
@@ -519,79 +593,85 @@
     move-result-object p1
 
     invoke-interface {p1}, Landroid/content/SharedPreferences$Editor;->apply()V
-    :try_end_1
-    .catchall {:try_start_1 .. :try_end_1} :catchall_0
+    :try_end_37
+    .catchall {:try_start_1a .. :try_end_37} :catchall_39
 
-    .line 42
-    :cond_2
+    .line 46
+    :cond_37
     monitor-exit p0
 
     return-void
 
-    .line 36
-    :catchall_0
+    .line 40
+    :catchall_39
     move-exception p1
 
+    :try_start_3a
     monitor-exit p0
+    :try_end_3b
+    .catchall {:try_start_3a .. :try_end_3b} :catchall_39
 
     throw p1
 
-    .line 37
-    :cond_3
-    :goto_0
+    .line 41
+    :cond_3c
+    :goto_3c
     monitor-exit p0
 
     return-void
 .end method
 
 .method declared-synchronized shouldSkip(Ljava/lang/String;Ljava/lang/String;JZ)Z
-    .locals 0
+    .registers 6
 
     monitor-enter p0
 
-    .line 33
-    :try_start_0
+    .line 37
+    :try_start_1
     invoke-virtual {p0, p1, p2, p3, p4}, Lcom/supertws/dubokutv/PlaybackSaveGuard;->isDuplicate(Ljava/lang/String;Ljava/lang/String;J)Z
 
     move-result p2
 
-    if-nez p2, :cond_1
+    if-nez p2, :cond_16
 
-    if-nez p5, :cond_0
+    if-nez p5, :cond_14
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_14
 
     iget-object p2, p0, Lcom/supertws/dubokutv/PlaybackSaveGuard;->blockedName:Ljava/lang/String;
 
     invoke-virtual {p1, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result p1
-    :try_end_0
-    .catchall {:try_start_0 .. :try_end_0} :catchall_0
+    :try_end_11
+    .catchall {:try_start_1 .. :try_end_11} :catchall_19
 
-    if-eqz p1, :cond_0
+    if-eqz p1, :cond_14
 
-    goto :goto_0
+    goto :goto_16
 
-    :cond_0
+    :cond_14
     const/4 p1, 0x0
 
-    goto :goto_1
+    goto :goto_17
 
-    :cond_1
-    :goto_0
+    :cond_16
+    :goto_16
     const/4 p1, 0x1
 
-    :goto_1
+    :goto_17
     monitor-exit p0
 
     return p1
 
-    .line 33
-    :catchall_0
+    .line 37
+    :catchall_19
     move-exception p1
 
+    :try_start_1a
     monitor-exit p0
+    :try_end_1b
+    .catchall {:try_start_1a .. :try_end_1b} :catchall_19
 
     throw p1
 .end method

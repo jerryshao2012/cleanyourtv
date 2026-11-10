@@ -326,3 +326,11 @@ The Mi Box 3 account-link request failed with `SSLHandshakeException_CertPathVal
 
 
 The QR SVG is fetched by the native family-auth client through the same host-scoped TLS compatibility path, checked as `image/svg+xml` with a 16 KiB limit, then embedded as a base64 data URI so the legacy WebView does not make a second HTTPS request. The user confirmed that QR display and LAN sync both work on Mi Box 3 with the final package. Final universal APK and manual-install package SHA-256: `d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`.
+
+## 12. 2026-11-10 sync v2 rollout and verification
+
+- The user confirmed the Mi Box 3 was manually updated that morning. The Mi Box 3's network ADB is unavailable (see its device notes), so its installed APK hash and per-device playback/sleep/offline/reboot sequence could not be independently checked. Its active LAN peer exchanged synchronization and clock messages, and its R2 snapshot contains schema v2 with the latest observed progress.
+- The prepared Mi Box 3 manual APK is SHA-256 `35a6888532a4a0726bc2480b23cdbe24d54f419cf65ba5f7d1a4c2b7936a42b5`; this identifies the repository artifact, not a hash read back from the box.
+- Production Worker deployment `25965d6b-f8ef-4cd5-be10-82e1d45fd1a5` accepts progress snapshots only at `/v2/sync`. `/v1/sync` returns 404; unauthenticated `/v2/sync` returns 401. The separate `/v1/families` and `/v1/family-auth` routes remain. The four known household R2 snapshots are schema v2. Latest progress was present in Sony and Mi Box 3 snapshots; Hisense and Mi Box 5 LAN logs showed receipt of that update, while their own R2 objects remained older.
+- `node --test test/*.test.mjs`: 28 passed, including route retirement, schema validation, authorization, merge ordering, family operations and script parsing. The Worker source/test mirror under `cleanyourtv/patches` matches.
+- The earlier Sony/Hisense/Mi Box 5 runs covered playback, pause, sleep/wake, network loss/recovery and app/process recovery. This pass did not inject selective UDP/ACK packet loss or repeat the full disruptive matrix on Mi Box 3.

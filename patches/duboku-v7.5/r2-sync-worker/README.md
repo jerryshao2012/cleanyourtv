@@ -12,6 +12,8 @@ Requires Node.js 22.6 or newer; tests use Node's built-in runner and SQLite, wit
 node --experimental-strip-types --test test/worker.test.mjs
 ```
 
+Progress snapshots use `GET`/`PUT /v2/sync/{familyId}/{deviceId}` only. `/v1/sync` has been removed; the separate `/v1/families` and `/v1/family-auth` APIs remain versioned independently. R2 objects retain their existing `v1/{familyId}/{deviceId}.json` storage keys and must contain schema version 2 snapshots.
+
 ## Configure Wrangler
 
 The config binds the existing private `cleanyourtv` bucket and the SQLite-backed Durable Object. No KV namespace is needed. For a new environment, log in to the intended account and deploy the Worker:
@@ -83,3 +85,7 @@ No S3 credentials, API tokens, family secrets, or other runtime secrets belong i
 
 
 - Xiaomi Mi Box 3 follow-up verification (2026-11-09): user confirmed both LAN progress sync and QR image display work. The final universal/manual APK is SHA-256 `d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`; the QR SVG is fetched with the native host-scoped TLS compatibility path and embedded into WebView.
+
+Latest sync-reliability deployment (2026-11-09): `673bcb98-52de-407c-82be-ccaf953188eb`. A production `/v2/sync` smoke request using a synthetic invalid credential returned the expected 401 through the deployed Worker and Durable Object authorization path. The universal APK was rebuilt and signed with SHA-256 `00e52be274ca489f1e63c2845737728580edace2f5feda0c09c040ff1d9bc90f`; its three distribution copies match. Sony BRAVIA 4K UR3 (Android TV 10/API 29) accepted `adb install -r` with app data preserved, launched to the home screen, fetched/merged cloud progress and logged a successful cloud upload without a crash. Playback/pause was not exercised to avoid changing the household's viewing history during the smoke check.
+
+Latest production deployment (2026-11-10): `25965d6b-f8ef-4cd5-be10-82e1d45fd1a5`. `/v1/sync` returns 404 and unauthenticated `/v2/sync` returns 401. All 28 Worker and script tests pass.

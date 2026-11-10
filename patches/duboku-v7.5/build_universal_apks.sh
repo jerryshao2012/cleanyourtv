@@ -14,18 +14,34 @@ KEYSTORE="$ROOT/apks/debug.keystore"
 for file in "$BASE" "$KEYSTORE" "$AAPT" "$BT/apksigner" "$BT/zipalign"; do
     test -f "$file" || { echo "Missing build input: $file" >&2; exit 1; }
 done
-for file in shim/DubokuCompat.java LanSyncManager.java CloudSnapshotMerger.java FamilySyncPanel.java FamilyAuthClient.java res/raw/isrg_root_x1.pem \
+for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java LanSyncManager.java CloudSnapshotMerger.java CloudSyncClient.java ProgressSyncJobService.java ProgressSnapshot.java PlaybackSaveGuard.java \
+    'smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2.smali' \
+    FamilyClock.java PlaybackEvent.java SyncClockMath.java SyncDecision.java SyncVersion.java SyncVersionStore.java \
+    FamilySyncPanel.java FamilyAuthClient.java r2-sync-worker/src/index.ts r2-sync-worker/test/worker.test.mjs res/raw/isrg_root_x1.pem \
     smali_classes3/com/supertws/dubokutv/DubokuCompat.smali \
     'smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali' \
     smali_classes3/com/supertws/dubokutv/LanSyncManagerPatch.smali \
     smali_classes3/com/supertws/dubokutv/CloudSnapshotMerger.smali FamilySyncPanel.java \
+    'smali_classes3/com/supertws/dubokutv/ProgressSyncJobService$0.smali' \
     smali_classes3/com/supertws/dubokutv/FamilyIdentity.smali \
     smali_classes3/com/supertws/dubokutv/presentation/screens/profile/FamilySyncRoute.smali \
     smali_classes3/com/supertws/dubokutv/presentation/screens/profile/FamilySyncPanelFactory.smali \
     smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/r.smali \
-    smali_classes3/com/supertws/dubokutv/SkipIntroFocusNoop.smali; do
+    smali_classes3/com/supertws/dubokutv/SkipIntroFocusNoop.smali \
+    tests/test_persistent_sync_job.py tests/test_playback_write_order.py \
+    tests/android/com/supertws/dubokutv/PlaybackSaveGuardAndroidTest.java; do
     cmp "$PATCH_DIR/$file" "$SOURCE_PATCH/$file" || {
         echo "Patch mirror drift; sync apks/patches from cleanyourtv: $file" >&2
+        exit 1
+    }
+done
+for file in "$PATCH_DIR"/smali_classes3/com/supertws/dubokutv/LanSyncManager*.smali \
+    "$PATCH_DIR"/smali_classes3/com/supertws/dubokutv/ProgressSyncJobService*.smali \
+    "$PATCH_DIR"/smali_classes3/com/supertws/dubokutv/{CloudSnapshotMerger,PlaybackSaveGuard,ProgressSnapshot,FamilyClock,PlaybackEvent,SyncClockMath,SyncDecision,SyncVersion,SyncVersionStore}*.smali \
+    "$PATCH_DIR"/smali_classes4/com/supertws/dubokutv/CloudSyncClient*.smali; do
+    relative="${file#"$PATCH_DIR"/}"
+    cmp "$file" "$SOURCE_PATCH/$relative" || {
+        echo "Patch mirror drift; sync apks/patches from cleanyourtv: $relative" >&2
         exit 1
     }
 done

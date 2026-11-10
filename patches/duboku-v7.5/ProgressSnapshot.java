@@ -20,7 +20,7 @@ public final class ProgressSnapshot {
     }
 
     public JSONObject toJson() throws Exception {
-        JSONObject result = new JSONObject().put("schemaVersion", 1).put("familyId", familyId)
+        JSONObject result = new JSONObject().put("schemaVersion", 2).put("familyId", familyId)
                 .put("deviceId", deviceId).put("updatedAt", updatedAt).put("records", records);
         if (!valid(result)) throw new IllegalArgumentException("invalid snapshot");
         return result;
@@ -33,19 +33,25 @@ public final class ProgressSnapshot {
     }
 
     public static boolean valid(JSONObject json) {
-        if (json == null || json.optInt("schemaVersion", -1) != 1 || json.optLong("updatedAt", -1) < 0
+        int schema = json == null ? -1 : json.optInt("schemaVersion", -1);
+        if (json == null || json.length() != 5 || (schema != 1 && schema != 2) || json.optLong("updatedAt", -1) < 0
                 || !FamilyIdentity.validId(json.optString("familyId", ""))
                 || !FamilyIdentity.validId(json.optString("deviceId", ""))) return false;
         JSONArray records = json.optJSONArray("records");
         if (records == null || records.length() > 20) return false;
         for (int i = 0; i < records.length(); i++) {
             JSONObject r = records.optJSONObject(i);
-            if (r == null || r.optString("id", "").isEmpty() || r.optString("name", "").isEmpty()
+            if (r == null || r.length() != (schema == 2 ? 11 : 10)
+                    || r.optString("id", "").isEmpty() || r.optString("name", "").isEmpty()
                     || r.optString("id", "").length() > 512 || r.optString("name", "").length() > 512
                     || r.optString("episode", "").length() > 512 || r.optLong("progressInMillis", -1) < 0
                     || r.optLong("durationInMillis", -1) < 0 || r.optLong("createdAt", -1) < 0
                     || r.optLong("modifiedAt", -1) < 0 || !validUrl(r.optString("videoPageUrl", ""))
                     || !validUrl(r.optString("detailPageUrl", "")) || !validUrl(r.optString("posterUrl", ""))) return false;
+            if (schema == 2) {
+                JSONObject version = r.optJSONObject("clockVersion");
+                if (version == null || version.length() != 3 || SyncVersionStore.fromJson(version) == null) return false;
+            }
         }
         return true;
     }

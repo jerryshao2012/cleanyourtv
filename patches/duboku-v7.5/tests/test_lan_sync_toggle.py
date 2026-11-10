@@ -42,7 +42,12 @@ class LanSyncToggleTest(unittest.TestCase):
         for signature in ("public synchronized void startReceiver()", "private void handleIncomingJson(String jsonStr",
                           "private void respondAllRecords(final String targetIp)", "public static void requestSyncFromLan()",
                           "private static void sendUdpPacket(String jsonStr", "public static void broadcastProgress(final Object recordObj)"):
-            self.assertIn("isLanSyncEnabled()", method_body(LAN, signature), signature)
+            body = method_body(LAN, signature)
+            if signature.startswith("private static void sendUdpPacket("):
+                body = method_body(LAN, "private static boolean sendUdpPacketResult(")
+            elif signature.startswith("public static void broadcastProgress("):
+                body = method_body(LAN, "private static void publishPlaybackProgress(")
+            self.assertIn("isLanSyncEnabled()", body, signature)
         self.assertIn("currentLanEnabled(manager.mContext)", method_body(LAN, "public static void onAppCreate(Context context)"))
 
     def test_family_panel_shows_toggle_and_disables_lan_controls(self):

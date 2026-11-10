@@ -14,8 +14,9 @@ class SyncedEpisodeIdTest(unittest.TestCase):
         )
 
         smali = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali").read_text()
-        id_block = smali.split("    .line 252", 1)[1].split("    .line 255", 1)[0]
-        self.assertLess(id_block.index("val$id"), id_block.index("if-eqz v22"))
+        id_block = smali.split("    .line 328", 1)[1].split("    .line 332", 1)[0]
+        self.assertIn("val$id", id_block)
+        self.assertIn("String;->isEmpty()Z", id_block)
         self.assertIn("updateWithOnConflict", java)
         self.assertIn("updateWithOnConflict", smali)
 
@@ -36,13 +37,11 @@ class SyncedEpisodeIdTest(unittest.TestCase):
         self.assertIn("updateWithOnConflict", java)
 
         smali = (PATCH / "smali_classes3/com/supertws/dubokutv/CloudSnapshotMerger.smali").read_text()
-        id_block = smali.split('    const-string v6, "id"', 1)[1].split(
+        id_block = smali.split('    const-string v8, "id"', 1)[1].split(
             '    const-string v6, "name"', 1
         )[0]
-        self.assertLess(
-            id_block.index("JSONObject;->optString"),
-            id_block.index("move-object/from16 v7, v30"),
-        )
+        self.assertIn("JSONObject;->optString", id_block)
+        self.assertIn("ContentValues;->put", id_block)
         self.assertIn("updateWithOnConflict", smali)
 
         android_test = (PATCH / "tests/android/com/supertws/dubokutv/CloudSnapshotMergerTest.java").read_text()
