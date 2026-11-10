@@ -48,6 +48,8 @@ public class LanSyncManager {
     private static volatile String sLastSentEpisode = null;
     private static volatile long sLastSentProgressMs = -1;
     private static volatile long sLastRequestSyncTime = 0;
+    private static volatile long sLastIncomingSyncResponseAt;
+    private static final long SYNC_RESPONSE_DEBOUNCE_MS = 2000L;
     private static final long ACK_TIMEOUT_MS = 3000L;
     private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
     private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
@@ -258,6 +260,12 @@ public class LanSyncManager {
                 return;
             }
             if ("REQUEST_SYNC".equals(action)) {
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (sLastIncomingSyncResponseAt != 0 && now - sLastIncomingSyncResponseAt < SYNC_RESPONSE_DEBOUNCE_MS) {
+                    Log.d(TAG, "Skipped duplicate REQUEST_SYNC response");
+                    return;
+                }
+                sLastIncomingSyncResponseAt = now;
                 Log.i(TAG, "Received REQUEST_SYNC from " + fromDevice + " (" + senderIp + "), responding with all local records...");
                 respondAllRecords(senderIp);
                 return;
@@ -584,14 +592,14 @@ public class LanSyncManager {
         Context context = getAppContext();
         CloudSyncClient.markCloudDirty(context);
         if (!isLanSyncEnabled()) {
-            if (SyncDecision.requiresCloudUpload(critical, false, false)) CloudSyncClient.onCommittedSave(true);
+            if (SyncDecision.requiresCloudUpload(critical, false, false)) CloudSyncClient.onCommittedSave(critical);
             return;
         }
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    if (!isLanSyncEnabled()) { CloudSyncClient.onCommittedSave(true); return; }
+                    if (!isLanSyncEnabled()) { CloudSyncClient.onCommittedSave(critical); return; }
                     pa.c rec = (pa.c) recordObj;
                     String dramaName = rec.b;
                     String episodeName = rec.c;
@@ -631,7 +639,7 @@ public class LanSyncManager {
                     if (!critical) {
                         timeout = sSyncQueue.schedule(new Runnable() {
                             @Override public void run() {
-                                if (sPendingProgress.remove(messageId) != null) CloudSyncClient.onCommittedSave(true);
+                                if (sPendingProgress.remove(messageId) != null) CloudSyncClient.onCommittedSave(false);
                             }
                         }, ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         sPendingProgress.put(messageId, timeout);
@@ -641,12 +649,12 @@ public class LanSyncManager {
                     if (!sendUdpPacketResult(json.toString(), null)) {
                         ScheduledFuture<?> pending = sPendingProgress.remove(messageId);
                         if (pending != null) pending.cancel(false);
-                        if (!critical) CloudSyncClient.onCommittedSave(true);
+                        if (!critical) CloudSyncClient.onCommittedSave(false);
                     }
                     Log.i(TAG, "Broadcasted progress update: " + dramaName + " " + episodeName + " @" + (progressMs/1000) + "s");
                 } catch (Exception e) {
                     Log.w(TAG, "Failed to broadcast progress: " + e.getMessage());
-                    if (!critical) CloudSyncClient.onCommittedSave(true);
+                    if (!critical) CloudSyncClient.onCommittedSave(false);
                 }
             }
         }).start();

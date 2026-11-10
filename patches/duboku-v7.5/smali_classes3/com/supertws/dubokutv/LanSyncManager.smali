@@ -39,6 +39,8 @@
 
 .field private static volatile sLastClockProbeAt:J
 
+.field private static volatile sLastIncomingSyncResponseAt:J
+
 .field private static volatile sLastRequestSyncTime:J
 
 .field private static volatile sLastSentEpisode:Ljava/lang/String;
@@ -2544,6 +2546,24 @@
     if-eqz v3, :cond_1e4
 
     .line 229
+    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+    move-result-wide v20
+    sget-wide v22, Lcom/supertws/dubokutv/LanSyncManager;->sLastIncomingSyncResponseAt:J
+    move-wide/from16 v18, v22
+    const-wide/16 v22, 0x0
+    cmp-long v22, v18, v22
+    if-nez v22, :check_sync_response_window
+    goto :allow_sync_response
+    :check_sync_response_window
+    sub-long v20, v20, v18
+    const-wide/16 v22, 0x7d0
+    cmp-long v22, v20, v22
+    if-ltz v22, :skip_sync_response
+    :allow_sync_response
+    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+    move-result-wide v20
+    sput-wide v20, Lcom/supertws/dubokutv/LanSyncManager;->sLastIncomingSyncResponseAt:J
+
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -2584,6 +2604,11 @@
     invoke-direct {v1, v13}, Lcom/supertws/dubokutv/LanSyncManager;->respondAllRecords(Ljava/lang/String;)V
 
     .line 231
+    return-void
+
+    :skip_sync_response
+    const-string v0, "Skipped duplicate REQUEST_SYNC response"
+    invoke-static {v7, v0}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I
     return-void
 
     :cond_unknown_peer
@@ -3489,9 +3514,7 @@
 
     if-eqz p0, :cond_1b
 
-    const/4 p0, 0x1
-
-    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
+    invoke-static {p1}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
     .line 550
     :cond_1b

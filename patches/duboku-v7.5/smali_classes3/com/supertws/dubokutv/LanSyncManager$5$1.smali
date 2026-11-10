@@ -61,7 +61,7 @@
 
     if-eqz v0, :cond_10
 
-    const/4 v0, 0x1
+    const/4 v0, 0x0
 
     invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 

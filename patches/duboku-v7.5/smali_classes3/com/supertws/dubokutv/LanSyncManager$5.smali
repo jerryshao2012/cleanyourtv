@@ -118,6 +118,7 @@
 
     if-nez v0, :cond_b
 
+    iget-boolean v1, p0, Lcom/supertws/dubokutv/LanSyncManager$5;->val$critical:Z
     invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
     return-void
@@ -458,6 +459,7 @@
 
     if-nez v0, :cond_12b
 
+    const/4 v1, 0x0
     invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
     .line 608
@@ -569,6 +571,7 @@
 
     if-nez v0, :cond_188
 
+    const/4 v1, 0x0
     invoke-static {v1}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
     .line 613
