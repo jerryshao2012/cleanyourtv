@@ -2509,6 +2509,22 @@
 
     .line 228
     :cond_1b2
+    invoke-static {v9}, Lcom/supertws/dubokutv/FamilyIdentity;->validId(Ljava/lang/String;)Z
+
+    move-result v4
+
+    if-eqz v4, :cond_unknown_peer
+
+    invoke-virtual {v8}, Lcom/supertws/dubokutv/FamilyIdentity;->peers()Ljava/util/Set;
+
+    move-result-object v4
+
+    invoke-interface {v4, v9}, Ljava/util/Set;->contains(Ljava/lang/Object;)Z
+
+    move-result v4
+
+    if-eqz v4, :cond_unknown_peer
+
     const-string v4, "REQUEST_SYNC"
 
     invoke-virtual {v4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -2558,6 +2574,13 @@
     invoke-direct {v1, v13}, Lcom/supertws/dubokutv/LanSyncManager;->respondAllRecords(Ljava/lang/String;)V
 
     .line 231
+    return-void
+
+    :cond_unknown_peer
+    const-string v0, "Rejected LAN sync packet from unknown device"
+
+    invoke-static {v7, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
+
     return-void
 
     .line 234

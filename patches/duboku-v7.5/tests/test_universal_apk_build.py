@@ -31,6 +31,7 @@ class UniversalApkBuildTest(unittest.TestCase):
         self.assertIn("apks/common/独播库TV_v7.5.apk", source)
         self.assertIn("apks/common/Updated独播库TV_v7.5.apk", source)
         self.assertIn('"$PATCH_DIR"/tests/test_*.py', source)
+        self.assertIn("tests/test_lan_sync_peer_validation.py", source)
 
 
 if __name__ == "__main__":

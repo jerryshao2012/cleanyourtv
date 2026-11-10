@@ -225,6 +225,10 @@ public class LanSyncManager {
                 }
                 return;
             }
+            if (!FamilyIdentity.validId(fromDevice) || !identity.peers().contains(fromDevice)) {
+                Log.w(TAG, "Rejected LAN sync packet from unknown device");
+                return;
+            }
             if ("REQUEST_SYNC".equals(action)) {
                 Log.i(TAG, "Received REQUEST_SYNC from " + fromDevice + " (" + senderIp + "), responding with all local records...");
                 respondAllRecords(senderIp);

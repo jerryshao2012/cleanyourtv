@@ -29,6 +29,7 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/r.smali \
     smali_classes3/com/supertws/dubokutv/SkipIntroFocusNoop.smali \
     tests/test_persistent_sync_job.py tests/test_playback_write_order.py \
+    tests/test_lan_sync_peer_validation.py \
     tests/android/com/supertws/dubokutv/PlaybackSaveGuardAndroidTest.java; do
     cmp "$PATCH_DIR/$file" "$SOURCE_PATCH/$file" || {
         echo "Patch mirror drift; sync apks/patches from cleanyourtv: $file" >&2
