@@ -48,7 +48,7 @@ public class LanSyncManager {
     private static volatile String sLastSentEpisode = null;
     private static volatile long sLastSentProgressMs = -1;
     private static volatile long sLastRequestSyncTime = 0;
-    private static final long ACK_TIMEOUT_MS = 700L;
+    private static final long ACK_TIMEOUT_MS = 3000L;
     private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
     private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> sClockProbes = new ConcurrentHashMap<>();
@@ -148,6 +148,7 @@ public class LanSyncManager {
             JSONObject ack = new JSONObject().put("action", "PROGRESS_ACK").put("from", sCurrentDeviceId)
                     .put("to", targetDevice).put("messageId", messageId).put("status", status);
             sendUdpPacket(ack.toString(), targetIp);
+            Log.i(TAG, "Progress ACK sent");
         } catch (Exception e) { Log.w(TAG, "Progress ACK deferred: " + e.getClass().getSimpleName()); }
     }
 
@@ -221,7 +222,10 @@ public class LanSyncManager {
                         && FamilyIdentity.validId(messageId)
                         && ("applied".equals(status) || "already_current".equals(status))) {
                     ScheduledFuture<?> timeout = sPendingProgress.remove(messageId);
-                    if (timeout != null) timeout.cancel(false);
+                    if (timeout != null) {
+                        timeout.cancel(false);
+                        Log.i(TAG, "Progress ACK received");
+                    }
                 }
                 return;
             }

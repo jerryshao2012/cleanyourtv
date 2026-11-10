@@ -4,7 +4,7 @@
 
 
 # static fields
-.field private static final ACK_TIMEOUT_MS:J = 0x2bcL
+.field private static final ACK_TIMEOUT_MS:J = 0xbb8L
 
 .field private static final EP_PATTERN:Ljava/util/regex/Pattern;
 
@@ -2502,6 +2502,8 @@
     const/4 v5, 0x0
 
     invoke-interface {v0, v5}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
+    const-string v0, "Progress ACK received"
+    invoke-static {v7, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 226
     :cond_1b1
@@ -4474,6 +4476,9 @@
     move-result-object p0
 
     invoke-static {p0, p2}, Lcom/supertws/dubokutv/LanSyncManager;->sendUdpPacket(Ljava/lang/String;Ljava/lang/String;)V
+    const-string v0, "LanSyncManager"
+    const-string v1, "Progress ACK sent"
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
     :try_end_4f
     .catch Ljava/lang/Exception; {:try_start_21 .. :try_end_4f} :catch_50
 

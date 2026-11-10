@@ -56,7 +56,7 @@ UDP 进度广播 ── ACK（对端已提交/已有更新版本）──→ 普
 - 在进度 JSON 中增加随机 `messageId`；现有接收方忽略未知字段，保持旧版互通。
 - 新版接收方写入/确认数据库之后返回 `PROGRESS_ACK`，带 `messageId`、发送者 device ID、接收者 device ID 和处理结果（`applied` / `already_current`）。若本地已有更新版本也可以 ACK `already_current`，但只作为“对端不落后于该消息”的确认。
 - ACK 仅匹配当前待确认的 messageId、合法的家庭 peer 和非本机 device ID；绝不接受任意数据包作为确认。关闭 LAN 同步时不收发 ACK。
-- 设短确认窗口（初值 700 ms），最多补发 2 次；接收端按发送者与 messageId 短期去重，并对重复消息重发 ACK。复用现有 UDP 广播，不建立长连接。
+- 设确认窗口（当前 3000 ms），最多补发 2 次；接收端按发送者与 messageId 短期去重，并对重复消息重发 ACK。复用现有 UDP 广播，不建立长连接。
 
 **决策规则**
 
@@ -197,8 +197,10 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 本次观察到可信 LAN 时钟样本（Hisense 约 `-113 ms` 至 `-709 ms`，RTT `668–2079 ms`）；这只能证明探测/采样路径工作，不能替代人为设置快慢时钟和回拨的测试。
 - 补齐 LAN 接收信任边界：只处理已登记家庭 peer 的进度包与 `REQUEST_SYNC`，同步更新 Java、实际加载的 `classes3.dex` smali 和构建门禁。回归测试先失败后通过；通用 APK 构建、签名、API 22/versionCode 33 校验通过，并在 `classes3.dex` 确认拒绝日志字符串。
 - 远程覆盖安装到 Sony、Hisense Fire TV、小米盒子 5 Max，未清除应用数据。三台安装包的实测 SHA-256 均为 `89c7e4c0a55aa3ecfb07954aae7c4be2ff24ef86bb138e2ee9b418a5a22998b3`，versionCode 33 / 7.5；三台启动后云端对账均 `peers=4 attempted=4 failed=0 success=true`，Cloud PUT 成功，观看历史保留。三台历史页都显示《兰香如故》第47集 89%，修改时间 `2026-11-10 16:19:45`。新安装的小米盒子向 Sony、Hisense 发出合法 `REQUEST_SYNC`，两端均响应；Hisense 收到一个随机未知设备 ID 的 `REQUEST_SYNC` 后记录拒绝日志，未响应或广播历史。
+- 本轮补验发现 Java 常量改成 3000 ms 不会自动更新 APK 中匿名 Runnable 内联的 smali 常量（仍为 700 ms）；已新增针对实际 `LanSyncManager$5.smali` 的回归检查，并同步更新源码镜像、smali、构建门禁。新构建全量构建门禁通过，APK SHA-256 为 `131e6da1f09ea9a37b20bd50887b2549488655e506fc68b447eff3c9c6f7bffe`；Sony、Hisense、小米安装后的 APK 拉取哈希均与构建一致。
+- 最新双机实测使用非片尾的《早春晴朗》第4集（约 4%）排除片尾关键上传：Hisense 最终成功写入 Sony 的进度并发出 `Progress ACK sent`，但 ACK 约 13 秒后才处理；Sony 在 3 秒窗口后已触发云端 PUT。推断启动/历史对账期间接收端队列会延迟 ACK；LAN 写入和 ACK 发送路径工作，但“及时 ACK 后省略普通进度 PUT”在本次实机中仍未通过。超时兜底保住了云端最终记录。新增发送/接收 ACK 日志用于后续定位。
 
-**仍待实机验收**：单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
+**仍待实机验收**：ACK 队列排空后的稳态普通进度是否能在 3 秒内 ACK 并省略本轮 PUT；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
 
 ## Best-practice 依据
 
