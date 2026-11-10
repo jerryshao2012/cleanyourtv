@@ -16,7 +16,7 @@
 
 # direct methods
 .method public synthetic constructor <init>(Lcom/supertws/dubokutv/FamilySyncPanel;Ljava/lang/String;Ljava/lang/String;)V
-    .registers 4
+    .locals 0
 
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
@@ -32,7 +32,7 @@
 
 # virtual methods
 .method public final run()V
-    .registers 4
+    .locals 3
 
     iget-object v0, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda3;->f$0:Lcom/supertws/dubokutv/FamilySyncPanel;
 
@@ -40,7 +40,7 @@
 
     iget-object v2, p0, Lcom/supertws/dubokutv/FamilySyncPanel$$ExternalSyntheticLambda3;->f$2:Ljava/lang/String;
 
-    invoke-virtual {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncPanel;->lambda$refreshLinkedProviders$15$com-supertws-dubokutv-FamilySyncPanel(Ljava/lang/String;Ljava/lang/String;)V
+    invoke-static {v0, v1, v2}, Lcom/supertws/dubokutv/FamilySyncPanel;->$r8$lambda$xbsdd8I77adc8dRJsIMWxTQ2X4Y(Lcom/supertws/dubokutv/FamilySyncPanel;Ljava/lang/String;Ljava/lang/String;)V
 
     return-void
 .end method

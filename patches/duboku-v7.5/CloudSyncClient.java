@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -15,6 +16,16 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.security.KeyStore;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.Locale;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -403,21 +414,32 @@ public final class CloudSyncClient {
         if (!cloudSyncEnabled()) return false;
         if (dirtyPrefs().getBoolean("cloudAuthRejected", false)) return false;
         try {
-            JSONObject body = new JSONObject().put("familyId", familyId).put("familySecret", secret);
-            int code = request("POST", "/v1/families", null, body.toString());
-            if (code == 200 || code == 201) return true;
+            registerFamilyForAuth(familyId, secret);
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "Family registration deferred: " + e.getClass().getSimpleName());
+            return false;
+        }
+    }
+
+    public static void registerFamilyForAuth(String familyId, String secret) throws Exception {
+        JSONObject body = new JSONObject().put("familyId", familyId).put("familySecret", secret);
+        int code;
+        try {
+            code = request("POST", "/v1/families", null, body.toString());
+            if (code == 200 || code == 201) return;
             if (code == 401 && System.currentTimeMillis() - dirtyPrefs().getLong("familyCreatedAt", 0) < 60_000L) {
                 for (long delay : new long[]{1000, 2000, 5000, 10000}) {
                     SystemClock.sleep(delay);
-                    if (!cloudSyncEnabled()) return false;
                     code = request("POST", "/v1/families", null, body.toString());
-                    if (code == 200 || code == 201) return true;
+                    if (code == 200 || code == 201) return;
                 }
             }
-            if (code == 401) dirtyPrefs().edit().putBoolean("cloudAuthRejected", true).apply();
-            Log.w(TAG, "Family registration HTTP " + code);
-        } catch (Exception e) { Log.w(TAG, "Family registration deferred: " + e.getClass().getSimpleName()); }
-        return false;
+        } catch (Exception e) {
+            throw new IllegalStateException("family_registration_network_" + networkErrorName(e));
+        }
+        if (code == 401) dirtyPrefs().edit().putBoolean("cloudAuthRejected", true).apply();
+        throw new IllegalStateException("family_registration_http_" + code);
     }
 
     public static String createJoinCode() throws Exception {
@@ -571,11 +593,76 @@ public final class CloudSyncClient {
     private static HttpURLConnection open(String method, String path, String secret) throws Exception {
         URL url = new URL(BASE_URL + path);
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
+        configureTls(c);
         c.setRequestMethod(method); c.setConnectTimeout(4000); c.setReadTimeout(5000);
         c.setRequestProperty("Accept", "application/json");
         if (secret != null) c.setRequestProperty("Authorization", "Bearer " + secret);
         if (method.equals("POST") || method.equals("PUT")) c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         return c;
+    }
+
+    public static void configureTls(HttpURLConnection connection) {
+        if (!isMiBox3Api22() || !(connection instanceof HttpsURLConnection)) return;
+        try {
+            SSLContext context = SSLContext.getInstance("TLSv1.2");
+            TrustManager[] trust = "cleantv-r2-sync.jerry-shao.workers.dev".equals(connection.getURL().getHost())
+                    ? new TrustManager[]{workerTrustManager()} : null;
+            context.init(null, trust, null);
+            ((HttpsURLConnection) connection).setSSLSocketFactory(context.getSocketFactory());
+        } catch (Exception e) {
+            Log.w(TAG, "TLS 1.2 setup unavailable", e);
+        }
+    }
+
+    private static boolean isMiBox3Api22() {
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.LOLLIPOP_MR1
+                || !("xiaomi".equalsIgnoreCase(Build.MANUFACTURER) || "xiaomi".equalsIgnoreCase(Build.BRAND))) return false;
+        String identity = (Build.MODEL + " " + Build.DEVICE + " " + Build.PRODUCT).toLowerCase(Locale.US);
+        return identity.contains("mibox3") || identity.contains("mi box 3")
+                || identity.contains("mdz-16") || identity.contains("once");
+    }
+
+    private static X509TrustManager workerTrustManager() throws Exception {
+        TrustManagerFactory platformFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        platformFactory.init((KeyStore) null);
+        X509TrustManager platform = findTrustManager(platformFactory);
+
+        int certificateId = appContext.getResources().getIdentifier("isrg_root_x1", "raw", appContext.getPackageName());
+        if (certificateId == 0) throw new IllegalStateException("worker_trust_anchor_missing");
+        InputStream input = appContext.getResources().openRawResource(certificateId);
+        X509Certificate root;
+        try { root = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(input); }
+        finally { input.close(); }
+
+        KeyStore extraRoots = KeyStore.getInstance(KeyStore.getDefaultType());
+        extraRoots.load(null, null);
+        extraRoots.setCertificateEntry("isrg-root-x1", root);
+        TrustManagerFactory extraFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        extraFactory.init(extraRoots);
+        X509TrustManager extra = findTrustManager(extraFactory);
+        return new X509TrustManager() {
+            @Override public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                platform.checkClientTrusted(chain, authType);
+            }
+            @Override public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                try { platform.checkServerTrusted(chain, authType); }
+                catch (CertificateException untrustedByPlatform) { extra.checkServerTrusted(chain, authType); }
+            }
+            @Override public X509Certificate[] getAcceptedIssuers() { return platform.getAcceptedIssuers(); }
+        };
+    }
+
+    private static X509TrustManager findTrustManager(TrustManagerFactory factory) throws Exception {
+        for (TrustManager manager : factory.getTrustManagers()) {
+            if (manager instanceof X509TrustManager) return (X509TrustManager) manager;
+        }
+        throw new IllegalStateException("x509_trust_manager_unavailable");
+    }
+
+    private static String networkErrorName(Throwable error) {
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+        return error.getClass().getSimpleName() + (root == error ? "" : "_" + root.getClass().getSimpleName());
     }
 
     private static String enc(String value) throws Exception { return URLEncoder.encode(value, "UTF-8"); }

@@ -600,3 +600,8 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 - 通用 APK versionCode 33、minSdk 22，SHA-256：`0a3bb045eac1755919ffa734fa9d63606d31ba4028094691d3a6ae15a2ae8e2f`。保留应用数据覆盖安装到 Sony、Hisense Fire TV（`192.168.87.37`）及 Xiaomi Mi Box 5 Max / MiTV-AZFU0（`192.168.87.38`）；三台启动后进程正常。
 - 小米盒子 3 保留手动安装包 `devices/xiaomi-mibox3/usb-pack/01_独播库TV_v7.5.apk`，与通用包 SHA-256 相同；本轮未对它执行安装。
 - Worker 生产版本：`ebc4b63c-140c-4a98-b9aa-8fcb9d78ce2d`。家庭面板、开关和 dex 一致性回归测试通过；完整通用 APK 构建成功。
+
+
+## 2026-11-09 小米盒子 3 家庭扫码与局域网同步验收
+
+用户确认最新安装包上局域网同步正常，家庭关联二维码也已正常显示。根因是 WebView 直接请求 Worker 的 QR SVG，绕过小米盒子 3 专用 HTTPS 根证书兼容；现由原生客户端安全校验 SVG 后以内嵌 data URI 展示。最终 APK SHA-256：`d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`，三份分发 APK 一致，签名校验通过，26 项补丁回归测试通过。

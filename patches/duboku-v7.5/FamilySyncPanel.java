@@ -193,10 +193,11 @@ public final class FamilySyncPanel extends ScrollView {
             try {
                 JSONObject session = FamilyAuthClient.create(family, secret);
                 String id = session.getString("sessionId"), poll = session.getString("pollSecret");
+                String qrImage = FamilyAuthClient.qrImageDataUri(id);
                 host.runOnUiThread(() -> {
                     if (screen != 6) { work.execute(() -> { try { FamilyAuthClient.cancel(id, poll); } catch (Exception ignored) { } }); return; }
                     authSessionId = id; authPollSecret = poll;
-                    String pageHtml = "<!doctype html><html><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;background:#fff;text-align:center;font:16px sans-serif'><img alt='Scan with your phone to link Google or GitHub' style='display:block;width:180px;height:180px;margin:auto' src='/auth/qr/" + id + ".svg'></body></html>";
+                    String pageHtml = "<!doctype html><html><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;background:#fff;text-align:center;font:16px sans-serif'><img alt='Scan with your phone to link Google or GitHub' style='display:block;width:180px;height:180px;margin:auto' src='" + qrImage + "'></body></html>";
                     authQr.loadDataWithBaseURL(CloudSyncClient.BASE_URL + "/", pageHtml, "text/html", "UTF-8", null);
                     authPolling = true;
                     busy("请用手机扫描二维码并完成登录；此码五分钟后失效。");
@@ -375,7 +376,7 @@ public final class FamilySyncPanel extends ScrollView {
 
     private void showError(String action, Exception error) {
         String kind = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-        host.runOnUiThread(() -> busy(action + "失败：" + kind + "。检查网络和 Worker 部署状态后重试。"));
+        host.runOnUiThread(() -> busy(action + "失败：" + kind));
     }
 
     private void updateCloudSyncToggle() {

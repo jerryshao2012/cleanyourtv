@@ -1,5 +1,6 @@
 package com.supertws.dubokutv;
 
+import android.util.Base64;
 import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -18,7 +19,7 @@ public final class FamilyAuthClient {
     }
 
     public static JSONObject create(String familyId, String familySecret, boolean join) throws Exception {
-        if (!CloudSyncClient.registerFamily(familyId, familySecret)) throw new IllegalStateException("family_unavailable");
+        CloudSyncClient.registerFamilyForAuth(familyId, familySecret);
         return request("POST", "/v1/family-auth/sessions?familyId=" + enc(familyId) + (join ? "&mode=join" : ""), familySecret, null);
     }
 
@@ -38,10 +39,42 @@ public final class FamilyAuthClient {
         return request("GET", "/v1/families/" + enc(familyId) + "/accounts", familySecret, null);
     }
 
+    public static String qrImageDataUri(String sessionId) throws Exception {
+        if (!sessionId.matches("[A-Za-z0-9_-]{43}")) throw new IllegalArgumentException("invalid_session");
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(BASE + "/auth/qr/" + sessionId + ".svg").openConnection();
+            CloudSyncClient.configureTls(connection);
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("Accept", "image/svg+xml");
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) throw new IllegalStateException("qr_http_" + code);
+            String type = connection.getContentType();
+            if (type == null || !type.toLowerCase(java.util.Locale.US).startsWith("image/svg+xml")) {
+                throw new IllegalStateException("qr_invalid_content_type");
+            }
+            InputStream input = connection.getInputStream();
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int count;
+            while ((count = input.read(buffer)) >= 0) {
+                if (output.size() + count > 16384) throw new IllegalStateException("qr_too_large");
+                output.write(buffer, 0, count);
+            }
+            input.close();
+            byte[] svg = output.toByteArray();
+            String markup = new String(svg, "UTF-8").trim();
+            if (!markup.startsWith("<svg") || !markup.endsWith("</svg>")) throw new IllegalStateException("qr_invalid_svg");
+            return "data:image/svg+xml;base64," + Base64.encodeToString(svg, Base64.NO_WRAP);
+        } finally { if (connection != null) connection.disconnect(); }
+    }
+
     private static JSONObject request(String method, String path, String secret, String body) throws Exception {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(BASE + path).openConnection();
+            CloudSyncClient.configureTls(connection);
             connection.setRequestMethod(method);
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);

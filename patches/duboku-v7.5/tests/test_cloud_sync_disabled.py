@@ -46,6 +46,40 @@ class CloudSyncDisabledTest(unittest.TestCase):
                       method_body(PANEL, "private void updateCloudSyncToggle()"))
         self.assertNotIn("请先开启云端同步", PANEL)
 
+    def test_explicit_account_link_registers_while_sync_is_off(self):
+        auth = (PATCH / "FamilyAuthClient.java").read_text()
+        self.assertIn("registerFamilyForAuth(familyId, familySecret)", auth)
+        register = method_body(CLIENT, "registerFamilyForAuth(String familyId, String secret)")
+        self.assertNotIn("cloudSyncEnabled()", register)
+        self.assertIn('"family_registration_network_" + networkErrorName(e)', register)
+        self.assertIn('"family_registration_http_" + code', register)
+        normal_register = method_body(CLIENT, "registerFamily(String familyId, String secret)")
+        self.assertIn('if (!cloudSyncEnabled()) return false;', normal_register)
+        self.assertIn('dirtyPrefs().getBoolean("cloudAuthRejected", false)', normal_register)
+
+    def test_auth_errors_are_not_mislabeled_as_worker_outages(self):
+        show_error = method_body(PANEL, "private void showError(String action, Exception error)")
+        self.assertNotIn("检查网络和 Worker 部署状态", show_error)
+
+    def test_api_22_https_explicitly_uses_tls_12_without_changing_validation(self):
+        configure = method_body(CLIENT, "configureTls(HttpURLConnection connection)")
+        self.assertIn("!isMiBox3Api22()", configure)
+        self.assertIn('SSLContext.getInstance("TLSv1.2")', configure)
+        self.assertIn("setSSLSocketFactory(context.getSocketFactory())", configure)
+        self.assertNotIn("HostnameVerifier", configure)
+        self.assertIn('"cleantv-r2-sync.jerry-shao.workers.dev".equals(connection.getURL().getHost())', configure)
+        trust = method_body(CLIENT, "private static X509TrustManager workerTrustManager()")
+        self.assertIn("platform.checkServerTrusted(chain, authType)", trust)
+        self.assertIn("extra.checkServerTrusted(chain, authType)", trust)
+        self.assertIn('getIdentifier("isrg_root_x1", "raw"', trust)
+        self.assertNotIn("return true", trust)
+        self.assertIn("CloudSyncClient.configureTls(connection)", (PATCH / "FamilyAuthClient.java").read_text())
+        self.assertIn('root.getClass().getSimpleName()', method_body(CLIENT, "networkErrorName(Throwable error)"))
+        device_gate = method_body(CLIENT, "private static boolean isMiBox3Api22()")
+        self.assertIn("Build.VERSION.SDK_INT != Build.VERSION_CODES.LOLLIPOP_MR1", device_gate)
+        self.assertIn('"xiaomi".equalsIgnoreCase(Build.MANUFACTURER)', device_gate)
+        self.assertIn('identity.contains("mdz-16")', device_gate)
+
 
 if __name__ == "__main__":
     unittest.main()

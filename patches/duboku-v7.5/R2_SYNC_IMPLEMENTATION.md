@@ -313,3 +313,16 @@ Worker 不保存可直接读取的明文 familySecret：加入码只以哈希索
 - [通过 Workers 使用 R2](https://developers.cloudflare.com/r2/api/workers/workers-api-usage/)
 - [R2 Workers API 参考](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
 - [Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/)
+
+
+## Xiaomi Mi Box 3 QR login error (2026-11-09)
+
+The account-link screen showed `family_unavailable` before it could render a QR code. The explicit account-link action called `registerFamily`, which rejected registration whenever cloud sync was switched off. New TVs start with cloud sync off, so this blocked the very account-link action that enables sync. UDP/LAN sync is not involved in QR session creation. The code now uses `registerFamilyForAuth` only from `FamilyAuthClient`; ordinary cloud and LAN registration still use the cloud-sync-gated method. The persisted `cloudAuthRejected` guard is retained.
+
+
+## Xiaomi Mi Box 3 TLS handshake (2026-11-09)
+
+The Mi Box 3 account-link request failed with `SSLHandshakeException_CertPathValidatorException`. A live read-only handshake showed the Worker certificate chain `workers.dev → Let’s Encrypt YE1 → Root YE → ISRG Root X2 → ISRG Root X1`; Let’s Encrypt lists Android 7.1.1 as the minimum platform trusting ISRG Root X1. The app now adds the official ISRG Root X1 only as a fallback trust anchor for the exact Worker hostname, alongside the normal system roots, and only on Xiaomi Android 5.1 devices identified as Mi Box 3 (`MIBOX3`/`MDZ-16`/`once`). TLS 1.2 is explicit on that same device gate. Hostname verification stays enabled. Other devices keep their original TLS and trust configuration. On 2026-11-09 the user confirmed the new Xiaomi Mi Box 3 package displayed the QR and LAN sync worked.
+
+
+The QR SVG is fetched by the native family-auth client through the same host-scoped TLS compatibility path, checked as `image/svg+xml` with a 16 KiB limit, then embedded as a base64 data URI so the legacy WebView does not make a second HTTPS request. The user confirmed that QR display and LAN sync both work on Mi Box 3 with the final package. Final universal APK and manual-install package SHA-256: `d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`.

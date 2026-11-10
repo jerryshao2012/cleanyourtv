@@ -80,3 +80,6 @@ npx wrangler@latest deploy
 ```
 
 No S3 credentials, API tokens, family secrets, or other runtime secrets belong in this repository. Do not use production family data for local tests. The deployed Worker is the production endpoint used by the Android client.
+
+
+- Xiaomi Mi Box 3 follow-up verification (2026-11-09): user confirmed both LAN progress sync and QR image display work. The final universal/manual APK is SHA-256 `d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`; the QR SVG is fetched with the native host-scoped TLS compatibility path and embedded into WebView.
