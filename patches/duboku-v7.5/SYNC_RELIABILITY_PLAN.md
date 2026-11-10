@@ -188,6 +188,16 @@ UDP 进度广播 ── ACK（对端已提交/已有更新版本）──→ 普
 
 JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受系统电源状态和厂商调度影响。暂停回调只能争取在设备真正睡眠前完成本地提交和网络请求，不能保证请求到达服务器。验收目标应是“进度不丢、恢复后自动收敛”，并把休眠前成功率作为实测指标而非正确性前提。
 
+## 验收记录（2026-11-10）
+
+- 本机逻辑验收：Python 测试 27/27 通过；Worker 测试 28/28 通过；`PlaybackEventTest`、`SyncVersionTest`、`SyncClockMathTest`、`SyncDecisionTest` 均通过。源码/Worker 镜像一致，`git diff --check` 通过。
+- Sony、Hisense Fire TV、小米盒子 5 Max 的已安装 `com.supertws.dubokutv` APK 均为 versionCode 33 / 7.5，实际拉取 APK 的 SHA-256 均为 `04aab0bdaf84094f67dd65092b8a623ae42f2e7ed97dc7055b18f3415e12983c`。
+- Sony《兰香如故》第47集暂停后按 Home：日志记录最终位置提交及 UDP 广播 `2451s`，小米盒子日志收到同设备、同集、同位置；Cloud PUT 成功。小米和 Hisense 历史页都显示第47集观看比例 89%、更新时间 2026-11-10 16:08:23，与 2451/2765 秒一致。
+- 普通进度有多个 `PROGRESS_ACK matched`；另有一次 ACK 超时后云端兜底成功。Hisense 应用未运行时启动，UDP 接收器恢复，收到 LAN 进度；云端对账 `peers=4 attempted=4 failed=0 success=true`，之后 Cloud PUT 成功。三台设备均可见相同最新记录。
+- 本次观察到可信 LAN 时钟样本（Hisense 约 `-113 ms` 至 `-709 ms`，RTT `668–2079 ms`）；这只能证明探测/采样路径工作，不能替代人为设置快慢时钟和回拨的测试。
+
+**仍待实机验收**：单机无 peer 时 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。本轮 Cloud 成功日志和其他设备云读成功不是对这些故障场景的替代证明；因此全计划尚未完成验收。
+
 ## Best-practice 依据
 
 - Android 离线优先设计：先写本地、将网络写排队、恢复连接后同步，并明确冲突策略：[Offline-first data layer](https://developer.android.com/topic/architecture/data-layer/offline-first)。
