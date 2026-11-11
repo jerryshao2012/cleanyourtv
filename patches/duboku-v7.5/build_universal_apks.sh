@@ -35,8 +35,10 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     tests/test_lan_sync_ack_timeout.py \
     tests/test_sync_version_tie.py \
     tests/test_lan_clock_diagnostics.py \
+    tests/test_lan_clock_refresh.py \
     tests/test_playback_flush_state.py \
     tests/test_playback_pause_cloud_sync.py \
+    tests/test_patch_player_pause_idempotent.py \
     tests/test_sync_dex_layout.py \
     tests/test_lan_sync_message_dedup.py \
     tests/test_sync_request_debounce.py \
@@ -110,9 +112,7 @@ PLAYER_LISTENER="$SRC/smali_classes3/com/supertws/dubokutv/presentation/screens/
 if [ ! -f "$PLAYER_LISTENER" ]; then
     PLAYER_LISTENER="$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
 fi
-if ! grep -q "cond_sync_pause_done" "$PLAYER_LISTENER"; then
-    python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"
-fi
+python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"
 mkdir -p "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer"
 if [[ "$PLAYER_LISTENER" == "$SRC/smali_classes3/"* ]]; then
     mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"

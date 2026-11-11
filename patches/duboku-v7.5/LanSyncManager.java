@@ -51,6 +51,7 @@ public class LanSyncManager {
     private static volatile long sLastIncomingSyncResponseAt;
     private static final long SYNC_RESPONSE_DEBOUNCE_MS = 2000L;
     private static final long ACK_TIMEOUT_MS = 3000L;
+    private static final long CLOCK_PROBE_INTERVAL_MS = 1_800_000L;
     private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
     private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
     static final ConcurrentHashMap<String, long[]> sPendingProgressRevision = new ConcurrentHashMap<>();
@@ -58,6 +59,7 @@ public class LanSyncManager {
     private static final ConcurrentHashMap<String, String> sIncomingProgress = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> sClockProbes = new ConcurrentHashMap<>();
     private static volatile long sLastClockProbeAt;
+    private static volatile ScheduledFuture<?> sClockRefresh;
     private static ConnectivityManager.NetworkCallback sNetworkCallback;
 
     // Active player context tracking
@@ -191,8 +193,12 @@ public class LanSyncManager {
         if (enabled) {
             manager.startReceiver();
             requestSyncFromLan();
+            syncLanClock();
         } else {
             manager.stopReceiver();
+            ScheduledFuture<?> refresh = sClockRefresh;
+            if (refresh != null) refresh.cancel(false);
+            sClockRefresh = null;
         }
     }
 
@@ -532,10 +538,12 @@ public class LanSyncManager {
     public static synchronized void syncLanClock() {
         if (!isLanSyncEnabled()) return;
         long now = android.os.SystemClock.elapsedRealtime();
-        if (now - sLastClockProbeAt < 30_000L) {
-            if (sLastClockProbeAt == 0L) sSyncQueue.schedule(LanSyncManager::syncLanClock, 30_000L - now, TimeUnit.MILLISECONDS);
-            return;
-        }
+        long sinceLastProbe = now - sLastClockProbeAt;
+        long nextDelay = sinceLastProbe < 30_000L ? 30_000L - sinceLastProbe : CLOCK_PROBE_INTERVAL_MS;
+        ScheduledFuture<?> refresh = sClockRefresh;
+        if (refresh != null) refresh.cancel(false);
+        sClockRefresh = sSyncQueue.schedule(LanSyncManager::syncLanClock, nextDelay, TimeUnit.MILLISECONDS);
+        if (sinceLastProbe < 30_000L) return;
         sLastClockProbeAt = now;
         new Thread(() -> {
             String nonce = UUID.randomUUID().toString();
@@ -895,7 +903,10 @@ public class LanSyncManager {
         ConnectivityManager connectivity = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (connectivity == null) return;
         sNetworkCallback = new ConnectivityManager.NetworkCallback() {
-            @Override public void onAvailable(Network network) { CloudSyncClient.onNetworkAvailable(context); }
+            @Override public void onAvailable(Network network) {
+                CloudSyncClient.onNetworkAvailable(context);
+                syncLanClock();
+            }
         };
         try {
             connectivity.registerNetworkCallback(new NetworkRequest.Builder().addCapability(12).build(), sNetworkCallback);

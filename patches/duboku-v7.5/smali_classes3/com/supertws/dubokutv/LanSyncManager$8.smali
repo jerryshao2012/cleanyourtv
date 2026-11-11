@@ -40,5 +40,7 @@
 
     invoke-static {p1}, Lcom/supertws/dubokutv/CloudSyncClient;->onNetworkAvailable(Landroid/content/Context;)V
 
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->syncLanClock()V
+
     return-void
 .end method

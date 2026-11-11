@@ -47,6 +47,8 @@
 
 .field private static volatile sLastClockProbeAt:J
 
+.field private static volatile sClockRefresh:Ljava/util/concurrent/ScheduledFuture;
+
 .field private static volatile sLastIncomingSyncResponseAt:J
 
 .field private static volatile sLastRequestSyncTime:J
@@ -3414,7 +3416,7 @@
 .end method
 
 .method public static onLanSyncSettingChanged(Z)V
-    .registers 2
+    .registers 4
 
     .line 155
     sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sInstance:Lcom/supertws/dubokutv/LanSyncManager;
@@ -3434,11 +3436,22 @@
     .line 159
     invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->requestSyncFromLan()V
 
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->syncLanClock()V
+
     goto :goto_11
 
     .line 161
     :cond_e
     invoke-virtual {v0}, Lcom/supertws/dubokutv/LanSyncManager;->stopReceiver()V
+
+    sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sClockRefresh:Ljava/util/concurrent/ScheduledFuture;
+    if-eqz v1, :cond_cancel_done
+    const/4 v2, 0x0
+    invoke-interface {v1, v2}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
+
+    :cond_cancel_done
+    const/4 v1, 0x0
+    sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sClockRefresh:Ljava/util/concurrent/ScheduledFuture;
 
     .line 163
     :goto_11
@@ -5325,38 +5338,44 @@
 
     cmp-long v7, v3, v5
 
-    if-gez v7, :cond_30
+    if-ltz v7, :cond_retry_clock_delay
 
-    .line 470
-    sget-wide v3, Lcom/supertws/dubokutv/LanSyncManager;->sLastClockProbeAt:J
+    const-wide/32 v5, 0x1b7740
 
-    const-wide/16 v7, 0x0
+    goto :cond_clock_delay_ready
 
-    cmp-long v9, v3, v7
+    :cond_retry_clock_delay
+    sub-long v5, v5, v3
 
-    if-nez v9, :cond_2e
+    :cond_clock_delay_ready
+    sget-object v7, Lcom/supertws/dubokutv/LanSyncManager;->sClockRefresh:Ljava/util/concurrent/ScheduledFuture;
+    if-eqz v7, :cond_clock_refresh_ready
+    const/4 v8, 0x0
+    invoke-interface {v7, v8}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
 
-    sget-object v3, Lcom/supertws/dubokutv/LanSyncManager;->sSyncQueue:Ljava/util/concurrent/ScheduledExecutorService;
+    :cond_clock_refresh_ready
+    sget-object v7, Lcom/supertws/dubokutv/LanSyncManager;->sSyncQueue:Ljava/util/concurrent/ScheduledExecutorService;
+    new-instance v8, Lcom/supertws/dubokutv/LanSyncManager$10;
+    invoke-direct {v8}, Lcom/supertws/dubokutv/LanSyncManager$10;-><init>()V
+    sget-object v9, Ljava/util/concurrent/TimeUnit;->MILLISECONDS:Ljava/util/concurrent/TimeUnit;
+    invoke-interface {v7, v8, v5, v6, v9}, Ljava/util/concurrent/ScheduledExecutorService;->schedule(Ljava/lang/Runnable;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/ScheduledFuture;
+    move-result-object v7
+    sput-object v7, Lcom/supertws/dubokutv/LanSyncManager;->sClockRefresh:Ljava/util/concurrent/ScheduledFuture;
 
-    new-instance v4, Lcom/supertws/dubokutv/LanSyncManager$10;
-
-    invoke-direct {v4}, Lcom/supertws/dubokutv/LanSyncManager$10;-><init>()V
-
-    sub-long/2addr v5, v1
-
-    sget-object v1, Ljava/util/concurrent/TimeUnit;->MILLISECONDS:Ljava/util/concurrent/TimeUnit;
-
-    invoke-interface {v3, v4, v5, v6, v1}, Ljava/util/concurrent/ScheduledExecutorService;->schedule(Ljava/lang/Runnable;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/ScheduledFuture;
+    const-wide/16 v5, 0x7530
+    cmp-long v7, v3, v5
     :try_end_2e
     .catchall {:try_start_b .. :try_end_2e} :catchall_43
 
-    .line 471
+    if-ltz v7, :cond_2e
+
+    goto :cond_30
+
     :cond_2e
     monitor-exit v0
 
     return-void
 
-    .line 473
     :cond_30
     :try_start_30
     sput-wide v1, Lcom/supertws/dubokutv/LanSyncManager;->sLastClockProbeAt:J

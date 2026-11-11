@@ -11,13 +11,15 @@ class PlaybackPauseCloudSyncTest(unittest.TestCase):
         self.assertIn("if-nez p1, :cond_sync_pause_done", patcher)
         self.assertIn("Landroidx/media3/exoplayer/h0;->S()Z", patcher)
         self.assertIn("LanSyncManager;->onActivityPause(Landroid/app/Activity;)V", patcher)
-        self.assertIn('source.count(marker) != 1', patcher)
+        self.assertIn("hook_pattern.subn", patcher)
+        self.assertIn("Unrecognized pause hook in n0.smali", patcher)
         manager = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
         self.assertNotIn("PlaybackPauseListener", manager)
         build = (PATCH / "build_universal_apks.sh").read_text()
         self.assertIn('if [ ! -f "$PLAYER_LISTENER" ]; then', build)
         self.assertIn('PLAYER_LISTENER="$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"', build)
-        self.assertIn('grep -q "cond_sync_pause_done" "$PLAYER_LISTENER"', build)
+        self.assertIn('python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"', build)
+        self.assertNotIn('grep -q "cond_sync_pause_done"', build)
         self.assertIn('mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"', build)
 
     def test_database_save_callback_does_not_read_player_state_off_main_thread(self):
