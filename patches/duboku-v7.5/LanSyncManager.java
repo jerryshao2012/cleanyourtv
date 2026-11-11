@@ -998,6 +998,10 @@ public class LanSyncManager {
         PlaybackSaveGuard.INSTANCE.initialize(getAppContext());
         boolean critical = PlaybackSaveGuard.INSTANCE.isNewPlaybackEvent(rec.b, rec.c)
                 || PlaybackEvent.nearEnd(rec.d, rec.e);
+        try {
+            critical |= sActiveExoPlayer != null
+                    && !((androidx.compose.foundation.layout.s0) sActiveExoPlayer).m();
+        } catch (Throwable ignored) { }
         if (!PlaybackSaveGuard.INSTANCE.committedIfCurrent(rec.b, rec.c, rec.d, rec.g)) return;
         Context context = getAppContext();
         String deviceId = FamilyIdentity.get(context).deviceId();

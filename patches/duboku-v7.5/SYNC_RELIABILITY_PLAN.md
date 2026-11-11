@@ -228,3 +228,7 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 2026-11-10 本轮修复普通进度 ACK 闭环：ACK 按 messageId 对应 dirty revision 聚合；只有全部待确认消息结清且当前 revision 未变化才清 dirty，并在清理竞态时恢复 dirty/重排 Job。超时/发送失败仍保留 Outbox 并走普通节流兜底。Cloud peer 读取现在只在 `cloudDirty=true` 时触发 PUT，避免干净快照读操作造成重复上传。
 - 回归验收：ACK/云读门禁 Python 测试 2/2、持久 Job 测试 1/1、`SyncDecisionTest` 通过；`build_universal_apks.sh` 全量门禁通过，源码/Smali 镜像与 `git diff --check` 通过。生成 APK versionCode 33 / 7.5，SHA-256 `aaa54b2829c650d8d15f471cc7e7878be1c3ae7bb18e9f1619a4c386e2fa592d`。
 - 本轮未能重做实机验收：ADB daemon 启动时系统拒绝绑定 `5037`（`could not install *smartsocket* listener: Operation not permitted`），因此未确认电视安装哈希、LAN ACK/云端 PUT 数量或云端最终记录；前序实测记录仍有效，但不视为本构建实机验收。
+
+- 2026-11-10 本轮按实测补齐暂停保存云兜底：`onPlaybackSaveCommitted()` 在 ExoPlayer 实例仍存在但当前非播放时，将该保存分类为 critical，继续复用现有关键事件即时上传路径；构建门禁新增 source/实际 `classes3` smali 断言并核对镜像。新测试 1/1、APK 全量构建门禁及 smali 汇编通过。
+- 新 APK versionCode 33 / 7.5，SHA-256 `9af05e4fa747db01eb9c5ab8a30a4745db7f3b578d25315e458b58731bb90cbb`，已在 Sony、Hisense、小米盒子 5 Max 覆盖安装；三台拉取 APK 哈希完全一致，启动无 `VerifyError`/`NoSuchMethodError`。Sony 云端对账 `peers=4 attempted=4 failed=0`，并有 `Cloud upload succeeded`。实机《小城良方》第29集记录在 Sony/Hisense/小米历史页一致为 89%、时间 `2026-11-10 22:27:05`；运行期间 Sony 广播进度，Hisense 与小米均落库并 ACK。
+- 暂停专项仍未完全验收：电视遥控器媒体暂停键未稳定暂停；退回历史页后记录已更新，之后重新启动时云端 PUT 成功，但这不能证明暂停瞬间触发即时云 PUT。发送 HOME 后也未捕获到 `Flushed final playback position before pause` 日志；需用实际遥控器操作确认不同 Sony 播放器/Activity 生命周期回调。整机休眠/断网恢复/进程强杀/时钟偏移注入及 Worker R2 对象直接读回仍未测。
