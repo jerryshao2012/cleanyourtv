@@ -5,6 +5,18 @@ PATCH = Path(__file__).resolve().parents[1]
 
 
 class PlaybackPauseCloudSyncTest(unittest.TestCase):
+    def test_player_pause_transition_flushes_final_position(self):
+        source = (PATCH / "LanSyncManager.java").read_text()
+        self.assertIn("PlaybackPauseListener.register(exoPlayer);", source)
+        handler = (PATCH / "PlaybackPauseListener.java").read_text()
+        self.assertIn("onIsPlayingChanged(boolean isPlaying)", handler)
+        self.assertIn("was && !isPlaying", handler)
+        self.assertIn("LanSyncManager.onActivityPause(null)", handler)
+        listener = (PATCH / "smali_classes5/com/supertws/dubokutv/PlaybackPauseListener.smali").read_text()
+        self.assertIn(".method public final G(Z)V", listener)
+        self.assertIn("Playback isPlaying callback received", listener)
+        self.assertIn("LanSyncManager;->onActivityPause(Landroid/app/Activity;)V", listener)
+
     def test_database_save_callback_does_not_read_player_state_off_main_thread(self):
         source = (PATCH / "LanSyncManager.java").read_text()
         save = source.split("public static void onPlaybackSaveCommitted(Object record)", 1)[1]

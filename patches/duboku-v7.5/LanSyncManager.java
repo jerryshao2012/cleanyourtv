@@ -684,7 +684,10 @@ public class LanSyncManager {
     }
 
     public static void registerActivePlayer(Object exoPlayer, Activity activity, Object videoAddress, Object refreshCallback) {
-        if (exoPlayer != null) sActiveExoPlayer = exoPlayer;
+        if (exoPlayer != null) {
+            sActiveExoPlayer = exoPlayer;
+            PlaybackPauseListener.register(exoPlayer);
+        }
         if (activity != null) sActiveActivity = activity;
         if (videoAddress != null) sActiveVideoAddress = videoAddress;
         if (refreshCallback != null) sActiveRefreshCallback = refreshCallback;
