@@ -208,9 +208,9 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - Sony 在同剧播放后暂停于约 `592s`（播放器 UI `09:52 / 41:53`）；Hisense 和小米日志都记录该最终位置已落本地，Sony 随后记录 Cloud PUT 成功。暂停后的播放位置没有继续增长。此轮未做整机休眠、断网、进程强杀与重启注入。
 - 本轮检查进程恢复时发现源码和 APK dex 不一致：源码 `onCommittedSave()` 调度持久 Job，但实际 `classes4` 的 `CloudSyncClient.smali` 缺少 enqueue；补入后 JobScheduler 才能显示该任务。随后真实启动 Job 又暴露 `needsPersistentSync(Context)` 只存在于 Java 源码、未进入 dex；新增 smali 方法和回归断言，按 `cloudSyncEnabled && cloudDirty && !cloudAuthRejected` 返回，修复 Job 线程 `NoSuchMethodError`。JobScheduler 和持久任务真实加载路径现由 Python 测试锁定。
 - 最终修复版完整构建门禁通过；最终 APK versionCode 33 / 7.5，SHA-256 `0304564127d2b58e02e4b355df187086dcb113c140af4293da51438a4bed4678`。Sony、Hisense、小米盒子 5 Max 设备端拉取 hash 均与该构建一致；三台应用进程均可启动，未观察到新的 `NoSuchMethodError`/`VerifyError`。Sony 的 JobScheduler 历史显示 `ProgressSyncJobService` 启动后以 `app called jobFinished` 结束；相邻日志有 `Cloud read result peers=4 attempted=4 failed=0` 和 `Cloud upload succeeded`，证明任务注册和执行路径工作。
-- 进程死亡验收仍未完成：`adb shell kill -9` 被 TV shell 拒绝；`am kill` 在播放前台服务活动期间没有终止主进程；`am crash <package>` 实际只崩溃 WebView sandbox 子进程，未作为主应用恢复通过的证据。未清除数据或 force-stop 后将 dirty 保持到 Job 重启的矩阵尚待单独验收。
+- 进程死亡验收补充：`adb shell kill -9` 被 TV shell 拒绝；`am kill` 在播放前台服务活动期间没有终止主进程；`am crash <package>` 实际只崩溃 WebView sandbox 子进程。后续已用 `am force-stop` 验证：离线保存 dirty 后进程消失，恢复网络并手动启动时成功读取云端并 PUT 最新快照；仍未证明应用未被重新启动时 Job 能自动恢复（Android 对 force-stop 应用会限制后台任务）。
 
-**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；稳态 ACK 成功时严格核对本轮 PUT 是否省略；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、主进程被杀/强杀后 dirty 经 Job 恢复、按电源休眠/整机重启、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。持久 Job 在 Sony 已实测注册并执行完成，尚未证明进程死亡后的恢复；普通进度 30 秒云 PUT 节流和关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
+**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；稳态 ACK 成功时严格核对本轮 PUT 是否省略；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、应用未重新启动时 Job 自动恢复 dirty、按电源休眠/休眠期间补传、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。主进程被 force-stop 后 dirty 经手动启动补传、整机重启后的云端对账均已通过；仍未证明 Job 在应用强停/进程死亡后自动补传。普通进度 30 秒云 PUT 节流和关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
 
 ## Best-practice 依据
 
