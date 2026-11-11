@@ -214,6 +214,8 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 
 - 2026-11-11 Sony 继续验收：清除失效系统 HTTP proxy 后重启，应用恢复播放并完成云端对账（`peers=4 attempted=4 failed=0`）；验证《小城良方》第29集暂停不再增长，片尾前 113 秒时 aggressive PUT 成功，播放至 ENDED/返回主页后 Cloud PUT 成功。直接读回 Sony 的 Cloudflare R2 v2 对象确认该集为 `2513560/2513560 ms`，对象仍保留 Xiaomi 的《早春晴朗》第5集记录。Sony LAN 时钟采样到 Xiaomi 约 +5.0 秒、Hisense 约 +5.9 秒偏差；仅证明探测/采样和重启后校准执行，时钟回拨/隔离/收敛矩阵仍待测。
 - 2026-11-11 Sony 持久任务验收：播放《早春晴朗》第5集后 HOME；日志出现 `Flushed final playback position before pause`、LAN 广播以及有效 ACK。随后用 `am kill com.supertws.dubokutv` 回收后台进程（非 force-stop），无需手工启动 UI，系统约 45 秒后启动 `ProgressSyncJobService`；日志记录 `Persistent sync job started`、Cloud peer read `4/4 success=true`、`Cloud upload succeeded`，再由任务结束。证明普通进程死亡后持久 Job 可自行拉起并执行云同步；但本轮没有证明 dirty 在 Job 启动前持续存在：LAN ACK 可清除其 revision，私有 DNS 故障注入也未捕获明确的 PUT 失败，因此“云端不可达导致 dirty 保留→进程死亡→恢复后补传同一快照”这一严格链路仍待补测。测试结束已删除临时 Private DNS 设置，恢复原先的默认值。
+- 2026-11-11 后续严格故障注入尝试：Sony 严格 Private DNS 设置为无效主机后，系统日志明确记录 `UnknownHostException`（`api.dbokutv.com`）及云端对账 `attempted=0 success=false`；JobScheduler 按预期保持持久任务并显示 `CONNECTIVITY` 未满足。此时播放器已在断网错误页，不能确认产生了新的播放保存/dirty revision，故不把它算作严格补传通过。删除私有 DNS 配置后 Android 仍报告 Wi‑Fi `lastValidated=false`；尝试重连 Wi‑Fi 导致 ADB 断开，Sony 暂时离线，尚未核验网络恢复后的 Job 执行。Sony 需重新连接家庭 Wi‑Fi 后继续该实机测试。
+- 2026-11-11 本地回归复验：补丁 Python 测试 38/38、Worker Node 测试 23/23、PlaybackEvent/SyncClockMath/SyncDecision/SyncVersion/HandoffProgress 五组纯 Java assert 测试全部通过；Sony 离线期间未改动同步源码或 APK。
 
 ## Best-practice 依据
 
