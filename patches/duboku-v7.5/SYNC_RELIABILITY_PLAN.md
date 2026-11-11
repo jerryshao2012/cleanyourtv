@@ -210,7 +210,7 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 最终修复版完整构建门禁通过；最终 APK versionCode 33 / 7.5，SHA-256 `0304564127d2b58e02e4b355df187086dcb113c140af4293da51438a4bed4678`。Sony、Hisense、小米盒子 5 Max 设备端拉取 hash 均与该构建一致；三台应用进程均可启动，未观察到新的 `NoSuchMethodError`/`VerifyError`。Sony 的 JobScheduler 历史显示 `ProgressSyncJobService` 启动后以 `app called jobFinished` 结束；相邻日志有 `Cloud read result peers=4 attempted=4 failed=0` 和 `Cloud upload succeeded`，证明任务注册和执行路径工作。
 - 进程死亡验收补充：`adb shell kill -9` 被 TV shell 拒绝；`am kill` 在播放前台服务活动期间没有终止主进程；`am crash <package>` 实际只崩溃 WebView sandbox 子进程。后续已用 `am force-stop` 验证：离线保存 dirty 后进程消失，恢复网络并手动启动时成功读取云端并 PUT 最新快照；仍未证明应用未被重新启动时 Job 能自动恢复（Android 对 force-stop 应用会限制后台任务）。
 
-**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；稳态 ACK 成功时严格核对本轮 PUT 是否省略；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、应用未重新启动时 Job 自动恢复 dirty、按电源休眠/休眠期间补传、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。主进程被 force-stop 后 dirty 经手动启动补传、整机重启后的云端对账均已通过；仍未证明 Job 在应用强停/进程死亡后自动补传。普通进度 30 秒云 PUT 节流和关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
+**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、应用未重新启动时 Job 自动恢复 dirty、按电源休眠/休眠期间补传、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。主进程被 force-stop 后 dirty 经手动启动补传、整机重启后的云端对账均已通过；仍未证明 Job 在应用强停/进程死亡后自动补传。普通进度在有效 LAN ACK 后省略本轮 PUT 已通过 Sony 实测；超时后云端兜底也已观察。关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
 
 ## Best-practice 依据
 
@@ -242,3 +242,6 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 2026-11-10 Sony 重启复测：在播放停止、云端上传已成功后执行 ADB reboot；电视约 45 秒重新上线。启动应用后日志出现 `Cloud read requested: startup/resume`、`peers=4 attempted=4 failed=0 success=true` 及 `Cloud upload succeeded`，未发现同步运行时崩溃；Sony 历史仍显示《小城良方》第29集 97%。本轮证明干净状态下的重启后启动与对账；**未**证明重启瞬间仍有 dirty outbox 时 JobScheduler 必然补传。
 
 - 2026-11-10 Sony dirty/进程死亡恢复验收：以《小城良方》第29集制造离线更新，Wi-Fi 关闭期间 HOME 日志提交 `2460s`；随后 `am force-stop com.supertws.dubokutv`，确认进程 PID 不存在。离线期间没有 Cloud PUT 成功日志。电视本机定时脚本恢复 Wi-Fi后手动启动应用，日志出现 `Cloud read requested: startup`、`Cloud read result peers=4 attempted=4 failed=0 merged=false success=true` 和 `Cloud upload succeeded`；接收 LAN 旧进度 `2451s`/同版本 `2460s` 均按版本规则忽略。Sony、Hisense、小米历史页均显示第29集 98%，更新时间约 `23:08:02–03`。这验证了“本地保存→强停→网络恢复→启动后补传→多设备最终收敛”；没有验证 Android 在 force-stop 状态自动执行 Job（Android 会阻止被强停应用的后台任务），补传由用户/启动入口恢复。
+
+- 2026-11-10 Sony 普通进度 ACK/云 PUT 门控复测：在非片尾《早春晴朗》第4集（约 26%）播放 767–861s。Hisense 与小米均记录 LAN 新进度落库并发 `Progress ACK sent`；Sony 对多个 ACK 记录 `Progress ACK received` 与 `LAN ACK satisfied cloud dirty revision`。23:28:04–23:28:39 的 ACK 成功窗口无 Cloud PUT；`807s` 这条未及时 ACK 后于 23:28:43 出现云端兜底 PUT，之后 ACK 恢复且未逐条 PUT；HOME 保存最终 `861s` 后 23:29:34 Cloud PUT 成功。三台历史最终一致：早春晴朗第4集 29%、小城良方第29集 99%、兰香如故第47集 100%。据此标记 ACK 减少普通进度 PUT 和超时云兜底实机通过。
+- 2026-11-10 测试数据恢复记录：一次 UI 点选误播放已完成的《兰香如故》第47集，短暂产生 `19s` 新版本并同步；随后将播放器定位到原时长 `2765s`（46:05），HOME 保存且 Cloud PUT 成功，Hisense/小米均接收 `2765s`。三台历史核对恢复为 100%，时间 `23:22:06`。该行完成状态已恢复；测试数据被纠正。
