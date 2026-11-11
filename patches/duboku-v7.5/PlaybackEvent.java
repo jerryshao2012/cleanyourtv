@@ -24,6 +24,7 @@ final class PlaybackEvent {
         return playerState == 3 || playerState == 4;
     }
 
+    // shortcut: dedupe burst callbacks for 2s; use event IDs if duplicate flushes outlive this window.
     static boolean isDuplicateFinalFlush(String previousName, String previousEpisode,
                                          long previousPosition, long previousAt,
                                          String name, String episode, long position, long now) {

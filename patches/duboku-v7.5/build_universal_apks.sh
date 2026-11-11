@@ -107,9 +107,16 @@ for part in smali smali_classes3 smali_classes4; do
     cp -R "$PATCH_DIR/$part/." "$SRC/$part/"
 done
 PLAYER_LISTENER="$SRC/smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
-python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"
+if [ ! -f "$PLAYER_LISTENER" ]; then
+    PLAYER_LISTENER="$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
+fi
+if ! grep -q "cond_sync_pause_done" "$PLAYER_LISTENER"; then
+    python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"
+fi
 mkdir -p "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer"
-mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
+if [[ "$PLAYER_LISTENER" == "$SRC/smali_classes3/"* ]]; then
+    mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
+fi
 # ProgressSnapshot is only referenced by CloudSyncClient in classes4; keep one
 # definition there to free method IDs in the API-22 base's nearly full classes3.
 rm -f "$SRC/smali_classes3/com/supertws/dubokutv/ProgressSnapshot.smali"

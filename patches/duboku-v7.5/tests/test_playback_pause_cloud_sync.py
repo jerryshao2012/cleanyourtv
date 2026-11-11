@@ -15,6 +15,9 @@ class PlaybackPauseCloudSyncTest(unittest.TestCase):
         manager = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
         self.assertNotIn("PlaybackPauseListener", manager)
         build = (PATCH / "build_universal_apks.sh").read_text()
+        self.assertIn('if [ ! -f "$PLAYER_LISTENER" ]; then', build)
+        self.assertIn('PLAYER_LISTENER="$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"', build)
+        self.assertIn('grep -q "cond_sync_pause_done" "$PLAYER_LISTENER"', build)
         self.assertIn('mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"', build)
 
     def test_database_save_callback_does_not_read_player_state_off_main_thread(self):
