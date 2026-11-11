@@ -21,15 +21,21 @@ class PlaybackPauseCloudSyncTest(unittest.TestCase):
     def test_activity_background_flushes_final_position_and_requests_urgent_cloud_sync(self):
         source = (PATCH / "LanSyncManager.java").read_text()
         pause = source.split("public static void onActivityPause(Activity activity)", 1)[1]
-        pause = pause.split("private static void flushActivePlayback", 1)[0]
-        self.assertIn("flushActivePlayback();", pause)
-        self.assertIn("CloudSyncClient.onActivityPause();", pause)
+        pause = pause.split("private static boolean flushActivePlayback", 1)[0]
+        self.assertIn("if (!flushActivePlayback()) CloudSyncClient.onActivityPause();", pause)
+        flush = source.split("private static boolean flushActivePlayback()", 1)[1]
+        flush = flush.split("public static void onHistoryOpened()", 1)[0]
+        self.assertIn("CloudSyncClient.onCommittedSave(true);", flush)
+        self.assertIn("return true;", flush)
+        self.assertIn("return false;", flush)
 
         smali = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
         pause = smali.split(".method public static onActivityPause(Landroid/app/Activity;)V", 1)[1]
         pause = pause.split(".end method", 1)[0]
-        self.assertIn("->flushActivePlayback()V", pause)
+        self.assertIn("->flushActivePlayback()Z", pause)
+        self.assertIn("if-nez", pause)
         self.assertIn("CloudSyncClient;->onActivityPause()V", pause)
+        self.assertIn(".method private static flushActivePlayback()Z", smali)
 
 
 if __name__ == "__main__":

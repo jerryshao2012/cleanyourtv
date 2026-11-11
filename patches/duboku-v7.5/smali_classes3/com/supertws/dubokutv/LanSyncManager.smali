@@ -1187,8 +1187,10 @@
     return p0
 .end method
 
-.method private static flushActivePlayback()V
-    .registers 28
+.method private static flushActivePlayback()Z
+    .registers 29
+
+    const/16 v28, 0x0
 
     .line 848
     sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveExoPlayer:Ljava/lang/Object;
@@ -1329,7 +1331,7 @@
 
     .line 864
     :cond_60
-    return-void
+    return v28
 
     .line 865
     :cond_61
@@ -1489,7 +1491,7 @@
 
     .line 876
     :cond_e0
-    return-void
+    return v28
 
     .line 877
     :cond_e1
@@ -1575,6 +1577,8 @@
     const-string v1, "Flushed final playback position before pause"
 
     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    const/16 v28, 0x1
     :try_end_127
     .catchall {:try_start_f1 .. :try_end_127} :catchall_12e
 
@@ -1624,7 +1628,7 @@
 
     .line 869
     :cond_13e
-    return-void
+    return v28
 
     .line 880
     :catchall_13f
@@ -1679,7 +1683,7 @@
     nop
 
     .line 857
-    return-void
+    return v28
 
     :cond_flush_state_invalid
     move v9, v11
@@ -1763,7 +1767,7 @@
     .line 896
     :cond_17c
     :goto_17c
-    return-void
+    return v28
 
     .line 893
     :catchall_17d
@@ -1786,7 +1790,7 @@
     .line 851
     :cond_189
     :goto_189
-    return-void
+    return v28
 .end method
 
 .method public static formatButtonText(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;
@@ -3247,15 +3251,18 @@
 .end method
 
 .method public static onActivityPause(Landroid/app/Activity;)V
-    .registers 1
+    .registers 2
 
     .line 843
-    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->flushActivePlayback()V
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->flushActivePlayback()Z
 
-    .line 844
+    move-result v0
+
+    if-nez v0, :cond_pause_done
+
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->onActivityPause()V
 
-    .line 845
+    :cond_pause_done
     return-void
 .end method
 

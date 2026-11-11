@@ -909,15 +909,14 @@ public class LanSyncManager {
     }
 
     public static void onActivityPause(Activity activity) {
-        flushActivePlayback();
-        CloudSyncClient.onActivityPause();
+        if (!flushActivePlayback()) CloudSyncClient.onActivityPause();
     }
 
-    private static void flushActivePlayback() {
+    private static boolean flushActivePlayback() {
         Object player = sActiveExoPlayer;
         Object address = sActiveVideoAddress;
         Context context = getAppContext();
-        if (player == null || address == null || context == null) return;
+        if (player == null || address == null || context == null) return false;
         SQLiteDatabase db = null;
         Cursor cursor = null;
         try {
@@ -926,29 +925,29 @@ public class LanSyncManager {
             int playerState = exoPlayer.T();
             if (!PlaybackEvent.canFlushFinalPosition(playerState)) {
                 Log.w(TAG, "Final playback flush skipped: player state=" + playerState);
-                return;
+                return false;
             }
             long position = PlaybackEvent.finalPosition(exoPlayer.M(), Long.MAX_VALUE);
-            if (position < 0 || current.b == null || current.c == null) return;
+            if (position < 0 || current.b == null || current.c == null) return false;
             CloudSyncClient.markCloudDirty(context);
             pa.c record;
             synchronized (LanSyncManager.class) {
                 db = context.openOrCreateDatabase("record_database", Context.MODE_PRIVATE, null);
                 cursor = db.rawQuery("SELECT id,name,episode,progressInMillis,durationInMillis,createdAt,modifiedAt,videoPageUrl,detailPageUrl,posterUrl FROM records WHERE name = ? AND episode = ? ORDER BY modifiedAt DESC LIMIT 1",
                         new String[]{current.b, current.c});
-                if (!cursor.moveToFirst()) return;
+                if (!cursor.moveToFirst()) return false;
                 String id = cursor.getString(0), name = cursor.getString(1), episode = cursor.getString(2);
                 long duration = cursor.getLong(4), created = cursor.getLong(5), oldModified = cursor.getLong(6);
                 String video = cursor.getString(7), detail = cursor.getString(8), poster = cursor.getString(9);
                 cursor.close(); cursor = null;
-                if (duration <= 0 || oldModified == Long.MAX_VALUE) return;
+                if (duration <= 0 || oldModified == Long.MAX_VALUE) return false;
                 position = PlaybackEvent.finalPosition(position, duration);
                 long modified = Math.max(FamilyClock.now(context), oldModified + 1L);
                 ContentValues values = new ContentValues();
                 values.put("progressInMillis", position); values.put("modifiedAt", modified);
                 db.beginTransaction();
                 try {
-                    if (db.update("records", values, "id = ?", new String[]{id}) != 1) return;
+                    if (db.update("records", values, "id = ?", new String[]{id}) != 1) return false;
                     db.setTransactionSuccessful();
                 } finally { db.endTransaction(); }
                 record = new pa.c(id, name, episode, position, duration, created, modified, video, detail, poster);
@@ -962,8 +961,10 @@ public class LanSyncManager {
             publishPlaybackProgress(record, true, version);
             CloudSyncClient.onCommittedSave(true);
             Log.i(TAG, "Flushed final playback position before pause");
+            return true;
         } catch (Throwable e) {
             Log.w(TAG, "Final playback flush deferred: " + e.getClass().getSimpleName());
+            return false;
         } finally {
             if (cursor != null) cursor.close();
             if (db != null) db.close();
