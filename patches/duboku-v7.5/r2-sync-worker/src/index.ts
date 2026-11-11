@@ -531,15 +531,12 @@ async function redeemJoinCode(request: Request, env: Env): Promise<Response> {
   } catch { return error(500, 'family_read_failed'); }
 }
 
-function episodeNum(value: string): number { const match = /(\d+)/.exec(value); return match ? Number(match[1]) : 0; }
 function wins(incoming: RecordItem, current: RecordItem): boolean {
   const a = incoming.clockVersion, b = current.clockVersion;
   if (a.utcMillis !== b.utcMillis) return a.utcMillis > b.utcMillis;
   if (a.logicalCounter !== b.logicalCounter) return a.logicalCounter > b.logicalCounter;
   if (a.deviceId !== b.deviceId) return a.deviceId > b.deviceId;
-  if (a.logicalCounter !== 0) return false;
-  const incomingEpisode = episodeNum(incoming.episode), currentEpisode = episodeNum(current.episode);
-  return incomingEpisode > currentEpisode || (incomingEpisode === currentEpisode && incoming.progressInMillis > current.progressInMillis);
+  return false;
 }
 function mergeRecord(rows: RecordItem[], incoming: RecordItem): void {
   const index = rows.findIndex(row => row.name === incoming.name || (!!incoming.detailPageUrl && row.detailPageUrl === incoming.detailPageUrl));

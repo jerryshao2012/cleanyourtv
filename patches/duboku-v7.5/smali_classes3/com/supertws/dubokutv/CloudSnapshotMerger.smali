@@ -522,30 +522,7 @@
     .line 50
     if-eqz v19, :cond_1aa
 
-    if-gtz v2, :cond_1aa
-
-    if-nez v2, :cond_1a8
-
-    iget-wide v2, v13, Lcom/supertws/dubokutv/SyncVersion;->logicalCounter:J
-
-    cmp-long v4, v2, v36
-
-    if-nez v4, :cond_1a8
-
-    .line 51
-    invoke-static/range {v39 .. v39}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
-
-    move-result v23
-
-    invoke-static/range {v20 .. v20}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
-
-    move-result v24
-
-    invoke-static/range {v23 .. v28}, Lcom/supertws/dubokutv/ProgressSnapshot;->winsEqualTimestamp(IIJJ)Z
-
-    move-result v2
-
-    if-eqz v2, :cond_1a8
+    if-lez v2, :cond_1a8
 
     goto :goto_1aa
 

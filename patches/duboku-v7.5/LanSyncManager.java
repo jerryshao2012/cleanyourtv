@@ -365,15 +365,6 @@ public class LanSyncManager {
                                         remoteVersion.deviceId, localVersion.utcMillis, localVersion.logicalCounter,
                                         localVersion.deviceId);
                                 if (versionOrder > 0) accept = true;
-                                else if (versionOrder == 0 && remoteVersion.logicalCounter == 0L) {
-                                    int remoteEpNum = parseEpisodeNum(episode);
-                                    int localEpNum = parseEpisodeNum(existingEp);
-                                    if (remoteEpNum > localEpNum) {
-                                        accept = true;
-                                    } else if (remoteEpNum == localEpNum && progressInMillis > existingProg) {
-                                        accept = true;
-                                    }
-                                }
                             }
 
                             if (!accept) {

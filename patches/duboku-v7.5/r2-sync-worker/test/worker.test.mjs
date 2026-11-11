@@ -102,6 +102,19 @@ test('v2 sync orders rows by UTC time, logical counter, then device id', async (
   e.database.close();
 });
 
+test('equal v2 version is idempotent even when episode or progress is larger', async () => {
+  const e = env(); await create(e, FAMILY);
+  const base = { id: 'episode-1', name: 'Equal version', episode: '第1集', progressInMillis: 1000, durationInMillis: 10000, createdAt: 1, modifiedAt: 100, videoPageUrl: '', detailPageUrl: '', posterUrl: '' };
+  const version = { utcMillis: 1000, logicalCounter: 0, deviceId: DEVICE };
+  const body = row => ({ schemaVersion: 2, familyId: FAMILY, deviceId: DEVICE, updatedAt: 1000, records: [{ ...row, clockVersion: version }] });
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: body(base) })).status, 204);
+  assert.equal((await call(e, `/v2/sync/${FAMILY}/${DEVICE}`, { method: 'PUT', body: body({ ...base, episode: '第9集', progressInMillis: 9000 }) })).status, 204);
+  const current = await (await call(e, `/v2/sync/${FAMILY}/${DEVICE}`)).json();
+  assert.equal(current.records[0].episode, '第1集');
+  assert.equal(current.records[0].progressInMillis, 1000);
+  e.database.close();
+});
+
 test('v1 sync endpoint is removed and v2 rejects legacy schema bodies', async () => {
   const e = env(); await create(e, FAMILY);
   assert.equal((await call(e, `/v1/sync/${FAMILY}/${DEVICE}`)).status, 404);

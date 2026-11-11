@@ -479,49 +479,6 @@
 
     .line 303
     :cond_fe
-    if-nez v0, :cond_11e
-
-    iget-wide v3, v7, Lcom/supertws/dubokutv/SyncVersion;->logicalCounter:J
-
-    cmp-long v0, v3, v19
-
-    if-nez v0, :cond_11e
-
-    .line 304
-    iget-object v0, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$episode:Ljava/lang/String;
-
-    invoke-static {v0}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
-
-    move-result v0
-
-    .line 305
-    invoke-static {v15}, Lcom/supertws/dubokutv/LanSyncManager;->parseEpisodeNum(Ljava/lang/String;)I
-
-    move-result v3
-
-    .line 306
-    if-le v0, v3, :cond_114
-
-    .line 307
-    const/4 v0, 0x1
-
-    goto :goto_11f
-
-    .line 308
-    :cond_114
-    if-ne v0, v3, :cond_11e
-
-    iget-wide v3, v1, Lcom/supertws/dubokutv/LanSyncManager$2;->val$progressInMillis:J
-
-    cmp-long v0, v3, v16
-
-    if-lez v0, :cond_11e
-
-    .line 309
-    const/4 v0, 0x1
-
-    goto :goto_11f
-
     .line 314
     :cond_11e
     const/4 v0, 0x0

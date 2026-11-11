@@ -77,8 +77,4 @@ public final class ProgressSnapshot {
 
     static boolean isWorkerCompatibleUrl(String value) { return validUrl(value); }
 
-    /** Tie breaker shared by local merge checks; it never removes rows on rejection. */
-    public static boolean winsEqualTimestamp(int incomingEpisode, int localEpisode, long incomingProgress, long localProgress) {
-        return incomingEpisode > localEpisode || (incomingEpisode == localEpisode && incomingProgress > localProgress);
-    }
 }

@@ -47,8 +47,7 @@ final class CloudSnapshotMerger {
                                 oldDetail == null || oldDetail.isEmpty() ? detail : oldDetail, oldModified, localDevice);
                         int versionOrder = SyncVersion.compare(remoteVersion.utcMillis, remoteVersion.logicalCounter, remoteVersion.deviceId,
                                 localVersion.utcMillis, localVersion.logicalCounter, localVersion.deviceId);
-                        boolean accept = id == null || versionOrder > 0 || (versionOrder == 0 && remoteVersion.logicalCounter == 0L
-                                && ProgressSnapshot.winsEqualTimestamp(LanSyncManager.parseEpisodeNum(episode), LanSyncManager.parseEpisodeNum(oldEpisode), progress, oldProgress));
+                        boolean accept = id == null || versionOrder > 0;
                         if (!accept) continue;
                         String poster = row.optString("posterUrl", "");
                         if (!poster.startsWith("http://") && !poster.startsWith("https://")) poster = oldPoster == null ? "" : oldPoster;

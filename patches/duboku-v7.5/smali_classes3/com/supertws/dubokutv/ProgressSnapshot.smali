@@ -623,34 +623,6 @@
     return v0
 .end method
 
-.method public static winsEqualTimestamp(IIJJ)Z
-    .registers 6
-
-    .line 82
-    if-gt p0, p1, :cond_b
-
-    if-ne p0, p1, :cond_9
-
-    cmp-long p0, p2, p4
-
-    if-lez p0, :cond_9
-
-    goto :goto_b
-
-    :cond_9
-    const/4 p0, 0x0
-
-    goto :goto_c
-
-    :cond_b
-    :goto_b
-    const/4 p0, 0x1
-
-    :goto_c
-    return p0
-.end method
-
-
 # virtual methods
 .method public toJson()Lorg/json/JSONObject;
     .registers 5
