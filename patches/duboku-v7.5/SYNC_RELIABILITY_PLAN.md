@@ -210,7 +210,10 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 最终修复版完整构建门禁通过；最终 APK versionCode 33 / 7.5，SHA-256 `0304564127d2b58e02e4b355df187086dcb113c140af4293da51438a4bed4678`。Sony、Hisense、小米盒子 5 Max 设备端拉取 hash 均与该构建一致；三台应用进程均可启动，未观察到新的 `NoSuchMethodError`/`VerifyError`。Sony 的 JobScheduler 历史显示 `ProgressSyncJobService` 启动后以 `app called jobFinished` 结束；相邻日志有 `Cloud read result peers=4 attempted=4 failed=0` 和 `Cloud upload succeeded`，证明任务注册和执行路径工作。
 - 进程死亡验收补充：`adb shell kill -9` 被 TV shell 拒绝；`am kill` 在播放前台服务活动期间没有终止主进程；`am crash <package>` 实际只崩溃 WebView sandbox 子进程。后续已用 `am force-stop` 验证：离线保存 dirty 后进程消失，恢复网络并手动启动时成功读取云端并 PUT 最新快照；仍未证明应用未被重新启动时 Job 能自动恢复（Android 对 force-stop 应用会限制后台任务）。
 
-**当前仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒能否通过减压改善；严格单机且无活动 LAN peer 时的 PUT 精确次数；真实网络层 UDP/ACK 丢包注入；实际进程死亡后未启动 UI 的 Job 自动补传（用户 force-stop 时 Android 会禁止该 app 的后台任务）；播放器暂停控件自身是否触发保存、片尾前 aggressive 同步与 ENDED close 矩阵；小幅/1 小时回拨、重启后偏差恢复、无互联网/LAN 隔离时钟源切换及多轮 slew 收敛。新集首次播放即时云/LAN同步已在 Xiaomi→Sony/Hisense 实测通过。休眠期间即时联网不作保证。有效 LAN ACK 降低普通 PUT、无 ACK 节流云兜底、休眠唤醒后自动 Job 补传、LAN/云端独立故障及网络恢复已有部分实机通过记录。全计划仍未全部完成验收。
+**当前仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒能否通过减压改善；严格单机且无活动 LAN peer 时的 PUT 精确次数；真实网络层 UDP/ACK 丢包注入；在可确认云端 PUT 失败且 dirty 未被 LAN ACK 清除的条件下，证明进程死亡后 Job 自动补传同一待同步快照；小幅/1 小时回拨、重启后偏差恢复、无互联网/LAN 隔离时钟源切换及多轮 slew 收敛。用户 force-stop 后 Android 会限制该 app 的后台任务，不作为自动恢复验收条件。新集首次播放即时云/LAN同步、暂停即时云上传、近片尾 aggressive 上传和 ENDED close 已实测通过。休眠期间即时联网不作保证。有效 LAN ACK 降低普通 PUT、无 ACK 节流云兜底、休眠唤醒后自动 Job 补传、LAN/云端独立故障及网络恢复已有部分实机通过记录。全计划仍未全部完成验收。
+
+- 2026-11-11 Sony 继续验收：清除失效系统 HTTP proxy 后重启，应用恢复播放并完成云端对账（`peers=4 attempted=4 failed=0`）；验证《小城良方》第29集暂停不再增长，片尾前 113 秒时 aggressive PUT 成功，播放至 ENDED/返回主页后 Cloud PUT 成功。直接读回 Sony 的 Cloudflare R2 v2 对象确认该集为 `2513560/2513560 ms`，对象仍保留 Xiaomi 的《早春晴朗》第5集记录。Sony LAN 时钟采样到 Xiaomi 约 +5.0 秒、Hisense 约 +5.9 秒偏差；仅证明探测/采样和重启后校准执行，时钟回拨/隔离/收敛矩阵仍待测。
+- 2026-11-11 Sony 持久任务验收：播放《早春晴朗》第5集后 HOME；日志出现 `Flushed final playback position before pause`、LAN 广播以及有效 ACK。随后用 `am kill com.supertws.dubokutv` 回收后台进程（非 force-stop），无需手工启动 UI，系统约 45 秒后启动 `ProgressSyncJobService`；日志记录 `Persistent sync job started`、Cloud peer read `4/4 success=true`、`Cloud upload succeeded`，再由任务结束。证明普通进程死亡后持久 Job 可自行拉起并执行云同步；但本轮没有证明 dirty 在 Job 启动前持续存在：LAN ACK 可清除其 revision，私有 DNS 故障注入也未捕获明确的 PUT 失败，因此“云端不可达导致 dirty 保留→进程死亡→恢复后补传同一快照”这一严格链路仍待补测。测试结束已删除临时 Private DNS 设置，恢复原先的默认值。
 
 ## Best-practice 依据
 
