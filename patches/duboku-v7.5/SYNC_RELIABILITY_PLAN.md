@@ -285,7 +285,7 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 2026-11-11 near-end 阈值单测补验：原 `PlaybackEventTest` 只有一般 near-end 正例，新增短片 95% 起点、略低于 95%、30 秒最小阈值和 120 秒最大阈值边界；Java assert 测试通过，且 `PlaybackEventTest.java` 与 `PlaybackEvent.java` 两份源码镜像一致。仅证明阈值纯函数边界，片尾实际播放、aggressive 云同步与 ENDED close 仍待实机验收。
 - 同步回归复验：补丁目录 Python 38/38、Worker Node 23/23、Java 播放事件/时钟数学/同步决策/版本 4 项均通过；关键计划与测试镜像一致，`git diff --check` 通过。未重建 APK，因为本轮只有纯函数测试及验收文档变化，未改运行时源码或 smali。
 
-- 2026-11-11 Hisense 冷启动后的 ACK 配对观察：先 force-stop 再启动 Hisense Duboku，随后 Xiaomi 播放《早春晴朗》第5集。Hisense 日志连续出现 `Progress ACK sent` 和 `Synced newer remote progress`；与 Xiaomi 的同一进度广播时间对照，样本 ACK 延迟约 0.33–0.73 秒，接收端实际写入进度。此观测证明冷启动后稳态 ACK 可低于 3 秒；由于未保留启动最初全量历史处理的完整时间线，不将其算作“启动/全量历史队列 ACK 延迟已解决”，仍需带接收端启动标记和历史消息计数重测。
+- 2026-11-11 Hisense 冷启动后的 ACK 初测：先 force-stop 再启动 Hisense Duboku，随后 Xiaomi 播放《早春晴朗》第5集。Hisense 日志出现落库与 ACK；该次只保留了稳态部分日志，启动最初全量历史时间线不完整。此初测限制已由下方“冷启动 + 全量历史并发 ACK 验收”补测更新；不再单独作为待验收项。
 
 - 2026-11-11 全量构建/实机二进制复核：`bash build_universal_apks.sh` 全部 Python/Worker/Java/Smali 门禁通过并重新组装通用 APK。Hisense 与 Xiaomi 均为 versionCode 33 / 7.5；两台已安装 APK 与新组装产物的 `classes.dex`、`classes3.dex`、`classes4.dex` SHA-256 完全一致（分别 `4cba5910…`、`f61fe562…`、`96b365d2…`），虽 APK 容器 SHA-256 不同（安装件 `82c9a1b6…`，新产物 `2b268528…`）。确认运行时同步 DEX 没有漂移，不因签名/打包容器差异重装。真实 UDP 丢包注入尝试因电视 shell 用户权限不足未执行，不能记为通过。
 
