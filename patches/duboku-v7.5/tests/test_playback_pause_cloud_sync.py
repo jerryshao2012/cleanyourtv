@@ -6,16 +6,16 @@ PATCH = Path(__file__).resolve().parents[1]
 
 class PlaybackPauseCloudSyncTest(unittest.TestCase):
     def test_player_pause_transition_flushes_final_position(self):
-        source = (PATCH / "LanSyncManager.java").read_text()
-        self.assertIn("PlaybackPauseListener.register(exoPlayer);", source)
-        handler = (PATCH / "PlaybackPauseListener.java").read_text()
-        self.assertIn("onIsPlayingChanged(boolean isPlaying)", handler)
-        self.assertIn("was && !isPlaying", handler)
-        self.assertIn("LanSyncManager.onActivityPause(null)", handler)
-        listener = (PATCH / "smali_classes5/com/supertws/dubokutv/PlaybackPauseListener.smali").read_text()
-        self.assertIn(".method public final G(Z)V", listener)
-        self.assertIn("Playback isPlaying callback received", listener)
-        self.assertIn("LanSyncManager;->onActivityPause(Landroid/app/Activity;)V", listener)
+        patcher = (PATCH / "patch_player_pause.py").read_text()
+        self.assertNotIn("getValue()Ljava/lang/Object;", patcher)
+        self.assertIn("if-nez p1, :cond_sync_pause_done", patcher)
+        self.assertIn("Landroidx/media3/exoplayer/h0;->S()Z", patcher)
+        self.assertIn("LanSyncManager;->onActivityPause(Landroid/app/Activity;)V", patcher)
+        self.assertIn('source.count(marker) != 1', patcher)
+        manager = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
+        self.assertNotIn("PlaybackPauseListener", manager)
+        build = (PATCH / "build_universal_apks.sh").read_text()
+        self.assertIn('mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"', build)
 
     def test_database_save_callback_does_not_read_player_state_off_main_thread(self):
         source = (PATCH / "LanSyncManager.java").read_text()

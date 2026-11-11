@@ -3695,8 +3695,6 @@
     if-eqz p0, :cond_4
 
     sput-object p0, Lcom/supertws/dubokutv/LanSyncManager;->sActiveExoPlayer:Ljava/lang/Object;
-    invoke-static {p0}, Lcom/supertws/dubokutv/PlaybackPauseListener;->register(Ljava/lang/Object;)V
-
     .line 619
     :cond_4
     if-eqz p1, :cond_8

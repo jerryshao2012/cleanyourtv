@@ -14,7 +14,7 @@ KEYSTORE="$ROOT/apks/debug.keystore"
 for file in "$BASE" "$KEYSTORE" "$AAPT" "$BT/apksigner" "$BT/zipalign"; do
     test -f "$file" || { echo "Missing build input: $file" >&2; exit 1; }
 done
-for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java LanSyncManager.java PlaybackPauseListener.java CloudSnapshotMerger.java CloudSyncClient.java ProgressSyncJobService.java ProgressSnapshot.java PlaybackSaveGuard.java \
+for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java LanSyncManager.java patch_player_pause.py CloudSnapshotMerger.java CloudSyncClient.java ProgressSyncJobService.java ProgressSnapshot.java PlaybackSaveGuard.java \
     'smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/VideoPlayerScreenViewModel$saveRecord$2.smali' \
     FamilyClock.java PlaybackEvent.java SyncClockMath.java SyncDecision.java SyncVersion.java SyncVersionStore.java \
     FamilySyncPanel.java FamilyAuthClient.java r2-sync-worker/src/index.ts r2-sync-worker/test/worker.test.mjs res/raw/isrg_root_x1.pem \
@@ -22,7 +22,6 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     'smali_classes3/com/supertws/dubokutv/LanSyncManager$2.smali' \
     smali_classes3/com/supertws/dubokutv/LanSyncManagerPatch.smali \
     smali_classes4/com/supertws/dubokutv/ProgressSnapshot.smali \
-    smali_classes5/com/supertws/dubokutv/PlaybackPauseListener.smali \
     smali_classes3/com/supertws/dubokutv/CloudSnapshotMerger.smali FamilySyncPanel.java \
     'smali_classes3/com/supertws/dubokutv/ProgressSyncJobService$0.smali' \
     smali_classes3/com/supertws/dubokutv/FamilyIdentity.smali \
@@ -104,9 +103,13 @@ FAMILY_PANEL_CLASSES="$SRC/smali_classes5/com/supertws/dubokutv"
 mkdir -p "$FAMILY_PANEL_CLASSES"
 find "$FAMILY_PANEL_CLASSES" -maxdepth 1 -type f \
     \( -name 'FamilySyncPanel.smali' -o -name 'FamilySyncPanel$*.smali' \) -delete
-for part in smali smali_classes3 smali_classes4 smali_classes5; do
+for part in smali smali_classes3 smali_classes4; do
     cp -R "$PATCH_DIR/$part/." "$SRC/$part/"
 done
+PLAYER_LISTENER="$SRC/smali_classes3/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
+python3 "$PATCH_DIR/patch_player_pause.py" "$PLAYER_LISTENER"
+mkdir -p "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer"
+mv "$PLAYER_LISTENER" "$SRC/smali_classes4/com/supertws/dubokutv/presentation/screens/videoPlayer/n0.smali"
 # ProgressSnapshot is only referenced by CloudSyncClient in classes4; keep one
 # definition there to free method IDs in the API-22 base's nearly full classes3.
 rm -f "$SRC/smali_classes3/com/supertws/dubokutv/ProgressSnapshot.smali"
