@@ -18,6 +18,10 @@ class PersistentSyncJobTest(unittest.TestCase):
         self.assertIn(".setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)", source)
         self.assertIn("CloudSyncClient.needsPersistentSync(context)", source)
         self.assertIn("ProgressSyncJobService.schedule(context)", client)
+        cloud_smali = (PATCH / "smali_classes4/com/supertws/dubokutv/CloudSyncClient.smali").read_text()
+        save_method = cloud_smali.split(".method public static onCommittedSave(Z)V", 1)[1].split(".end method", 1)[0]
+        self.assertIn("ProgressSyncJobService;->schedule(Landroid/content/Context;)V", save_method)
+        self.assertIn(".method public static needsPersistentSync(Landroid/content/Context;)Z", cloud_smali)
         self.assertIn('getBoolean("cloudDirty", false)', client)
         self.assertIn('getBoolean("cloudAuthRejected", false)', client)
         self.assertIn("android.permission.RECEIVE_BOOT_COMPLETED", manifest)

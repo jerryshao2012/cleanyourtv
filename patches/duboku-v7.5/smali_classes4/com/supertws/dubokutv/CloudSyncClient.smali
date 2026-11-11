@@ -2468,6 +2468,8 @@
 
     invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->apply()V
 
+    invoke-static {v0}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
+
     .line 126
     invoke-virtual {v0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
@@ -2593,6 +2595,36 @@
     .line 111
     :cond_19
     return-void
+.end method
+
+.method public static needsPersistentSync(Landroid/content/Context;)Z
+    .registers 3
+
+    invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->initialize(Landroid/content/Context;)V
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
+    move-result v0
+    if-eqz v0, :cond_19
+
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    move-result-object v0
+    const-string v1, "cloudDirty"
+    const/4 v2, 0x0
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+    move-result v1
+    if-eqz v1, :cond_19
+
+    const-string v1, "cloudAuthRejected"
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+    move-result v0
+    if-eqz v0, :cond_18
+
+    :cond_19
+    const/4 v0, 0x0
+    return v0
+
+    :cond_18
+    const/4 v0, 0x1
+    return v0
 .end method
 
 .method private static open(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/net/HttpURLConnection;
