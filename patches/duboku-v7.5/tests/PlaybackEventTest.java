@@ -14,6 +14,10 @@ public final class PlaybackEventTest {
         assert PlaybackEvent.finalPosition(9500, 10000) == 9500;
         assert PlaybackEvent.finalPosition(12000, 10000) == 10000;
         assert PlaybackEvent.finalPosition(1, 0) == -1;
+        assert !PlaybackEvent.canFlushFinalPosition(1);
+        assert !PlaybackEvent.canFlushFinalPosition(2);
+        assert PlaybackEvent.canFlushFinalPosition(3);
+        assert PlaybackEvent.canFlushFinalPosition(4);
         System.out.println("Playback event tests passed");
     }
 }

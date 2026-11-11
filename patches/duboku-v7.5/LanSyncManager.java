@@ -922,7 +922,13 @@ public class LanSyncManager {
         Cursor cursor = null;
         try {
             qa.f0 current = (qa.f0) address;
-            long position = PlaybackEvent.finalPosition(((androidx.media3.exoplayer.h0) player).M(), Long.MAX_VALUE);
+            androidx.media3.exoplayer.h0 exoPlayer = (androidx.media3.exoplayer.h0) player;
+            int playerState = exoPlayer.T();
+            if (!PlaybackEvent.canFlushFinalPosition(playerState)) {
+                Log.w(TAG, "Final playback flush skipped: player state=" + playerState);
+                return;
+            }
+            long position = PlaybackEvent.finalPosition(exoPlayer.M(), Long.MAX_VALUE);
             if (position < 0 || current.b == null || current.c == null) return;
             CloudSyncClient.markCloudDirty(context);
             pa.c record;

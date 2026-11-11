@@ -13,6 +13,25 @@
     return-void
 .end method
 
+.method static canFlushFinalPosition(I)Z
+    .registers 2
+
+    const/4 v0, 0x3
+    if-ne p0, v0, :cond_0
+    const/4 v0, 0x1
+    return v0
+
+    :cond_0
+    const/4 v0, 0x4
+    if-ne p0, v0, :cond_1
+    const/4 v0, 0x1
+    return v0
+
+    :cond_1
+    const/4 v0, 0x0
+    return v0
+.end method
+
 .method static finalPosition(JJ)J
     .registers 7
 

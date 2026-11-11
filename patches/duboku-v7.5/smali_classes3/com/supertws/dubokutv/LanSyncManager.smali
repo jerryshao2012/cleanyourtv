@@ -1226,6 +1226,16 @@
     .line 856
     check-cast v0, Landroidx/media3/exoplayer/h0;
 
+    invoke-virtual {v0}, Landroidx/media3/exoplayer/h0;->T()I
+
+    move-result v11
+
+    invoke-static {v11}, Lcom/supertws/dubokutv/PlaybackEvent;->canFlushFinalPosition(I)Z
+
+    move-result v10
+
+    if-eqz v10, :cond_flush_state_invalid
+
     invoke-virtual {v0}, Landroidx/media3/exoplayer/h0;->M()J
 
     move-result-wide v3
@@ -1670,6 +1680,33 @@
 
     .line 857
     return-void
+
+    :cond_flush_state_invalid
+    move v9, v11
+
+    const-string v10, "LanSyncManager"
+
+    new-instance v11, Ljava/lang/StringBuilder;
+
+    invoke-direct {v11}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v0, "Final playback flush skipped: player state="
+
+    invoke-virtual {v11, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v9}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v0
+
+    invoke-static {v10, v0}, Landroid/util/Log;->w(Ljava/lang/String;Ljava/lang/String;)I
+
+    goto :goto_14d
 
     .line 890
     :catchall_150

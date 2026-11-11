@@ -19,4 +19,8 @@ final class PlaybackEvent {
     static long finalPosition(long position, long duration) {
         return position < 0 || duration <= 0 ? -1L : Math.min(position, duration);
     }
+
+    static boolean canFlushFinalPosition(int playerState) {
+        return playerState == 3 || playerState == 4;
+    }
 }
