@@ -32,6 +32,7 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     tests/test_lan_sync_peer_validation.py \
     tests/test_lan_sync_ack_timeout.py \
     tests/test_sync_version_tie.py \
+    tests/test_lan_clock_diagnostics.py \
     tests/test_playback_pause_cloud_sync.py \
     tests/test_lan_sync_message_dedup.py \
     tests/test_sync_request_debounce.py \

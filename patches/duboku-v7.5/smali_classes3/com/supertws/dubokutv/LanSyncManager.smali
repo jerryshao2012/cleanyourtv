@@ -2378,12 +2378,20 @@
 
     invoke-static/range {v8 .. v20}, Lcom/supertws/dubokutv/FamilyClock;->observeLanTime(Landroid/content/Context;Ljava/lang/String;JJJJJZ)V
 
+    invoke-static/range {v10 .. v17}, Lcom/supertws/dubokutv/SyncClockMath;->offsetMillis(JJJJ)J
+
+    move-result-wide v3
+
+    invoke-static/range {v10 .. v17}, Lcom/supertws/dubokutv/SyncClockMath;->roundTripMillis(JJJJ)J
+
+    move-result-wide v5
+
     .line 213
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
 
-    const-string v2, "LAN clock sample from "
+    const-string v2, "LAN clock reply from "
 
     invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
@@ -2393,7 +2401,27 @@
 
     move-result-object v0
 
-    const-string v2, " offset/uncertainty="
+    const-string v2, " sampleOffsetMs="
+
+    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v3, v4}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v2, " rttMs="
+
+    invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0, v5, v6}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v2, " familyUncertaintyMs="
 
     invoke-virtual {v0, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 

@@ -237,10 +237,14 @@ public class LanSyncManager {
                 if (!FamilyIdentity.validId(fromDevice) || !identity.peers().contains(fromDevice)
                         || !sCurrentDeviceId.equals(target) || !FamilyIdentity.validId(nonce) || t1 == null
                         || t1.longValue() != json.optLong("t1", -2L)) return;
-                FamilyClock.observeLanTime(mContext, fromDevice, t1, json.optLong("t2", -1L),
-                        json.optLong("t3", -1L), System.currentTimeMillis(),
+                long t2 = json.optLong("t2", -1L), t3 = json.optLong("t3", -1L);
+                long t4 = System.currentTimeMillis();
+                long offsetMs = SyncClockMath.offsetMillis(t1, t2, t3, t4);
+                long rttMs = SyncClockMath.roundTripMillis(t1, t2, t3, t4);
+                FamilyClock.observeLanTime(mContext, fromDevice, t1, t2, t3, t4,
                         json.optLong("uncertaintyMs", 86_400_000L), json.optBoolean("trusted", false));
-                Log.i(TAG, "LAN clock sample from " + fromDevice + " offset/uncertainty=" + FamilyClock.uncertainty(mContext));
+                Log.i(TAG, "LAN clock reply from " + fromDevice + " sampleOffsetMs=" + offsetMs
+                        + " rttMs=" + rttMs + " familyUncertaintyMs=" + FamilyClock.uncertainty(mContext));
                 return;
             }
             if ("PROGRESS_ACK".equals(action)) {
