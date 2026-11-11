@@ -5,6 +5,8 @@
 
 # static fields
 .field private static final JOB_ID:I = 0x5359
+.field private static volatile reschedule:Z
+.field private static volatile running:Z
 
 
 # instance fields
@@ -25,14 +27,22 @@
     .registers 6
 
     .line 18
-    const-string v0, "R2Sync"
-
     if-nez p0, :cond_5
 
     return-void
 
     .line 20
     :cond_5
+    sget-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+
+    if-eqz v0, :cond_6
+
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->reschedule:Z
+    return-void
+
+    :cond_6
+    const-string v0, "R2Sync"
     :try_start_5
     const-string v1, "jobscheduler"
 
@@ -193,17 +203,32 @@
     .line 41
     :cond_23
     iget-boolean v0, p0, Lcom/supertws/dubokutv/ProgressSyncJobService;->stopped:Z
-
     if-nez v0, :cond_2e
-
+    move-object v4, p1
     invoke-static {p1}, Lcom/supertws/dubokutv/CloudSyncClient;->needsPersistentSync(Landroid/content/Context;)Z
-
     move-result p1
-
-    invoke-virtual {p0, p2, p1}, Lcom/supertws/dubokutv/ProgressSyncJobService;->jobFinished(Landroid/app/job/JobParameters;Z)V
-
-    .line 42
+    move v3, p1
+    const/4 v2, 0x0
+    invoke-virtual {p0, p2, v2}, Lcom/supertws/dubokutv/ProgressSyncJobService;->jobFinished(Landroid/app/job/JobParameters;Z)V
+    sget-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->reschedule:Z
+    if-nez v0, :cond_31
+    if-eqz v3, :cond_32
+    :cond_31
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->reschedule:Z
+    const/4 v0, 0x0
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+    invoke-static {v4}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->reschedule:Z
+    goto :cond_33
+    :cond_32
+    const/4 v0, 0x0
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+    goto :cond_33
     :cond_2e
+    const/4 v0, 0x0
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+    :cond_33
     return-void
 .end method
 
@@ -214,6 +239,14 @@
     const/4 v0, 0x0
 
     iput-boolean v0, p0, Lcom/supertws/dubokutv/ProgressSyncJobService;->stopped:Z
+    const/4 v0, 0x1
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+
+    const-string v0, "R2Sync"
+
+    const-string v1, "Persistent sync job started"
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 35
     invoke-virtual {p0}, Lcom/supertws/dubokutv/ProgressSyncJobService;->getApplicationContext()Landroid/content/Context;
@@ -241,13 +274,22 @@
 .end method
 
 .method public onStopJob(Landroid/app/job/JobParameters;)Z
-    .registers 2
+    .registers 4
 
     .line 47
-    const/4 p1, 0x1
+    const/4 v0, 0x1
 
-    iput-boolean p1, p0, Lcom/supertws/dubokutv/ProgressSyncJobService;->stopped:Z
+    iput-boolean v0, p0, Lcom/supertws/dubokutv/ProgressSyncJobService;->stopped:Z
+    const/4 v0, 0x0
+    sput-boolean v0, Lcom/supertws/dubokutv/ProgressSyncJobService;->running:Z
+
+    const-string v0, "R2Sync"
+
+    const-string v1, "Persistent sync job stopped"
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
     .line 48
-    return p1
+    const/4 v0, 0x1
+    return v0
 .end method

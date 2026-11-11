@@ -218,3 +218,9 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - Android 持久后台工作适合跨应用离开/进程重启的最终补传；本实现用 API 22 可用的 JobScheduler 持久任务，不承诺立即运行：[Persistent background work](https://developer.android.com/develop/background-work/background-tasks/persistent)。
 - Doze 会暂停网络并延迟 jobs/syncs，唤醒锁不能绕过 Doze 限制：[Optimize for Doze and App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby)。
 - Android 区分可跳变的 wall clock 与包含休眠、单调递增但重启归零的 elapsed clock；网络时间 API 也有 API 版本和精度限制：[SystemClock API](https://developer.android.com/reference/android/os/SystemClock)。NTP offset 估算需要考虑往返延迟：[NTP timestamp calculations](https://www.ntp.org/reflib/time/)。
+
+- 2026-11-10 20:53 本轮修复持久 Job 的同 ID 重排取消：Job 运行时 `schedule()` 改为置 `reschedule` 标记；任务正常结束后由服务统一重排，避免 JobScheduler 在执行期间替换当前任务。`running` 在启动线程前设置；`jobFinished` 不并行请求系统 retry，dirty/retry 仍由服务重排。Java、classes3/classes4 smali 与两份测试镜像已更新。
+- 本轮首个实机构建暴露 smali verifier 错误（局部寄存器类型冲突），该构建未作为验收版本；修正寄存器生命周期并重建后，在 Sony 触发应用返回/暂停没有 `AndroidRuntime` 崩溃，日志记录 Cloud PUT 成功。
+- 最终构建门禁 `build_universal_apks.sh` 通过，APK versionCode 33 / 7.5，SHA-256 `8731fec971f0421108c31a312c12c855958f5aea7b720ec4e4b291a3f94c8abd`。从 Sony、Hisense、小米盒子 5 Max 拉取已安装 APK，三者 hash 与最终产物完全一致。
+- Sony 整机重启后，持久 `ProgressSyncJobService` 启动并由 JobScheduler 记录 `app called jobFinished`；未出现 verifier/runtime 崩溃。重启前 dirty 已清，因此这次只证明任务恢复执行，不证明重启后 dirty 云补传。暂停回调的 Cloud PUT 成功已观察。
+- 本轮补丁目录 Python 测试 apks 31/31、cleanyourtv 镜像 29/29 通过。整个 `cleanyourtv/tests` 探索性运行因未安装仓库要求的 tools/venv 依赖而出现若干环境相关导入/网络测试错误并中断，不作为同步实现回归失败。

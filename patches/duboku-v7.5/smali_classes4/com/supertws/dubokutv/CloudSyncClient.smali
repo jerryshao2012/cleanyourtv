@@ -2135,9 +2135,10 @@
 .end method
 
 .method public static markCloudDirty(Landroid/content/Context;)V
-    .registers 3
+    .registers 4
 
     .line 104
+    move-object v2, p0
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->initialize(Landroid/content/Context;)V
 
     .line 105
@@ -2164,6 +2165,8 @@
     move-result-object p0
 
     invoke-interface {p0}, Landroid/content/SharedPreferences$Editor;->apply()V
+
+    invoke-static {v2}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
 
     .line 106
     :cond_1b

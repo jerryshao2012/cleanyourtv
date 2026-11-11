@@ -102,7 +102,10 @@ public final class CloudSyncClient {
 
     public static void markCloudDirty(Context context) {
         initialize(context);
-        if (cloudSyncEnabled()) dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
+        if (cloudSyncEnabled()) {
+            dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
+            ProgressSyncJobService.schedule(context);
+        }
     }
 
     public static void onNetworkAvailable(Context context) {
