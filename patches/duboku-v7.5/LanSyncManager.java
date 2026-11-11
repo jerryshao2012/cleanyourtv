@@ -65,6 +65,10 @@ public class LanSyncManager {
     public static volatile Activity sActiveActivity = null;
     public static volatile Object sActiveVideoAddress = null;
     public static volatile Object sActiveRefreshCallback = null;
+    private static String sLastFinalFlushName;
+    private static String sLastFinalFlushEpisode;
+    private static long sLastFinalFlushPosition = -1L;
+    private static long sLastFinalFlushAt;
 
     private LanSyncManager(Context context) {
         mContext = context;
@@ -912,7 +916,7 @@ public class LanSyncManager {
         if (!flushActivePlayback()) CloudSyncClient.onActivityPause();
     }
 
-    private static boolean flushActivePlayback() {
+    private static synchronized boolean flushActivePlayback() {
         Object player = sActiveExoPlayer;
         Object address = sActiveVideoAddress;
         Context context = getAppContext();
@@ -929,6 +933,12 @@ public class LanSyncManager {
             }
             long position = PlaybackEvent.finalPosition(exoPlayer.M(), Long.MAX_VALUE);
             if (position < 0 || current.b == null || current.c == null) return false;
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (PlaybackEvent.isDuplicateFinalFlush(sLastFinalFlushName, sLastFinalFlushEpisode,
+                    sLastFinalFlushPosition, sLastFinalFlushAt, current.b, current.c, position, now)) {
+                Log.i(TAG, "Skipped duplicate final playback flush");
+                return true;
+            }
             CloudSyncClient.markCloudDirty(context);
             pa.c record;
             synchronized (LanSyncManager.class) {
@@ -960,6 +970,10 @@ public class LanSyncManager {
                     record.g, FamilyIdentity.get(context).deviceId());
             publishPlaybackProgress(record, true, version);
             CloudSyncClient.onCommittedSave(true);
+            sLastFinalFlushName = record.b;
+            sLastFinalFlushEpisode = record.c;
+            sLastFinalFlushPosition = record.d;
+            sLastFinalFlushAt = android.os.SystemClock.elapsedRealtime();
             Log.i(TAG, "Flushed final playback position before pause");
             return true;
         } catch (Throwable e) {

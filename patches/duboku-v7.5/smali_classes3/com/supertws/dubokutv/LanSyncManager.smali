@@ -20,6 +20,14 @@
 
 .field public static volatile sActiveVideoAddress:Ljava/lang/Object;
 
+.field private static sLastFinalFlushAt:J
+
+.field private static sLastFinalFlushEpisode:Ljava/lang/String;
+
+.field private static sLastFinalFlushName:Ljava/lang/String;
+
+.field private static sLastFinalFlushPosition:J
+
 .field private static final sClockProbes:Ljava/util/concurrent/ConcurrentHashMap;
     .annotation system Ldalvik/annotation/Signature;
         value = {
@@ -1187,7 +1195,7 @@
     return p0
 .end method
 
-.method private static flushActivePlayback()Z
+.method private static declared-synchronized flushActivePlayback()Z
     .registers 29
 
     const/16 v28, 0x0
@@ -1267,6 +1275,27 @@
 
     .line 858
     :cond_34
+    sget-object v13, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushName:Ljava/lang/String;
+    sget-object v14, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushEpisode:Ljava/lang/String;
+    sget-wide v15, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushPosition:J
+    sget-wide v17, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushAt:J
+    iget-object v0, v1, Lqa/f0;->b:Ljava/lang/String;
+    move-object/from16 v19, v0
+    iget-object v0, v1, Lqa/f0;->c:Ljava/lang/String;
+    move-object/from16 v20, v0
+    move-wide/from16 v21, v3
+    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+    move-result-wide v23
+    invoke-static/range {v13 .. v24}, Lcom/supertws/dubokutv/PlaybackEvent;->isDuplicateFinalFlush(Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;Ljava/lang/String;JJ)Z
+    move-result v0
+    if-eqz v0, :cond_pause_flush_continue
+    const-string v0, "LanSyncManager"
+    const-string v1, "Skipped duplicate final playback flush"
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    const/4 v0, 0x1
+    return v0
+
+    :cond_pause_flush_continue
     invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->markCloudDirty(Landroid/content/Context;)V
 
     .line 860
@@ -1570,6 +1599,16 @@
 
     .line 888
     invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
+
+    iget-object v1, v13, Lpa/c;->b:Ljava/lang/String;
+    sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushName:Ljava/lang/String;
+    iget-object v1, v13, Lpa/c;->c:Ljava/lang/String;
+    sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushEpisode:Ljava/lang/String;
+    iget-wide v3, v13, Lpa/c;->d:J
+    sput-wide v3, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushPosition:J
+    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+    move-result-wide v3
+    sput-wide v3, Lcom/supertws/dubokutv/LanSyncManager;->sLastFinalFlushAt:J
 
     .line 889
     const-string v0, "LanSyncManager"

@@ -23,6 +23,10 @@ public final class PlaybackEventTest {
         assert !PlaybackEvent.canFlushFinalPosition(2);
         assert PlaybackEvent.canFlushFinalPosition(3);
         assert PlaybackEvent.canFlushFinalPosition(4);
+        assert PlaybackEvent.isDuplicateFinalFlush("show", "5", 1988000, 1000, "show", "5", 1988000, 2500);
+        assert !PlaybackEvent.isDuplicateFinalFlush("show", "5", 1988000, 1000, "show", "5", 1988000, 3000);
+        assert !PlaybackEvent.isDuplicateFinalFlush("show", "5", 1988000, 1000, "show", "5", 1989000, 1500);
+        assert !PlaybackEvent.isDuplicateFinalFlush("show", "5", 1988000, 1000, "show", "6", 1988000, 1500);
         System.out.println("Playback event tests passed");
     }
 }

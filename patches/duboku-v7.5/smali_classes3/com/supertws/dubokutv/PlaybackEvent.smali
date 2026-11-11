@@ -32,6 +32,35 @@
     return v0
 .end method
 
+.method static isDuplicateFinalFlush(Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;Ljava/lang/String;JJ)Z
+    .registers 16
+
+    if-eqz p6, :cond_flush_not_duplicate
+    if-eqz p7, :cond_flush_not_duplicate
+    invoke-virtual {p6, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :cond_flush_not_duplicate
+    invoke-virtual {p7, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v0
+    if-eqz v0, :cond_flush_not_duplicate
+    cmp-long v0, p8, p2
+    if-nez v0, :cond_flush_not_duplicate
+    cmp-long v0, p10, p4
+    if-ltz v0, :cond_flush_not_duplicate
+    sub-long v0, p10, p4
+    const-wide/16 v2, 0x7d0
+    cmp-long v0, v0, v2
+    if-ltz v0, :cond_flush_duplicate
+
+    :cond_flush_not_duplicate
+    const/4 v0, 0x0
+    return v0
+
+    :cond_flush_duplicate
+    const/4 v0, 0x1
+    return v0
+.end method
+
 .method static finalPosition(JJ)J
     .registers 7
 

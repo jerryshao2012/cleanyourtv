@@ -8,7 +8,7 @@ PATCH = Path(__file__).resolve().parents[1]
 class PlaybackFlushStateTest(unittest.TestCase):
     def test_final_save_requires_ready_or_ended_player(self):
         source = (PATCH / "LanSyncManager.java").read_text()
-        flush = source.split("private static boolean flushActivePlayback()", 1)[1].split("public static void register", 1)[0]
+        flush = source.split("private static synchronized boolean flushActivePlayback()", 1)[1].split("public static void register", 1)[0]
         self.assertLess(flush.index("PlaybackEvent.canFlushFinalPosition(playerState)"), flush.index("exoPlayer.M()"))
         self.assertIn('"Final playback flush skipped: player state=" + playerState', flush)
 
@@ -22,7 +22,7 @@ class PlaybackFlushStateTest(unittest.TestCase):
 
     def test_packaged_smali_checks_state_before_reading_position(self):
         source = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
-        flush = source.split(".method private static flushActivePlayback()Z", 1)[1].split(".end method", 1)[0]
+        flush = source.split(".method private static declared-synchronized flushActivePlayback()Z", 1)[1].split(".end method", 1)[0]
         self.assertLess(flush.index("h0;->T()I"), flush.index("PlaybackEvent;->canFlushFinalPosition(I)Z"))
         self.assertLess(flush.index("PlaybackEvent;->canFlushFinalPosition(I)Z"), flush.index("h0;->M()J"))
         self.assertIn("Final playback flush skipped: player state=", flush)
@@ -31,6 +31,8 @@ class PlaybackFlushStateTest(unittest.TestCase):
         guard = event.split(".method static canFlushFinalPosition(I)Z", 1)[1].split(".end method", 1)[0]
         self.assertIn("const/4 v0, 0x3", guard)
         self.assertIn("const/4 v0, 0x4", guard)
+        dedupe = event.split(".method static isDuplicateFinalFlush", 1)[1].split(".end method", 1)[0]
+        self.assertIn("const-wide/16 v2, 0x7d0", dedupe)
 
 
 if __name__ == "__main__":

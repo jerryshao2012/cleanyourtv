@@ -35,7 +35,7 @@ class PlaybackPauseCloudSyncTest(unittest.TestCase):
         pause = source.split("public static void onActivityPause(Activity activity)", 1)[1]
         pause = pause.split("private static boolean flushActivePlayback", 1)[0]
         self.assertIn("if (!flushActivePlayback()) CloudSyncClient.onActivityPause();", pause)
-        flush = source.split("private static boolean flushActivePlayback()", 1)[1]
+        flush = source.split("private static synchronized boolean flushActivePlayback()", 1)[1]
         flush = flush.split("public static void onHistoryOpened()", 1)[0]
         self.assertIn("CloudSyncClient.onCommittedSave(true);", flush)
         self.assertIn("return true;", flush)
@@ -47,7 +47,9 @@ class PlaybackPauseCloudSyncTest(unittest.TestCase):
         self.assertIn("->flushActivePlayback()Z", pause)
         self.assertIn("if-nez", pause)
         self.assertIn("CloudSyncClient;->onActivityPause()V", pause)
-        self.assertIn(".method private static flushActivePlayback()Z", smali)
+        self.assertIn(".method private static declared-synchronized flushActivePlayback()Z", smali)
+        self.assertIn("PlaybackEvent;->isDuplicateFinalFlush", smali)
+        self.assertIn("Skipped duplicate final playback flush", source)
 
 
 if __name__ == "__main__":
