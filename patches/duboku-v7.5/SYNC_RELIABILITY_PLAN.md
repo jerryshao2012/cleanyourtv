@@ -203,8 +203,11 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 最终 APK 实机播放观察：Sony 的《早春晴朗》第4集进度从约 650s 增至 709s；Hisense 与小米均记录多次 `Synced newer remote progress`，因此 LAN 合并路径可用。接收端 ACK 仍晚于 3s 门限，Sony 继续每约 3–4s 出现一次 `Cloud upload succeeded`；ACK 减 PUT 的实机目标仍失败。操作误选了《早春晴朗》而非计划测试的《小城良方》，播放器已退出；测试进度已同步到该记录。
 - 本轮根据运行日志确认两处原因并修复：相同 LAN peer 在同一毫秒重复发 `REQUEST_SYNC`，会重复启动 20 条历史记录响应；增加 2 秒防抖，实机看到 `Skipped duplicate REQUEST_SYNC response`。普通进度 ACK 超时时原来以 urgent 标志上传，绕过 30 秒节流；超时/普通发送失败现在仍立即标脏并安排持久 Job，但走普通节流，关键事件仍 urgent。对应源码、smali、镜像及回归测试同步。
 - 防抖/节流版完整 APK 构建门禁通过，最终 SHA-256 `deee412c92a9208b5dac4596d0413c58b18ea6be10561bdfd450702108d269b8`，已安装 Sony、Hisense、小米盒子 5 Max。三台进程存活、接收器启动，无 `VerifyError`。Sony《早春晴朗》第4集每 5 秒广播，Hisense 连续写入至约 763s，小米发 ACK；普通进度云 PUT 观察到约 30 秒间隔（18:38:00、18:38:30），不再每次 ACK 超时都触发紧急 PUT。Hisense 的 ACK 仍迟于 3 秒门限，且无 ACK/UDP 丢包和云端断网注入，因此只验收了降频兜底，未验收 LAN 及时 ACK 优化。退出播放后记录最终进度，18:38:51 收到云上传成功；Sony 历史页仍显示《小城良方》第29集约 42%。本轮测试操作仍误选《早春晴朗》，进度已由先前约 650s 增至约 763s，并同步到 Hisense。
+- 本轮补齐 ACK→Outbox：有效匹配 ACK 现在调用普通 `onCommittedSave(false)`，避免只留下 `cloudDirty` 而没有持久任务；持久 Job 加 30 秒最小延迟，避免 Job 立即触发远端读并绕过普通节流。新增 ACK 分支与 Job 延迟断言，先失败后通过；Python 门禁 31/31 通过，`build_universal_apks.sh` 全通过。最终 versionCode 33 / 7.5 APK SHA-256 `9636a784bf0f15adec45c02bafcb1b35a7a2de9f7111fa43fd1c28c01c181976`，Sony、Hisense、小米盒子 5 Max 设备端拉取哈希全部一致。
+- 小城良方第29集稳态播放实测：Sony 发出约 `489s` 普通进度后 `0.5s` 收到有效 ACK；Hisense 与小米均记录到较新位置，随后 Cloud PUT 成功。该 PUT 距前次成功约 37s，符合 30s 普通节流；这证明 LAN ACK 闭环与云端 Outbox 并存，但未证明本次窗口一定省掉一次 PUT。启动/全量历史对账期间仍观察到接收端 ACK 约 17s 后才处理，3s 超时兜底仍必要。
+- Sony 在同剧播放后暂停于约 `592s`（播放器 UI `09:52 / 41:53`）；Hisense 和小米日志都记录该最终位置已落本地，Sony 随后记录 Cloud PUT 成功。暂停后的播放位置没有继续增长。此轮未做整机休眠、断网、进程强杀与重启注入。
 
-**仍待实机验收**：稳态普通进度能否在 3 秒内 ACK 并省略本轮 PUT（当前实测未通过）；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。普通进度 ACK 延迟期间约 30 秒 PUT 节流已验收，关键暂停退出后的云端成功有日志佐证。未知 peer 的运行时拒绝已在 Hisense 验证；Sony 与小米的有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
+**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；稳态 ACK 成功时严格核对本轮 PUT 是否省略；单机无 peer 时的 PUT 次数、UDP/ACK 丢包注入、云端断网及网络恢复、按电源休眠/整机重启/强杀期间 dirty 与 Job 恢复、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。普通进度 30 秒云 PUT 节流和关键暂停后云端成功已观察；未知 peer 的运行时拒绝已在 Hisense 验证。Sony 与小米有效 peer 通路已验证，但未在三台分别注入未知 peer。全计划尚未完成验收。
 
 ## Best-practice 依据
 

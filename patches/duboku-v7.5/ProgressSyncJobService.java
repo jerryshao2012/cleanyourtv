@@ -22,6 +22,7 @@ public final class ProgressSyncJobService extends JobService {
             JobInfo request = new JobInfo.Builder(JOB_ID, new ComponentName(context, ProgressSyncJobService.class))
                     .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                     .setPersisted(true)
+                    .setMinimumLatency(30_000L)
                     .setBackoffCriteria(30_000L, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
                     .build();
             if (scheduler.schedule(request) != JobScheduler.RESULT_SUCCESS) Log.w("R2Sync", "Persistent sync job was not scheduled");

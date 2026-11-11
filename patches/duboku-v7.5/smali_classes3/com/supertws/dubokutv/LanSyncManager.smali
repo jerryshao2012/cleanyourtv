@@ -2514,6 +2514,7 @@
     invoke-interface {v0, v5}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
     const-string v0, "Progress ACK received"
     invoke-static {v7, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+    invoke-static {v5}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
     .line 226
     :cond_1b1

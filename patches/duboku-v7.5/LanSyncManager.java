@@ -251,6 +251,7 @@ public class LanSyncManager {
                     if (timeout != null) {
                         timeout.cancel(false);
                         Log.i(TAG, "Progress ACK received");
+                        CloudSyncClient.onCommittedSave(false);
                     }
                 }
                 return;

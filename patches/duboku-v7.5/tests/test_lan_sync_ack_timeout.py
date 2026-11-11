@@ -9,6 +9,8 @@ class LanSyncAckTimeoutTest(unittest.TestCase):
         source = (PATCH / "LanSyncManager.java").read_text()
         self.assertIn("private static final long ACK_TIMEOUT_MS = 3000L;", source)
         self.assertIn('Log.i(TAG, "Progress ACK received");', source)
+        ack_handler = source.split('if ("PROGRESS_ACK".equals(action)) {', 1)[1].split('if (!FamilyIdentity.validId(fromDevice)', 1)[0]
+        self.assertIn("CloudSyncClient.onCommittedSave(false);", ack_handler)
         self.assertIn('Log.i(TAG, "Progress ACK sent");', source)
         self.assertIn("if (sPendingProgress.remove(messageId) != null) CloudSyncClient.onCommittedSave(false);", source)
         self.assertIn("if (!critical) CloudSyncClient.onCommittedSave(false);", source)
@@ -16,6 +18,7 @@ class LanSyncAckTimeoutTest(unittest.TestCase):
         smali = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager.smali").read_text()
         self.assertIn(".field private static final ACK_TIMEOUT_MS:J = 0xbb8L", smali)
         self.assertIn('const-string v0, "Progress ACK received"', smali)
+        self.assertRegex(smali, r'const-string v0, "Progress ACK received"\s+invoke-static \{v7, v0\}, Landroid/util/Log;->i\(Ljava/lang/String;Ljava/lang/String;\)I\s+invoke-static \{v5\}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave\(Z\)V')
         self.assertIn('const-string v1, "Progress ACK sent"', smali)
         ack_runnable = (PATCH / "smali_classes3/com/supertws/dubokutv/LanSyncManager$5.smali").read_text()
         self.assertIn("const-wide/16 v10, 0xbb8", ack_runnable)

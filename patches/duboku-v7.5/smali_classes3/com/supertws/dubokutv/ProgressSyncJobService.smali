@@ -73,6 +73,12 @@
 
     move-result-object v2
 
+    const-wide/16 v3, 0x7530
+
+    invoke-virtual {v2, v3, v4}, Landroid/app/job/JobInfo$Builder;->setMinimumLatency(J)Landroid/app/job/JobInfo$Builder;
+
+    move-result-object v2
+
     .line 25
     const-wide/16 v3, 0x7530
 
