@@ -56,6 +56,8 @@
 .field private static sPendingHandoffName:Ljava/lang/String;
 
 .field private static final sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+.field static final sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
+.field private static volatile sLatestAckedDirtyRevision:J
     .annotation system Ldalvik/annotation/Signature;
         value = {
             "Ljava/util/concurrent/ConcurrentHashMap<",
@@ -159,6 +161,8 @@
     const-wide/16 v1, 0x0
 
     sput-wide v1, Lcom/supertws/dubokutv/LanSyncManager;->sLastRequestSyncTime:J
+    const-wide/16 v1, -0x1
+    sput-wide v1, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
 
     .line 52
     invoke-static {}, Ljava/util/concurrent/Executors;->newSingleThreadScheduledExecutor()Ljava/util/concurrent/ScheduledExecutorService;
@@ -173,6 +177,10 @@
     invoke-direct {v1}, Ljava/util/concurrent/ConcurrentHashMap;-><init>()V
 
     sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+
+    new-instance v1, Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-direct {v1}, Ljava/util/concurrent/ConcurrentHashMap;-><init>()V
+    sput-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
 
     new-instance v1, Ljava/util/concurrent/ConcurrentHashMap;
 
@@ -2498,25 +2506,95 @@
 
     .line 223
     :cond_1a3
-    sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    sget-object v5, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v5, v3}, Ljava/util/concurrent/ConcurrentHashMap;->remove(Ljava/lang/Object;)Ljava/lang/Object;
+    move-result-object v5
+    check-cast v5, Ljava/util/concurrent/ScheduledFuture;
+    if-eqz v5, :cond_1b1
+    const-string v0, "LanSyncManager"
+    const-string v1, "Progress ACK received"
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    invoke-virtual {v0, v3}, Ljava/util/concurrent/ConcurrentHashMap;->remove(Ljava/lang/Object;)Ljava/lang/Object;
+    sget-object v5, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v5, v3}, Ljava/util/concurrent/ConcurrentHashMap;->remove(Ljava/lang/Object;)Ljava/lang/Object;
+    move-result-object v5
+    check-cast v5, [J
+    if-eqz v5, :cond_1b1
+    const/4 v0, 0x0
+    aget-wide v14, v5, v0
+    sget-wide v16, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
+    cmp-long v0, v14, v16
+    if-lez v0, :ack_use_latest
+    sput-wide v14, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
+    goto :ack_latest_set
 
-    move-result-object v0
+    :ack_use_latest
+    sput-wide v16, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
 
-    check-cast v0, Ljava/util/concurrent/ScheduledFuture;
-
-    .line 224
+    :ack_latest_set
+    sget-object v5, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgress:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v5}, Ljava/util/concurrent/ConcurrentHashMap;->isEmpty()Z
+    move-result v0
     if-eqz v0, :cond_1b1
+    sget-wide v14, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
+    const-wide/16 v10, -0x1
+    sput-wide v10, Lcom/supertws/dubokutv/LanSyncManager;->sLatestAckedDirtyRevision:J
+    move-object/from16 v11, p0
+    iget-object v0, v11, Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v0}, Lcom/supertws/dubokutv/CloudSyncClient;->initialize(Landroid/content/Context;)V
+    const-string v1, "r2_sync_identity"
+    const/4 v2, 0x0
+    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+    move-result-object v0
+    const-string v1, "cloudDirtyRevision"
+    const-wide/16 v2, 0x0
+    invoke-interface {v0, v1, v2, v3}, Landroid/content/SharedPreferences;->getLong(Ljava/lang/String;J)J
+    move-result-wide v2
+    cmp-long v4, v14, v2
+    if-nez v4, :cond_1b1
+    const-string v1, "cloudDirty"
+    const/4 v2, 0x0
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+    move-result v2
+    if-eqz v2, :cond_1b1
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    const-string v1, "cloudDirty"
+    const/4 v2, 0x0
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
+    move-object/from16 v11, p0
+    iget-object v0, v11, Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    const-string v1, "r2_sync_identity"
+    const/4 v2, 0x0
+    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+    move-result-object v0
+    const-string v1, "cloudDirtyRevision"
+    const-wide/16 v2, 0x0
+    invoke-interface {v0, v1, v2, v3}, Landroid/content/SharedPreferences;->getLong(Ljava/lang/String;J)J
+    move-result-wide v2
+    cmp-long v4, v14, v2
+    if-nez v4, :ack_restore_dirty
+    goto :ack_dirty_check_done
 
-    const/4 v5, 0x0
+    :ack_restore_dirty
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    const-string v1, "cloudDirty"
+    const/4 v2, 0x1
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
+    move-object/from16 v11, p0
+    iget-object v0, v11, Lcom/supertws/dubokutv/LanSyncManager;->mContext:Landroid/content/Context;
+    invoke-static {v0}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
 
-    invoke-interface {v0, v5}, Ljava/util/concurrent/ScheduledFuture;->cancel(Z)Z
-    const-string v0, "Progress ACK received"
-    invoke-static {v7, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
-    invoke-static {v5}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
+    :ack_dirty_check_done
+    const-string v0, "R2Sync"
+    const-string v1, "LAN ACK satisfied cloud dirty revision"
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
 
-    .line 226
     :cond_1b1
     return-void
 
@@ -4449,6 +4527,8 @@
     .line 436
     return-void
 .end method
+
+
 
 .method private static sendProgressAck(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
     .registers 7

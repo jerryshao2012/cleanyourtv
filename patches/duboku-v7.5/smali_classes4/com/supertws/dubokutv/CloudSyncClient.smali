@@ -1250,7 +1250,7 @@
     throw v0
 .end method
 
-.method private static dirtyPrefs()Landroid/content/SharedPreferences;
+.method static dirtyPrefs()Landroid/content/SharedPreferences;
     .registers 3
 
     .line 422
@@ -2134,44 +2134,41 @@
     return v2
 .end method
 
-.method public static markCloudDirty(Landroid/content/Context;)V
-    .registers 4
+.method public static synchronized markCloudDirty(Landroid/content/Context;)V
+    .registers 7
 
-    .line 104
-    move-object v2, p0
     invoke-static {p0}, Lcom/supertws/dubokutv/CloudSyncClient;->initialize(Landroid/content/Context;)V
-
-    .line 105
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->cloudSyncEnabled()Z
-
-    move-result p0
-
-    if-eqz p0, :cond_1b
+    move-result v0
+    if-eqz v0, :cond_dirty_done
 
     invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    move-result-object v0
+    const-string v1, "cloudDirtyRevision"
+    const-wide/16 v2, 0x0
+    invoke-interface {v0, v1, v2, v3}, Landroid/content/SharedPreferences;->getLong(Ljava/lang/String;J)J
+    move-result-wide v2
+    const-wide/16 v4, 0x1
+    add-long/2addr v2, v4
+    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    const-string v1, "cloudDirty"
+    const/4 v4, 0x1
+    invoke-interface {v0, v1, v4}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    const-string v1, "cloudDirtyRevision"
+    invoke-interface {v0, v1, v2, v3}, Landroid/content/SharedPreferences$Editor;->putLong(Ljava/lang/String;J)Landroid/content/SharedPreferences$Editor;
+    move-result-object v0
+    invoke-interface {v0}, Landroid/content/SharedPreferences$Editor;->apply()V
+    invoke-static {p0}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
 
-    move-result-object p0
-
-    invoke-interface {p0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
-
-    move-result-object p0
-
-    const-string v0, "cloudDirty"
-
-    const/4 v1, 0x1
-
-    invoke-interface {p0, v0, v1}, Landroid/content/SharedPreferences$Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences$Editor;
-
-    move-result-object p0
-
-    invoke-interface {p0}, Landroid/content/SharedPreferences$Editor;->apply()V
-
-    invoke-static {v2}, Lcom/supertws/dubokutv/ProgressSyncJobService;->schedule(Landroid/content/Context;)V
-
-    .line 106
-    :cond_1b
+    :cond_dirty_done
     return-void
 .end method
+
+
+
+
 
 .method public static mergeFamilies(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/json/JSONArray;Z)Lorg/json/JSONObject;
     .registers 7

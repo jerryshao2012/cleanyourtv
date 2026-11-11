@@ -553,8 +553,16 @@
     invoke-static {v2}, Lcom/supertws/dubokutv/CloudSyncClient;->access$1902(Ljava/lang/Runnable;)Ljava/lang/Runnable;
 
     .line 410
+    invoke-static {}, Lcom/supertws/dubokutv/CloudSyncClient;->dirtyPrefs()Landroid/content/SharedPreferences;
+    move-result-object v0
+    const-string v8, "cloudDirty"
+    const/4 v7, 0x0
+    invoke-interface {v0, v8, v7}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+    move-result v0
+    if-eqz v0, :cond_skip_dirty_upload
     invoke-static {v4}, Lcom/supertws/dubokutv/CloudSyncClient;->onCommittedSave(Z)V
 
+    :cond_skip_dirty_upload
     goto :goto_1c2
 
     .line 412

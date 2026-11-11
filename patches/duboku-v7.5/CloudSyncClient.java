@@ -100,10 +100,12 @@ public final class CloudSyncClient {
         onCommittedSave(false);
     }
 
-    public static void markCloudDirty(Context context) {
+    public static synchronized void markCloudDirty(Context context) {
         initialize(context);
         if (cloudSyncEnabled()) {
-            dirtyPrefs().edit().putBoolean("cloudDirty", true).apply();
+            SharedPreferences prefs = dirtyPrefs();
+            prefs.edit().putLong("cloudDirtyRevision", prefs.getLong("cloudDirtyRevision", 0L) + 1L)
+                    .putBoolean("cloudDirty", true).apply();
             ProgressSyncJobService.schedule(context);
         }
     }
@@ -417,7 +419,7 @@ public final class CloudSyncClient {
                         scheduledDrain = null;
                         draining = false;
                         drainRunnable = null;
-                        onCommittedSave(true);
+                        if (dirtyPrefs().getBoolean("cloudDirty", false)) onCommittedSave(true);
                     } else {
                         long[] delays = {60_000L, 120_000L, 300_000L, 900_000L};
                         long retryDelay = success || !READ_GATE.isCurrent(gateGeneration) ? 0L : delays[Math.min(readRetryCount++, delays.length - 1)];
@@ -428,7 +430,7 @@ public final class CloudSyncClient {
         }, delay, TimeUnit.MILLISECONDS);
     }
 
-    private static SharedPreferences dirtyPrefs() {
+    static SharedPreferences dirtyPrefs() {
         return appContext.getSharedPreferences("r2_sync_identity", Context.MODE_PRIVATE);
     }
 

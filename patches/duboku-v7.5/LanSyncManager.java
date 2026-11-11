@@ -53,6 +53,8 @@ public class LanSyncManager {
     private static final long ACK_TIMEOUT_MS = 3000L;
     private static final ScheduledExecutorService sSyncQueue = Executors.newSingleThreadScheduledExecutor();
     private static final ConcurrentHashMap<String, ScheduledFuture<?>> sPendingProgress = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<String, long[]> sPendingProgressRevision = new ConcurrentHashMap<>();
+    private static volatile long sLatestAckedDirtyRevision = -1L;
     private static final ConcurrentHashMap<String, String> sIncomingProgress = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> sClockProbes = new ConcurrentHashMap<>();
     private static volatile long sLastClockProbeAt;
@@ -142,6 +144,7 @@ public class LanSyncManager {
         Context context = getAppContext();
         return context != null && FamilyIdentity.get(context).isLanSyncEnabled();
     }
+
 
     private static void sendProgressAck(String targetDevice, String messageId, String targetIp, String status) {
         Context context = getAppContext();
@@ -249,9 +252,26 @@ public class LanSyncManager {
                         && ("applied".equals(status) || "already_current".equals(status))) {
                     ScheduledFuture<?> timeout = sPendingProgress.remove(messageId);
                     if (timeout != null) {
-                        timeout.cancel(false);
                         Log.i(TAG, "Progress ACK received");
-                        CloudSyncClient.onCommittedSave(false);
+                        long[] revision = sPendingProgressRevision.remove(messageId);
+                        if (revision != null) {
+                            if (revision[0] > sLatestAckedDirtyRevision) sLatestAckedDirtyRevision = revision[0];
+                            if (sPendingProgress.isEmpty()) {
+                                long acknowledgedRevision = sLatestAckedDirtyRevision;
+                                sLatestAckedDirtyRevision = -1L;
+                                CloudSyncClient.initialize(mContext);
+                                android.content.SharedPreferences prefs = mContext.getSharedPreferences("r2_sync_identity", Context.MODE_PRIVATE);
+                                if (acknowledgedRevision == prefs.getLong("cloudDirtyRevision", 0L)
+                                        && prefs.getBoolean("cloudDirty", false)) {
+                                    prefs.edit().putBoolean("cloudDirty", false).apply();
+                                    if (prefs.getLong("cloudDirtyRevision", 0L) != acknowledgedRevision) {
+                                        prefs.edit().putBoolean("cloudDirty", true).apply();
+                                        ProgressSyncJobService.schedule(mContext);
+                                    }
+                                    Log.i("R2Sync", "LAN ACK satisfied cloud dirty revision");
+                                }
+                            }
+                        }
                     }
                 }
                 return;
@@ -606,6 +626,8 @@ public class LanSyncManager {
                     String episodeName = rec.c;
                     long progressMs = rec.d;
                     String messageId = UUID.randomUUID().toString();
+                    long dirtyRevision = context.getSharedPreferences("r2_sync_identity", Context.MODE_PRIVATE)
+                            .getLong("cloudDirtyRevision", 0L);
 
                     // Only filter if BOTH episode AND progress within 2 seconds are identical
                     synchronized (LanSyncManager.class) {
@@ -640,15 +662,20 @@ public class LanSyncManager {
                     if (!critical) {
                         timeout = sSyncQueue.schedule(new Runnable() {
                             @Override public void run() {
-                                if (sPendingProgress.remove(messageId) != null) CloudSyncClient.onCommittedSave(false);
+                                if (sPendingProgress.remove(messageId) != null) {
+                                    sPendingProgressRevision.remove(messageId);
+                                    CloudSyncClient.onCommittedSave(false);
+                                }
                             }
                         }, ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         sPendingProgress.put(messageId, timeout);
+                        sPendingProgressRevision.put(messageId, new long[] { dirtyRevision });
                         sSyncQueue.schedule(() -> { if (sPendingProgress.containsKey(messageId)) sendUdpPacket(json.toString(), null); }, 250L, TimeUnit.MILLISECONDS);
                         sSyncQueue.schedule(() -> { if (sPendingProgress.containsKey(messageId)) sendUdpPacket(json.toString(), null); }, 500L, TimeUnit.MILLISECONDS);
                     }
                     if (!sendUdpPacketResult(json.toString(), null)) {
                         ScheduledFuture<?> pending = sPendingProgress.remove(messageId);
+                        sPendingProgressRevision.remove(messageId);
                         if (pending != null) pending.cancel(false);
                         if (!critical) CloudSyncClient.onCommittedSave(false);
                     }

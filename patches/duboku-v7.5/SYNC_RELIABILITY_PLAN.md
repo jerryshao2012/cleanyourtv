@@ -224,3 +224,7 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 最终构建门禁 `build_universal_apks.sh` 通过，APK versionCode 33 / 7.5，SHA-256 `8731fec971f0421108c31a312c12c855958f5aea7b720ec4e4b291a3f94c8abd`。从 Sony、Hisense、小米盒子 5 Max 拉取已安装 APK，三者 hash 与最终产物完全一致。
 - Sony 整机重启后，持久 `ProgressSyncJobService` 启动并由 JobScheduler 记录 `app called jobFinished`；未出现 verifier/runtime 崩溃。重启前 dirty 已清，因此这次只证明任务恢复执行，不证明重启后 dirty 云补传。暂停回调的 Cloud PUT 成功已观察。
 - 本轮补丁目录 Python 测试 apks 31/31、cleanyourtv 镜像 29/29 通过。整个 `cleanyourtv/tests` 探索性运行因未安装仓库要求的 tools/venv 依赖而出现若干环境相关导入/网络测试错误并中断，不作为同步实现回归失败。
+
+- 2026-11-10 本轮修复普通进度 ACK 闭环：ACK 按 messageId 对应 dirty revision 聚合；只有全部待确认消息结清且当前 revision 未变化才清 dirty，并在清理竞态时恢复 dirty/重排 Job。超时/发送失败仍保留 Outbox 并走普通节流兜底。Cloud peer 读取现在只在 `cloudDirty=true` 时触发 PUT，避免干净快照读操作造成重复上传。
+- 回归验收：ACK/云读门禁 Python 测试 2/2、持久 Job 测试 1/1、`SyncDecisionTest` 通过；`build_universal_apks.sh` 全量门禁通过，源码/Smali 镜像与 `git diff --check` 通过。生成 APK versionCode 33 / 7.5，SHA-256 `aaa54b2829c650d8d15f471cc7e7878be1c3ae7bb18e9f1619a4c386e2fa592d`。
+- 本轮未能重做实机验收：ADB daemon 启动时系统拒绝绑定 `5037`（`could not install *smartsocket* listener: Operation not permitted`），因此未确认电视安装哈希、LAN ACK/云端 PUT 数量或云端最终记录；前序实测记录仍有效，但不视为本构建实机验收。

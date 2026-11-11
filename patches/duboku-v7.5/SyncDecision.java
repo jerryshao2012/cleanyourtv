@@ -6,4 +6,5 @@ final class SyncDecision {
     static boolean requiresCloudUpload(boolean critical, boolean lanEnabled, boolean acknowledged) {
         return critical || !lanEnabled || !acknowledged;
     }
+
 }

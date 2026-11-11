@@ -60,6 +60,9 @@
     move-result-object v0
 
     if-eqz v0, :cond_10
+    sget-object v0, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
+    iget-object v1, p0, Lcom/supertws/dubokutv/LanSyncManager$5$1;->val$messageId:Ljava/lang/String;
+    invoke-virtual {v0, v1}, Ljava/util/concurrent/ConcurrentHashMap;->remove(Ljava/lang/Object;)Ljava/lang/Object;
 
     const/4 v0, 0x0
 

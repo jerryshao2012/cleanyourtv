@@ -35,10 +35,10 @@ class PersistentSyncJobTest(unittest.TestCase):
         self.assertIn("running = false;", source)
         self.assertIn("jobFinished(params, false);", source)
         self.assertIn("ProgressSyncJobService.schedule(context)", client)
-        dirty_source = client.split("public static void markCloudDirty(Context context)", 1)[1].split("public static void onNetworkAvailable(Context context)", 1)[0]
+        dirty_source = client.split("void markCloudDirty(Context context)", 1)[1].split("public static void onNetworkAvailable(Context context)", 1)[0]
         self.assertIn("ProgressSyncJobService.schedule(context)", dirty_source)
         cloud_smali = (PATCH / "smali_classes4/com/supertws/dubokutv/CloudSyncClient.smali").read_text()
-        dirty_method = cloud_smali.split(".method public static markCloudDirty(Landroid/content/Context;)V", 1)[1].split(".end method", 1)[0]
+        dirty_method = cloud_smali.split(".method public static synchronized markCloudDirty(Landroid/content/Context;)V", 1)[1].split(".end method", 1)[0]
         self.assertIn("ProgressSyncJobService;->schedule(Landroid/content/Context;)V", dirty_method)
         save_method = cloud_smali.split(".method public static onCommittedSave(Z)V", 1)[1].split(".end method", 1)[0]
         self.assertIn("ProgressSyncJobService;->schedule(Landroid/content/Context;)V", save_method)

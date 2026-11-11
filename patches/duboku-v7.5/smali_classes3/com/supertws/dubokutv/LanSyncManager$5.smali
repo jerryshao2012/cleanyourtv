@@ -386,6 +386,22 @@
     move-result-object v8
 
     invoke-virtual {v8, v6, v0}, Ljava/util/concurrent/ConcurrentHashMap;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+    invoke-static {}, Lcom/supertws/dubokutv/LanSyncManager;->getAppContext()Landroid/content/Context;
+    move-result-object v8
+    const-string v9, "r2_sync_identity"
+    const/4 v10, 0x0
+    invoke-virtual {v8, v9, v10}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+    move-result-object v8
+    const-string v9, "cloudDirtyRevision"
+    const-wide/16 v10, 0x0
+    invoke-interface {v8, v9, v10, v11}, Landroid/content/SharedPreferences;->getLong(Ljava/lang/String;J)J
+    move-result-wide v12
+    const/4 v1, 0x1
+    new-array v9, v1, [J
+    const/4 v1, 0x0
+    aput-wide v12, v9, v1
+    sget-object v8, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v8, v6, v9}, Ljava/util/concurrent/ConcurrentHashMap;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 600
     # getter for: Lcom/supertws/dubokutv/LanSyncManager;->sSyncQueue:Ljava/util/concurrent/ScheduledExecutorService;
@@ -445,6 +461,8 @@
     move-result-object v0
 
     check-cast v0, Ljava/util/concurrent/ScheduledFuture;
+    sget-object v1, Lcom/supertws/dubokutv/LanSyncManager;->sPendingProgressRevision:Ljava/util/concurrent/ConcurrentHashMap;
+    invoke-virtual {v1, v6}, Ljava/util/concurrent/ConcurrentHashMap;->remove(Ljava/lang/Object;)Ljava/lang/Object;
 
     .line 605
     if-eqz v0, :cond_124
