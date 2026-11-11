@@ -210,7 +210,7 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 最终修复版完整构建门禁通过；最终 APK versionCode 33 / 7.5，SHA-256 `0304564127d2b58e02e4b355df187086dcb113c140af4293da51438a4bed4678`。Sony、Hisense、小米盒子 5 Max 设备端拉取 hash 均与该构建一致；三台应用进程均可启动，未观察到新的 `NoSuchMethodError`/`VerifyError`。Sony 的 JobScheduler 历史显示 `ProgressSyncJobService` 启动后以 `app called jobFinished` 结束；相邻日志有 `Cloud read result peers=4 attempted=4 failed=0` 和 `Cloud upload succeeded`，证明任务注册和执行路径工作。
 - 进程死亡验收补充：`adb shell kill -9` 被 TV shell 拒绝；`am kill` 在播放前台服务活动期间没有终止主进程；`am crash <package>` 实际只崩溃 WebView sandbox 子进程。后续已用 `am force-stop` 验证：离线保存 dirty 后进程消失，恢复网络并手动启动时成功读取云端并 PUT 最新快照；仍未证明应用未被重新启动时 Job 能自动恢复（Android 对 force-stop 应用会限制后台任务）。
 
-**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；单机确无 peer 时的 PUT 次数、实际 UDP/ACK 丢包注入、仅云端不可用但 LAN 保持在线时的行为、应用未重新启动时 Job 自动恢复 dirty、按电源休眠/休眠期间补传、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。已验证有效 LAN ACK 可省略普通 PUT；无 ACK 时持久 dirty 按 30 秒节流云端兜底；完整 Wi-Fi 断网后恢复并手动启动可补传；主进程 force-stop 后手动启动补传及整机重启后的云端对账均通过。仍未证明 Job 在应用强停/进程死亡后自动补传。关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
+**仍待实机验收**：启动/全量历史对账期间 ACK 延迟超过 3 秒的情况能否通过减压消除；单机确无 peer 时的 PUT 次数、实际 UDP/ACK 丢包注入、仅云端不可用但 LAN 保持在线时的行为、应用未重新启动时 Job 自动恢复 dirty、休眠期间 dirty 补传、手动时钟快慢/回拨，以及 R2 对象内容的直接读取核验。已验证 Sony 空闲态可进入 `Asleep` 并由电视本机定时脚本唤醒，之后应用手动启动成功完成云端对账；这不代表休眠中 dirty 补传或唤醒后自动启动应用已通过。已验证有效 LAN ACK 可省略普通 PUT；无 ACK 时持久 dirty 按 30 秒节流云端兜底；完整 Wi-Fi 断网后恢复并手动启动可补传；主进程 force-stop 后手动启动补传及整机重启后的云端对账均通过。仍未证明 Job 在应用强停/进程死亡后自动补传。关键暂停后云端成功已观察。未知 peer 的运行时拒绝已在 Hisense 验证。全计划尚未完成验收。
 
 ## Best-practice 依据
 
@@ -247,3 +247,4 @@ JobScheduler 是最终补传机制，不是休眠前送达保证；任务仍受�
 - 2026-11-10 测试数据恢复记录：一次 UI 点选误播放已完成的《兰香如故》第47集，短暂产生 `19s` 新版本并同步；随后将播放器定位到原时长 `2765s`（46:05），HOME 保存且 Cloud PUT 成功，Hisense/小米均接收 `2765s`。三台历史核对恢复为 100%，时间 `23:22:06`。该行完成状态已恢复；测试数据被纠正。
 
 - 2026-11-10 Sony 无 ACK 超时兜底复测：先 force-stop Hisense 与小米 App，在 Sony 播放非片尾《早春晴朗》第4集。Sony 对广播 `865s` 后约 4 秒记录 Cloud PUT 成功；后续没有有效 `Progress ACK received`，Cloud PUT 维持约 30 秒节流（`23:33:29`、`23:33:59`、`23:34:30`），没有每 5 秒广播都上传。HOME 最终提交 `943s` 后 `23:34:44` 上传成功。重新启动 Hisense、小米后，Hisense 记录追到 `943s`，小米 Cloud read `merged=true`；三台历史均显示该集 32%、时间约 `23:34:50`。这验证了无 ACK 触发云兜底、节流及对端恢复后的收敛；该场景仅模拟接收 App 无响应，没有在网络层真实丢弃 UDP 包。
+- 2026-11-10 Sony 待机/唤醒冒烟验收：在 Sony 空闲、无播放任务时用 `KEYCODE_SLEEP` 观察到 `mWakefulness=Asleep` 且 `Display Power=OFF`；预先安排的电视本机脚本在约 25 秒后发出 `KEYCODE_WAKEUP`，随后观测到 `Awake`、显示开启，Sony Wi-Fi ADB 与系统启动器均恢复。手动启动 Duboku 后进入 `MainActivity`，日志显示 `Cloud read result peers=4 attempted=4 failed=0 merged=false success=true`，没有发现同步运行时崩溃。该项只证明空闲待机/唤醒及随后手动启动对账；没有在播放或 dirty outbox 状态下休眠，也未证明应用可在唤醒后自动运行或休眠期间完成上传。
