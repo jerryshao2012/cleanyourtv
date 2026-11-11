@@ -8,6 +8,11 @@ public final class PlaybackEventTest {
         assert PlaybackEvent.startsNewEpisode("show", "1", "other", "1");
         assert !PlaybackEvent.startsNewEpisode("show", "1", "show", "");
         assert PlaybackEvent.nearEnd(9600, 10000);
+        assert PlaybackEvent.nearEnd(9500, 10000); // 95% boundary for short clips
+        assert !PlaybackEvent.nearEnd(9499, 10000);
+        assert PlaybackEvent.nearEnd(580000, 600000); // 30s minimum threshold
+        assert PlaybackEvent.nearEnd(3880000, 4000000); // 120s maximum threshold
+        assert !PlaybackEvent.nearEnd(3879999, 4000000);
         assert !PlaybackEvent.nearEnd(0, 30000);
         assert !PlaybackEvent.nearEnd(7000, 10000);
         assert !PlaybackEvent.nearEnd(1000, 0);
