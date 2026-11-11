@@ -3382,20 +3382,6 @@
     :cond_24
     const/4 v1, 0x0
 
-    sget-object v3, Lcom/supertws/dubokutv/LanSyncManager;->sActiveExoPlayer:Ljava/lang/Object;
-
-    if-eqz v3, :goto_27
-
-    check-cast v3, Landroidx/compose/foundation/layout/s0;
-
-    invoke-virtual {v3}, Landroidx/compose/foundation/layout/s0;->m()Z
-
-    move-result v3
-
-    if-nez v3, :goto_27
-
-    const/4 v1, 0x1
-
     goto :goto_27
 
     :cond_26
