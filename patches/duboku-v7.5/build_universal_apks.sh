@@ -47,7 +47,9 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     smali/androidx/appcompat/widget/s.smali \
     smali/coil/fetch/k.smali \
     smali_classes3/com/supertws/dubokutv/SplashActivity.smali \
-    tests/android/com/supertws/dubokutv/PlaybackSaveGuardAndroidTest.java; do
+    tests/android/com/supertws/dubokutv/PlaybackSaveGuardAndroidTest.java \
+    smali_classes3/com/supertws/dubokutv/DubokuTvApplication.smali \
+    'smali_classes3/com/supertws/dubokutv/presentation/update/UpdateScreenViewModel$checkUpdate$1.smali'; do
     cmp "$PATCH_DIR/$file" "$SOURCE_PATCH/$file" || {
         echo "Patch mirror drift; sync apks/patches from cleanyourtv: $file" >&2
         exit 1

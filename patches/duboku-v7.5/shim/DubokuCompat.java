@@ -1,16 +1,175 @@
 package com.supertws.dubokutv;
 
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Properties;
 import javax.net.ssl.SSLSocket;
 
 public final class DubokuCompat {
 
     private static int sDnsCounter = 0;
+    private static File sCacheFile = null;
+    private static final Properties sCacheProps = new Properties();
+    private static final Object sLock = new Object();
+    private static boolean sPropsLoaded = false;
+
+    // Default Seed IPs (Cloudflare & TMDB)
+    private static final byte[][] DEFAULT_CF_IPS = new byte[][] {
+        new byte[] { (byte) 104, (byte) 26, (byte) 2, (byte) 208 },
+        new byte[] { (byte) 104, (byte) 26, (byte) 3, (byte) 208 },
+        new byte[] { (byte) 172, (byte) 67, (byte) 73, (byte) 62 }
+    };
+
+    private static final byte[][] DEFAULT_TMDB_IPS = new byte[][] {
+        new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 83 },
+        new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 88 },
+        new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 212 },
+        new byte[] { (byte) 169, (byte) 150, (byte) 249, (byte) 164 }
+    };
+
+    public static void init(Context context) {
+        if (context == null) return;
+        synchronized (sLock) {
+            try {
+                File filesDir = context.getFilesDir();
+                if (filesDir != null) {
+                    sCacheFile = new File(filesDir, "duboku_net_cache.properties");
+                    loadPropsLocked();
+                }
+            } catch (Throwable t) {
+                logWarn("init failed: " + t);
+            }
+        }
+    }
+
+    private static void loadPropsLocked() {
+        if (sPropsLoaded || sCacheFile == null || !sCacheFile.exists()) {
+            sPropsLoaded = true;
+            return;
+        }
+        FileInputStream fis = null;
+        try {
+            fis = new FileInputStream(sCacheFile);
+            sCacheProps.load(fis);
+            sPropsLoaded = true;
+            pruneStaleLocked();
+        } catch (Throwable t) {
+            logWarn("loadProps failed: " + t);
+        } finally {
+            if (fis != null) {
+                try { fis.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private static void savePropsLocked() {
+        if (sCacheFile == null) return;
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(sCacheFile);
+            sCacheProps.store(fos, "Duboku Network Cache");
+        } catch (Throwable t) {
+            logWarn("saveProps failed: " + t);
+        } finally {
+            if (fos != null) {
+                try { fos.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private static void pruneStaleLocked() {
+        long now = System.currentTimeMillis();
+        long maxAge = 14L * 24L * 3600L * 1000L; // 14 days
+        boolean changed = false;
+        Enumeration<?> e = sCacheProps.propertyNames();
+        List<String> toRemove = new ArrayList<String>();
+        while (e.hasMoreElements()) {
+            String key = (String) e.nextElement();
+            String val = sCacheProps.getProperty(key);
+            if (val != null) {
+                int pipe = val.indexOf('|');
+                if (pipe >= 0) {
+                    try {
+                        long ts = Long.parseLong(val.substring(pipe + 1).trim());
+                        if (now - ts > maxAge) {
+                            toRemove.add(key);
+                        }
+                    } catch (Throwable ignored) {
+                        toRemove.add(key);
+                    }
+                }
+            }
+        }
+        for (String k : toRemove) {
+            sCacheProps.remove(k);
+            changed = true;
+        }
+        // Cap total properties to 64 items to avoid unbounded growth
+        if (sCacheProps.size() > 64) {
+            sCacheProps.clear();
+            changed = true;
+        }
+        if (changed) {
+            savePropsLocked();
+        }
+    }
+
+    public static void evictHost(String hostname) {
+        if (hostname == null) return;
+        synchronized (sLock) {
+            boolean changed = false;
+            String key = "dns." + hostname;
+            if (sCacheProps.containsKey(key)) {
+                sCacheProps.remove(key);
+                changed = true;
+            }
+            if (changed) {
+                savePropsLocked();
+            }
+        }
+    }
+
+    public static void markProxyHost(String hostname) {
+        if (hostname == null) return;
+        synchronized (sLock) {
+            sCacheProps.setProperty("proxy." + hostname, String.valueOf(System.currentTimeMillis()));
+            savePropsLocked();
+        }
+    }
+
+    public static boolean isProxyHost(String hostname) {
+        if (hostname == null) return false;
+        if (hostname.contains("iyf.tv")) return true;
+        synchronized (sLock) {
+            String val = sCacheProps.getProperty("proxy." + hostname);
+            if (val != null) {
+                try {
+                    long ts = Long.parseLong(val.trim());
+                    // Active for 7 days
+                    if (System.currentTimeMillis() - ts < 7L * 24L * 3600L * 1000L) {
+                        return true;
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
+        return false;
+    }
 
     public static Drawable getDrawable(Resources res, int id, Resources.Theme theme) {
         if (Build.VERSION.SDK_INT >= 23) {
@@ -93,10 +252,31 @@ public final class DubokuCompat {
     }
 
     public static String rewriteChinaImageUrl(String url) {
-        if (url != null && isChinaEnvironment() && url.contains("iyf.tv") && !url.contains("wsrv.nl")) {
-            return "https://wsrv.nl/?url=" + url;
+        if (url != null && isChinaEnvironment()) {
+            String host = extractHost(url);
+            if (isProxyHost(host) && !url.contains("wsrv.nl") && !url.contains("weserv.nl")) {
+                return "https://wsrv.nl/?url=" + url;
+            }
         }
         return url;
+    }
+
+    private static String extractHost(String url) {
+        if (url == null) return null;
+        try {
+            int start = url.indexOf("://");
+            if (start < 0) return null;
+            start += 3;
+            int end = url.indexOf('/', start);
+            int colon = url.indexOf(':', start);
+            if (colon >= 0 && (end < 0 || colon < end)) {
+                end = colon;
+            }
+            if (end < 0) end = url.length();
+            return url.substring(start, end);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     private static String applySchemeCompat(String url) {
@@ -109,18 +289,53 @@ public final class DubokuCompat {
     public static okhttp3.i0 executeImageRequest(okhttp3.z client, okhttp3.c0 request, String url) throws java.io.IOException {
         java.io.IOException lastEx = null;
         okhttp3.i0 lastResp = null;
-        try {
-            okhttp3.i0 resp = com.google.firebase.perf.network.FirebasePerfOkHttpClient.execute(client.a(request));
-            if (resp.i() || resp.d == 304) {
-                return resp;
+        String curUrl = url;
+
+        // Try direct request with redirect following (up to 3 hops)
+        for (int hop = 0; hop < 3; hop++) {
+            okhttp3.c0 curReq = request;
+            if (!curUrl.equals(url)) {
+                curReq = request.b().f(curUrl).b();
             }
-            logImageHttpCode(url, resp.d);
-            lastResp = resp;
-        } catch (java.io.IOException e) {
-            logImageError(url, e);
-            lastEx = e;
+            try {
+                okhttp3.i0 resp = com.google.firebase.perf.network.FirebasePerfOkHttpClient.execute(client.a(curReq));
+                if (resp.i() || resp.d == 304) {
+                    return resp;
+                }
+                // Handle 301, 302, 307, 308 redirects
+                if (resp.d == 301 || resp.d == 302 || resp.d == 307 || resp.d == 308) {
+                    String loc = resp.g("Location");
+                    if (loc != null && !loc.isEmpty()) {
+                        logImageHttpCode(curUrl, resp.d);
+                        if (resp.i != null) {
+                            try { resp.i.close(); } catch (Throwable ignored) {}
+                        }
+                        curUrl = applySchemeCompat(loc);
+                        continue;
+                    }
+                }
+                // Check 403 or 451 hotlink/geo-blocking
+                if ((resp.d == 403 || resp.d == 451) && isChinaEnvironment()) {
+                    String h = extractHost(curUrl);
+                    if (h != null) {
+                        markProxyHost(h);
+                    }
+                }
+                logImageHttpCode(curUrl, resp.d);
+                lastResp = resp;
+                break;
+            } catch (java.io.IOException e) {
+                logImageError(curUrl, e);
+                lastEx = e;
+                String h = extractHost(curUrl);
+                if (h != null) {
+                    evictHost(h);
+                }
+                break;
+            }
         }
 
+        // Retry via proxy fallbacks if in China
         if (isChinaEnvironment() && url != null) {
             String rawUrl = url;
             int idx = url.indexOf("?url=");
@@ -180,60 +395,170 @@ public final class DubokuCompat {
                 return true;
             }
         } catch (Throwable ignored) {
+            // Ignore reflection / security issues
         }
         return false;
     }
 
-    public static java.net.InetAddress[] resolveHost(String hostname) throws java.net.UnknownHostException {
-        boolean isCfHost = hostname != null && (hostname.endsWith(".dbokutv.com") || hostname.equals("dbokutv.com") || hostname.endsWith(".duboku.tv") || hostname.equals("duboku.tv") || hostname.equals("wsrv.nl") || hostname.endsWith(".wsrv.nl") || hostname.endsWith(".weserv.nl") || hostname.endsWith(".iyf.tv"));
-        boolean isTmdb = hostname != null && (hostname.equals("image.tmdb.org") || hostname.endsWith(".tmdb.org"));
+    public static InetAddress[] resolveHost(String hostname) throws UnknownHostException {
+        if (hostname == null || hostname.isEmpty()) {
+            throw new UnknownHostException("Empty host");
+        }
+
+        boolean isCfHost = hostname.endsWith(".dbokutv.com") || hostname.equals("dbokutv.com")
+                || hostname.endsWith(".duboku.tv") || hostname.equals("duboku.tv")
+                || hostname.equals("wsrv.nl") || hostname.endsWith(".wsrv.nl")
+                || hostname.endsWith(".weserv.nl") || hostname.endsWith(".iyf.tv");
+        boolean isTmdb = hostname.equals("image.tmdb.org") || hostname.endsWith(".tmdb.org");
+
         if (isChinaEnvironment()) {
+            // 1. Check disk-persisted / memory cache (< 24h)
+            InetAddress[] cached = getCachedAddresses(hostname);
+            if (cached != null && cached.length > 0) {
+                return rotate(cached);
+            }
+
+            // 2. Query HTTPDNS (119.29.29.29)
+            InetAddress[] httpDnsAddrs = queryHttpDns(hostname);
+            if (httpDnsAddrs != null && httpDnsAddrs.length > 0) {
+                putCachedAddresses(hostname, httpDnsAddrs);
+                return rotate(httpDnsAddrs);
+            }
+
+            // 3. Fallback to hardcoded seed IPs if known CF or TMDB domain
             if (isCfHost) {
-                return getDubokuCloudflareAddresses(hostname);
+                return rotate(getSeedAddresses(hostname, DEFAULT_CF_IPS));
             }
             if (isTmdb) {
-                return getTmdbAddresses(hostname);
+                return rotate(getSeedAddresses(hostname, DEFAULT_TMDB_IPS));
             }
         }
+
+        // Overseas or non-China: standard system DNS resolution
         try {
-            java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName(hostname);
+            InetAddress[] addrs = InetAddress.getAllByName(hostname);
             if (addrs != null && addrs.length > 0) {
                 return addrs;
             }
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
+
         if (isCfHost) {
-            return getDubokuCloudflareAddresses(hostname);
+            return rotate(getSeedAddresses(hostname, DEFAULT_CF_IPS));
         }
         if (isTmdb) {
-            return getTmdbAddresses(hostname);
+            return rotate(getSeedAddresses(hostname, DEFAULT_TMDB_IPS));
         }
-        throw new java.net.UnknownHostException(hostname);
+        throw new UnknownHostException(hostname);
     }
 
-    private static java.net.InetAddress[] getDubokuCloudflareAddresses(String hostname) throws java.net.UnknownHostException {
-        java.net.InetAddress[] all = new java.net.InetAddress[] {
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 104, (byte) 26, (byte) 2, (byte) 208 }),
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 104, (byte) 26, (byte) 3, (byte) 208 }),
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 172, (byte) 67, (byte) 73, (byte) 62 })
-        };
-        int offset = (sDnsCounter++ & 0x7fffffff) % all.length;
-        java.net.InetAddress[] rotated = new java.net.InetAddress[all.length];
-        for (int i = 0; i < all.length; i++) {
-            rotated[i] = all[(i + offset) % all.length];
+    private static InetAddress[] getCachedAddresses(String hostname) {
+        synchronized (sLock) {
+            String val = sCacheProps.getProperty("dns." + hostname);
+            if (val != null) {
+                int pipe = val.indexOf('|');
+                if (pipe > 0) {
+                    try {
+                        long ts = Long.parseLong(val.substring(pipe + 1).trim());
+                        // 24-hour DNS TTL
+                        if (System.currentTimeMillis() - ts < 24L * 3600L * 1000L) {
+                            String[] ipStrs = val.substring(0, pipe).split(",");
+                            List<InetAddress> list = new ArrayList<InetAddress>();
+                            for (String ipStr : ipStrs) {
+                                byte[] ipBytes = parseIpv4Bytes(ipStr.trim());
+                                if (ipBytes != null) {
+                                    list.add(InetAddress.getByAddress(hostname, ipBytes));
+                                }
+                            }
+                            if (!list.isEmpty()) {
+                                return list.toArray(new InetAddress[0]);
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            }
         }
-        return rotated;
+        return null;
     }
 
-    private static java.net.InetAddress[] getTmdbAddresses(String hostname) throws java.net.UnknownHostException {
-        java.net.InetAddress[] all = new java.net.InetAddress[] {
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 83 }),
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 88 }),
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 143, (byte) 244, (byte) 50, (byte) 212 }),
-            java.net.InetAddress.getByAddress(hostname, new byte[] { (byte) 169, (byte) 150, (byte) 249, (byte) 164 })
-        };
+    private static void putCachedAddresses(String hostname, InetAddress[] addrs) {
+        if (hostname == null || addrs == null || addrs.length == 0) return;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < addrs.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(addrs[i].getHostAddress());
+        }
+        sb.append('|').append(System.currentTimeMillis());
+        synchronized (sLock) {
+            sCacheProps.setProperty("dns." + hostname, sb.toString());
+            savePropsLocked();
+        }
+    }
+
+    private static InetAddress[] queryHttpDns(String hostname) {
+        HttpURLConnection conn = null;
+        try {
+            URL u = new URL("http://119.29.29.29/d?dn=" + hostname);
+            conn = (HttpURLConnection) u.openConnection();
+            conn.setConnectTimeout(1500);
+            conn.setReadTimeout(1500);
+            conn.setUseCaches(false);
+            if (conn.getResponseCode() == 200) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String line = reader.readLine();
+                reader.close();
+                if (line != null && !line.trim().isEmpty()) {
+                    String[] parts = line.trim().split(";");
+                    List<InetAddress> list = new ArrayList<InetAddress>();
+                    for (String part : parts) {
+                        byte[] ip = parseIpv4Bytes(part.trim());
+                        if (ip != null) {
+                            list.add(InetAddress.getByAddress(hostname, ip));
+                        }
+                    }
+                    if (!list.isEmpty()) {
+                        return list.toArray(new InetAddress[0]);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            logWarn("queryHttpDns failed for " + hostname + ": " + t);
+        } finally {
+            if (conn != null) {
+                try { conn.disconnect(); } catch (Throwable ignored) {}
+            }
+        }
+        return null;
+    }
+
+    private static byte[] parseIpv4Bytes(String ipStr) {
+        if (ipStr == null) return null;
+        String[] parts = ipStr.split("\\.");
+        if (parts.length != 4) return null;
+        try {
+            byte[] b = new byte[4];
+            for (int i = 0; i < 4; i++) {
+                int val = Integer.parseInt(parts[i]);
+                if (val < 0 || val > 255) return null;
+                b[i] = (byte) val;
+            }
+            return b;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static InetAddress[] getSeedAddresses(String hostname, byte[][] seedIps) throws UnknownHostException {
+        InetAddress[] addrs = new InetAddress[seedIps.length];
+        for (int i = 0; i < seedIps.length; i++) {
+            addrs[i] = InetAddress.getByAddress(hostname, seedIps[i]);
+        }
+        return addrs;
+    }
+
+    private static InetAddress[] rotate(InetAddress[] all) {
+        if (all == null || all.length <= 1) return all;
         int offset = (sDnsCounter++ & 0x7fffffff) % all.length;
-        java.net.InetAddress[] rotated = new java.net.InetAddress[all.length];
+        InetAddress[] rotated = new InetAddress[all.length];
         for (int i = 0; i < all.length; i++) {
             rotated[i] = all[(i + offset) % all.length];
         }
@@ -282,6 +607,13 @@ public final class DubokuCompat {
     public static void logImageHttpCode(String url, int code) {
         try {
             android.util.Log.e("DubokuImg", "HTTP " + code + " url=" + url);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void logWarn(String msg) {
+        try {
+            android.util.Log.w("DubokuCompat", msg);
         } catch (Throwable ignored) {
         }
     }

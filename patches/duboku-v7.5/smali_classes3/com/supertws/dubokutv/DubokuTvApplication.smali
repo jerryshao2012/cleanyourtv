@@ -591,6 +591,8 @@
     .line 1
     invoke-virtual {p0}, Lcom/supertws/dubokutv/DubokuTvApplication;->a()V
 
+    invoke-static {p0}, Lcom/supertws/dubokutv/DubokuCompat;->init(Landroid/content/Context;)V
+
     invoke-static {p0}, Lcom/supertws/dubokutv/LanSyncManager;->onAppCreate(Landroid/content/Context;)V
 
     .line 2
