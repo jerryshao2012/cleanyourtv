@@ -42,6 +42,11 @@ for file in AndroidManifest.xml SYNC_RELIABILITY_PLAN.md shim/DubokuCompat.java 
     tests/test_sync_dex_layout.py \
     tests/test_lan_sync_message_dedup.py \
     tests/test_sync_request_debounce.py \
+    tests/test_image_dns_fallback.py \
+    res/xml/network_security_config.xml \
+    smali/androidx/appcompat/widget/s.smali \
+    smali/coil/fetch/k.smali \
+    smali_classes3/com/supertws/dubokutv/SplashActivity.smali \
     tests/android/com/supertws/dubokutv/PlaybackSaveGuardAndroidTest.java; do
     cmp "$PATCH_DIR/$file" "$SOURCE_PATCH/$file" || {
         echo "Patch mirror drift; sync apks/patches from cleanyourtv: $file" >&2
@@ -129,6 +134,10 @@ cp -R "$PATCH_DIR/smali_classes6/." "$SRC/smali_classes6/"
 rm -f "$SRC/smali_classes3/com/supertws/dubokutv/CloudSyncClient"*.smali
 test -f "$SRC/smali_classes4/com/supertws/dubokutv/CloudSyncClient.smali"
 mkdir -p "$SRC/res/raw"
+mkdir -p "$SRC/res/xml"
+if [ -f "$PATCH_DIR/res/xml/network_security_config.xml" ]; then
+    cp "$PATCH_DIR/res/xml/network_security_config.xml" "$SRC/res/xml/"
+fi
 cp "$PATCH_DIR/res/raw/isrg_root_x1.pem" "$SRC/res/raw/"
 cp "$PATCH_DIR/res/drawable/ic_profile_family.xml" "$SRC/res/drawable/"
 cp "$PATCH_DIR/res/values/family_icon_public.xml" "$SRC/res/values/"

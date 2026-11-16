@@ -605,3 +605,28 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
 ## 2026-11-09 小米盒子 3 家庭扫码与局域网同步验收
 
 用户确认最新安装包上局域网同步正常，家庭关联二维码也已正常显示。根因是 WebView 直接请求 Worker 的 QR SVG，绕过小米盒子 3 专用 HTTPS 根证书兼容；现由原生客户端安全校验 SVG 后以内嵌 data URI 展示。最终 APK SHA-256：`d7c89dfe3d64ef6de2b149b903dbc45e59006ac590a7873c45e7a8691fb1d740`，三份分发 APK 一致，签名校验通过，26 项补丁回归测试通过。
+
+
+## 2026-11-16 中国大陆网络环境（苏州海信 VIDAA_TV / HZ55U7E）启动卡顿与全站海报加载专项修复
+
+针对国内网络环境（苏州电信 `llj-5G`，海信电视 `HZ55U7E` / `VIDAA_TV` / `MSD6A848`，Android 8.1.0 API 27，局域网 IP `192.168.10.5`）出现的两个核心问题完成根因定位与通用包补丁修复：
+
+1. **问题一：启动开屏页（SplashActivity）卡顿 2 分钟才进入首页**
+   - **根因**：`SplashActivity.onCreate` 调用了 Google UMP SDK 的 `zzj.requestConsentInfoUpdate()`（连接 `fundingchoicesmessages.google.com` 等 Google 域名）；在国内网络环境下该请求因连接黑洞挂起直至超时，阻塞了跳往 `MainActivity` 的流程。若直接删除 `this.O`（`googleMobileAdsConsentManager`）初始化，则 3 秒定时器触发 `SplashActivity.o()` 读取 `this.O` 时会抛出 `UninitializedPropertyAccessException` 闪退。
+   - **修复**：在 `SplashActivity.smali` 中保留 `this.O = DubokuTvApplication.q.b(this)` 本地实例初始化，跳过 `zzj.requestConsentInfoUpdate()` 网络调用并直接置 `this.R = true`，使开屏固定 3 秒平滑进入首页且不崩溃。
+
+2. **问题二：首页与分类列表（如港剧《玫瑰战争》、动漫《盗妖行》）海报显示为红色 D 占位符或先灰后 D 再慢速闪烁加载**
+   - **根因分析**：
+     1. **Android 8.1 明文策略拦截**：新增 `res/xml/network_security_config.xml` 配置 `cleartextTrafficPermitted="true"` 并在 `AndroidManifest.xml` 中启用，同时保留 `mc/c.smali` 的 `SDK_INT < 23` 分支以兼容 API 22。
+     2. **本地路由器 DNS 超时与污染**：电视默认 DNS 为路由器 `192.168.10.1`，解析 `*.dbokutv.com` 或 `image.tmdb.org` 时常发生 5~10 秒超时或返回污染 IP，导致 Coil 首轮请求失败先显示 D 占位符。
+     3. **全站三大图床域名的差异化限制**（经逆向 `TTHp.gS` 与 `Lta/a` 分块反转 Base64 解码全站 `TnId` 确认）：
+        - `image.tmdb.org`（占全站约 90% 封面，含动漫《盗妖行》）：使用 BunnyCDN，国内直连 IP 可达但本地 DNS 易污染；若将全站 240+ 张 `image.tmdb.org` 封面全部强行改写到单节点 `wsrv.nl`，在 48 项并发的动漫列表页会因单主机队列阻塞引发后半段封面（如第 36 项《盗妖行》）超时。
+        - `static.dbokutv.com` / `pic.dbokutv.com`（占约 10%）：托管于 Cloudflare，需绕过本地污染 DNS 直连可用 Cloudflare Anycast IP。
+        - `static.iyf.tv`（少量港剧如《玫瑰战争》、《飞常日志2》）：爱壹帆图床在 Cloudflare WAF 开启了中国大陆 IP 封锁（`GeoIP = CN` 直接返回 `HTTP 403`），必须通过海外图片代理拉取。
+   - **四层修复方案（仅在 `DubokuCompat.isChinaEnvironment()` 识别为中国大陆时区/区域时激活，不影响海外设备）**：
+     1. **大陆环境识别（`isChinaEnvironment`）**：检测默认时区（`Shanghai`/`Chongqing`/`Harbin`/`Urumqi`/`Asia/Beijing`/`PRC`/`GMT+8`）或国家代码 `CN`。
+     2. **零等待免 DNS 轮询直连（`resolveHost` + `androidx/appcompat/widget/s.smali`）**：在大陆环境下，对 `*.dbokutv.com`、`*.duboku.tv`、`wsrv.nl`、`*.weserv.nl`、`*.iyf.tv` 跳过系统 DNS，0ms 轮询返回 3 个可用 Cloudflare IP（`104.26.2.208`, `104.26.3.208`, `172.67.73.62`）；对 `image.tmdb.org` 0ms 轮询返回 4 个可用 BunnyCDN IP（`143.244.50.83`, `143.244.50.88`, `143.244.50.212`, `169.150.249.164`）。
+     3. **精准预代理改写（`rewriteChinaImageUrl`）**：在大陆环境下仅对必返 403 的 `iyf.tv` 封面预先改写为 `https://wsrv.nl/?url=`，`image.tmdb.org` 与 `dbokutv.com` 保持高速直连。
+     4. **失败自动双镜像回退重试（`executeImageRequest` + `coil/fetch/k.smali`）**：在 Coil 网络执行层注入标准浏览器 `User-Agent` 与 `Referer`，并由 `DubokuCompat.executeImageRequest` 接管请求执行；当任意封面直连发生 `IOException`（超时/重置/握手失败）或非 200/304 状态码时，自动依次回退重试 `https://wsrv.nl/?url=` 与 `https://images.weserv.nl/?url=`，同时通过 `Log.e("DubokuImg", ...)` 记录诊断日志。
+
+- **实机验证与最新产物**：已在苏州海信电视（`192.168.10.5:5555`）实机验证开屏 3 秒直达首页、首页《玫瑰战争》与动漫列表《盗妖行》等全站封面均秒速完整加载。三份通用 APK 最新 SHA-256：`a40c0b8d58c0a3d9609c543834803c604c996a3fe4b8503665a749c83ad4dbbd`。

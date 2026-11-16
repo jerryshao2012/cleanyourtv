@@ -166,153 +166,27 @@
     .line 56
     invoke-virtual {v0}, Landroid/os/CountDownTimer;->start()Landroid/os/CountDownTimer;
 
-    .line 57
-    .line 58
-    .line 59
     invoke-virtual {p0}, Landroid/content/Context;->getApplicationContext()Landroid/content/Context;
 
-    .line 60
-    .line 61
-    .line 62
     move-result-object p1
 
-    .line 63
-    const-string v0, "getApplicationContext(...)"
-
-    .line 64
-    .line 65
-    invoke-static {p1, v0}, Lkotlin/jvm/internal/g;->d(Ljava/lang/Object;Ljava/lang/String;)V
-
-    .line 66
-    .line 67
-    .line 68
     sget-object v0, Lcom/supertws/dubokutv/q;->b:Lcom/supertws/dubokutv/j;
 
-    .line 69
-    .line 70
     invoke-virtual {v0, p1}, Lcom/supertws/dubokutv/j;->b(Landroid/content/Context;)Lcom/supertws/dubokutv/q;
 
-    .line 71
-    .line 72
-    .line 73
     move-result-object p1
 
-    .line 74
     iput-object p1, p0, Lcom/supertws/dubokutv/SplashActivity;->O:Lcom/supertws/dubokutv/q;
 
-    .line 75
-    .line 76
-    new-instance v0, Landroidx/media3/exoplayer/q;
+    const/4 v0, 0x1
 
-    .line 77
-    .line 78
-    const/16 v1, 0xd
+    iput-boolean v0, p0, Lcom/supertws/dubokutv/SplashActivity;->R:Z
 
-    .line 79
-    .line 80
-    invoke-direct {v0, p0, v1}, Landroidx/media3/exoplayer/q;-><init>(Ljava/lang/Object;I)V
+    const-string v0, "splash.bypassConsent.ok"
 
-    .line 81
-    .line 82
-    .line 83
-    new-instance v1, Lw7/f;
+    invoke-static {v0}, Lcom/supertws/dubokutv/Dbg;->stage(Ljava/lang/String;)V
 
-    .line 84
-    .line 85
-    invoke-direct {v1}, Ljava/lang/Object;-><init>()V
-
-    .line 86
-    .line 87
-    .line 88
-    iget-object p1, p1, Lcom/supertws/dubokutv/q;->a:Ljava/lang/Object;
-
-    .line 89
-    .line 90
-    check-cast p1, Lcom/google/android/gms/internal/consent_sdk/zzj;
-
-    .line 91
-    .line 92
-    new-instance v2, La6/i;
-
-    .line 93
-    .line 94
-    const/4 v3, 0x4
-
-    .line 95
-    invoke-direct {v2, v3, p0, v0}, La6/i;-><init>(ILjava/lang/Object;Ljava/lang/Object;)V
-
-    .line 96
-    .line 97
-    .line 98
-    new-instance v3, Landroidx/media3/exoplayer/q;
-
-    .line 99
-    .line 100
-    const/16 v4, 0xb
-
-    .line 101
-    .line 102
-    invoke-direct {v3, v0, v4}, Landroidx/media3/exoplayer/q;-><init>(Ljava/lang/Object;I)V
-
-    .line 103
-    .line 104
-    .line 105
-    invoke-virtual {p1, p0, v1, v2, v3}, Lcom/google/android/gms/internal/consent_sdk/zzj;->requestConsentInfoUpdate(Landroid/app/Activity;Lw7/f;Lw7/e;Lw7/d;)V
-
-    .line 106
-    .line 107
-    .line 108
-    iget-object p1, p0, Lcom/supertws/dubokutv/SplashActivity;->O:Lcom/supertws/dubokutv/q;
-
-    .line 109
-    .line 110
-    if-eqz p1, :cond_2
-
-    .line 111
-    .line 112
-    iget-object p1, p1, Lcom/supertws/dubokutv/q;->a:Ljava/lang/Object;
-
-    .line 113
-    .line 114
-    check-cast p1, Lcom/google/android/gms/internal/consent_sdk/zzj;
-
-    .line 115
-    .line 116
-    invoke-virtual {p1}, Lcom/google/android/gms/internal/consent_sdk/zzj;->canRequestAds()Z
-
-    .line 117
-    .line 118
-    .line 119
-    move-result p1
-
-    .line 120
-    if-eqz p1, :cond_1
-
-    .line 121
-    .line 122
-    invoke-virtual {p0}, Lcom/supertws/dubokutv/SplashActivity;->w()V
-
-    .line 123
-    .line 124
-    .line 125
-    :cond_1
     return-void
-
-    .line 126
-    :cond_2
-    const-string p1, "googleMobileAdsConsentManager"
-
-    .line 127
-    .line 128
-    invoke-static {p1}, Lkotlin/jvm/internal/g;->k(Ljava/lang/String;)V
-
-    .line 129
-    .line 130
-    .line 131
-    const/4 p1, 0x0
-
-    .line 132
-    throw p1
 .end method
 
 .method public final w()V

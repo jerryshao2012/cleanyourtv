@@ -2325,9 +2325,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
             javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) new java.net.URL(
-                    "https://api.open-meteo.com/v1/forecast?latitude=43.6532&longitude=-79.3832"
+                    "https://api.open-meteo.com/v1/forecast?latitude=31.2990&longitude=120.5853"
                     + "&current=temperature_2m,apparent_temperature,weather_code,is_day"
-                    + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FToronto&forecast_days=3").openConnection();
+                    + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=3").openConnection();
             final String targetIp = host;
             if (!"api.open-meteo.com".equals(targetIp) || Build.VERSION.SDK_INT < 26) {
                 javax.net.ssl.SSLSocketFactory baseFactory = javax.net.ssl.HttpsURLConnection.getDefaultSSLSocketFactory();
@@ -2376,7 +2376,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 int c1 = codes.getInt(1);
                 int hi2 = (int) Math.round(maxs.getDouble(2)), lo2 = (int) Math.round(mins.getDouble(2));
                 int c2 = codes.getInt(2);
-                cachedWeather = "Toronto " + weatherDesc(code, day) + " " + temp + "°C (体感 " + feels + "°C) · 今日 "
+                cachedWeather = "苏州 " + weatherDesc(code, day) + " " + temp + "°C (体感 " + feels + "°C) · 今日 "
                         + hi0 + "°/" + lo0 + "° · 明日 " + weatherDesc(c1, true) + " " + hi1 + "°/" + lo1 + "° · 后日 "
                         + weatherDesc(c2, true) + " " + hi2 + "°/" + lo2 + "°";
                 lastWeatherMs = now;
@@ -2386,7 +2386,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         } catch (Exception e) {
             android.util.Log.e("TVHomeWeather", "Fetch failed", e);
             if (cachedWeather.isEmpty()) {
-                return "Toronto 天气获取重试中: " + e.getClass().getSimpleName();
+                return "苏州 天气获取重试中: " + e.getClass().getSimpleName();
             }
         }
         return cachedWeather;

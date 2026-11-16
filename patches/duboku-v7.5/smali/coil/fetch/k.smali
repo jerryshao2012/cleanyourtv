@@ -1668,80 +1668,14 @@
     .line 108
     check-cast p2, Lokhttp3/z;
 
-    .line 109
-    .line 110
-    invoke-virtual {p2, p1}, Lokhttp3/z;->a(Lokhttp3/c0;)Lokhttp3/internal/connection/i;
+    iget-object v0, p0, Lcoil/fetch/k;->a:Ljava/lang/String;
 
-    .line 111
-    .line 112
-    .line 113
+    invoke-static {p2, p1, v0}, Lcom/supertws/dubokutv/DubokuCompat;->executeImageRequest(Lokhttp3/z;Lokhttp3/c0;Ljava/lang/String;)Lokhttp3/i0;
+
     move-result-object p1
 
-    .line 114
-    iput v3, v0, Lcoil/fetch/HttpUriFetcher$executeNetworkRequest$1;->label:I
+    goto :goto_2
 
-    .line 115
-    .line 116
-    new-instance p2, Lkotlinx/coroutines/h;
-
-    .line 117
-    .line 118
-    invoke-static {v0}, Lmc/l;->y(Lkotlin/coroutines/c;)Lkotlin/coroutines/c;
-
-    .line 119
-    .line 120
-    .line 121
-    move-result-object v0
-
-    .line 122
-    invoke-direct {p2, v3, v0}, Lkotlinx/coroutines/h;-><init>(ILkotlin/coroutines/c;)V
-
-    .line 123
-    .line 124
-    .line 125
-    invoke-virtual {p2}, Lkotlinx/coroutines/h;->s()V
-
-    .line 126
-    .line 127
-    .line 128
-    new-instance v0, Landroidx/compose/runtime/r0;
-
-    .line 129
-    .line 130
-    const/4 v2, 0x3
-
-    .line 131
-    invoke-direct {v0, v2, p1, p2}, Landroidx/compose/runtime/r0;-><init>(ILjava/lang/Object;Ljava/lang/Object;)V
-
-    .line 132
-    .line 133
-    .line 134
-    invoke-static {p1, v0}, Lcom/google/firebase/perf/network/FirebasePerfOkHttpClient;->enqueue(Lokhttp3/i;Lokhttp3/j;)V
-
-    .line 135
-    .line 136
-    .line 137
-    invoke-virtual {p2, v0}, Lkotlinx/coroutines/h;->u(Lrb/k;)V
-
-    .line 138
-    .line 139
-    .line 140
-    invoke-virtual {p2}, Lkotlinx/coroutines/h;->r()Ljava/lang/Object;
-
-    .line 141
-    .line 142
-    .line 143
-    move-result-object p2
-
-    .line 144
-    if-ne p2, v1, :cond_5
-
-    .line 145
-    .line 146
-    return-object v1
-
-    .line 147
-    :cond_5
     :goto_1
     move-object p1, p2
 
@@ -1772,6 +1706,10 @@
     .line 159
     .line 160
     if-eq p2, v0, :cond_7
+
+    iget-object v0, p0, Lcoil/fetch/k;->a:Ljava/lang/String;
+
+    invoke-static {v0, p2}, Lcom/supertws/dubokutv/DubokuCompat;->logImageHttpCode(Ljava/lang/String;I)V
 
     .line 161
     .line 162
@@ -1882,13 +1820,21 @@
     .line 22
     invoke-virtual {v2}, Lokhttp3/s;->c()Lokhttp3/r;
 
-    .line 23
-    .line 24
-    .line 25
     move-result-object v2
 
-    .line 26
     iput-object v2, v0, Lokhttp3/b0;->c:Lokhttp3/r;
+
+    const-string v4, "User-Agent"
+
+    const-string v5, "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+
+    invoke-virtual {v0, v4, v5}, Lokhttp3/b0;->a(Ljava/lang/String;Ljava/lang/String;)V
+
+    const-string v4, "Referer"
+
+    const-string v5, "https://www.duboku.tv/"
+
+    invoke-virtual {v0, v4, v5}, Lokhttp3/b0;->a(Ljava/lang/String;Ljava/lang/String;)V
 
     .line 27
     .line 28
