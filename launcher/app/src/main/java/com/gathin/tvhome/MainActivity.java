@@ -576,12 +576,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         weatherLine = findViewById(R.id.weatherLine);
         if (weatherLine != null) {
             weatherLine.setOnClickListener(v -> {
+                Intent it = null;
                 try {
-                    Intent it = getPackageManager().getLeanbackLaunchIntentForPackage("io.github.sumyabazar1.weather");
+                    it = getPackageManager().getLeanbackLaunchIntentForPackage("io.github.sumyabazar1.weather");
                     if (it == null) it = getPackageManager().getLaunchIntentForPackage("io.github.sumyabazar1.weather");
-                    if (it != null) startActivity(it);
                 } catch (Exception ignored) {
                 }
+                if (it != null) {
+                    try {
+                        startActivity(it);
+                        return;
+                    } catch (Exception ignored) {
+                    }
+                }
+                showWeatherForecastDialog();
             });
         }
         raceCalendar = cfg.raceCalendar;
@@ -2309,6 +2317,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private long lastWeatherMs;
     private String cachedWeather = "";
+    private String[] weatherForecastDays = null;
+
+    private void showWeatherForecastDialog() {
+        if (weatherForecastDays == null || weatherForecastDays.length == 0) {
+            new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle("苏州天气预报")
+                    .setMessage(cachedWeather.isEmpty() ? "天气数据获取中，请稍候…" : cachedWeather)
+                    .setPositiveButton("确定", null)
+                    .show();
+            return;
+        }
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("苏州未来一周天气预报")
+                .setItems(weatherForecastDays, null)
+                .setPositiveButton("确定", null)
+                .show();
+    }
+
+    private static String formatWeekday(String dateStr, int index) {
+        if (index == 0) return "今日";
+        if (index == 1) return "明日";
+        if (index == 2) return "后日";
+        try {
+            java.time.LocalDate d = java.time.LocalDate.parse(dateStr);
+            switch (d.getDayOfWeek()) {
+                case MONDAY: return "周一";
+                case TUESDAY: return "周二";
+                case WEDNESDAY: return "周三";
+                case THURSDAY: return "周四";
+                case FRIDAY: return "周五";
+                case SATURDAY: return "周六";
+                case SUNDAY: return "周日";
+            }
+        } catch (Throwable ignored) {}
+        return dateStr;
+    }
 
     private String fetchWeatherLine() {
         long now = System.currentTimeMillis();
@@ -2327,7 +2371,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             javax.net.ssl.HttpsURLConnection conn = (javax.net.ssl.HttpsURLConnection) new java.net.URL(
                     "https://api.open-meteo.com/v1/forecast?latitude=31.2990&longitude=120.5853"
                     + "&current=temperature_2m,apparent_temperature,weather_code,is_day"
-                    + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=3").openConnection();
+                    + "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FShanghai&forecast_days=7").openConnection();
             final String targetIp = host;
             if (!"api.open-meteo.com".equals(targetIp) || Build.VERSION.SDK_INT < 26) {
                 javax.net.ssl.SSLSocketFactory baseFactory = javax.net.ssl.HttpsURLConnection.getDefaultSSLSocketFactory();
@@ -2371,6 +2415,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 org.json.JSONArray maxs = daily.getJSONArray("temperature_2m_max");
                 org.json.JSONArray mins = daily.getJSONArray("temperature_2m_min");
                 org.json.JSONArray codes = daily.getJSONArray("weather_code");
+                org.json.JSONArray times = daily.optJSONArray("time");
                 int hi0 = (int) Math.round(maxs.getDouble(0)), lo0 = (int) Math.round(mins.getDouble(0));
                 int hi1 = (int) Math.round(maxs.getDouble(1)), lo1 = (int) Math.round(mins.getDouble(1));
                 int c1 = codes.getInt(1);
@@ -2379,6 +2424,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 cachedWeather = "苏州 " + weatherDesc(code, day) + " " + temp + "°C (体感 " + feels + "°C) · 今日 "
                         + hi0 + "°/" + lo0 + "° · 明日 " + weatherDesc(c1, true) + " " + hi1 + "°/" + lo1 + "° · 后日 "
                         + weatherDesc(c2, true) + " " + hi2 + "°/" + lo2 + "°";
+
+                int numDays = Math.min(7, codes.length());
+                String[] forecastList = new String[numDays];
+                for (int i = 0; i < numDays; i++) {
+                    int c = codes.getInt(i);
+                    int hi = (int) Math.round(maxs.getDouble(i));
+                    int lo = (int) Math.round(mins.getDouble(i));
+                    String dateStr = times != null ? times.optString(i, "") : "";
+                    String dayLabel = formatWeekday(dateStr, i);
+                    forecastList[i] = String.format("%-4s  %s  %2d°C ~ %2d°C", dayLabel, weatherDesc(c, true), lo, hi);
+                }
+                weatherForecastDays = forecastList;
                 lastWeatherMs = now;
             } finally {
                 conn.disconnect();

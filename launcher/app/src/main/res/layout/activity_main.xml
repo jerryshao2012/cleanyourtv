@@ -331,7 +331,7 @@
                 android:layout_marginTop="2dp"
                 android:singleLine="true"
                 android:ellipsize="end"
-                android:textColor="#D9FFFFFF"
+                android:textColor="@drawable/pill_text"
                 android:textSize="13sp"
                 android:fontFamily="@string/font_medium"
                 android:letterSpacing="0.04"
