@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">天气</string>
+
+    <string name="feels_like">体感 %1$d°</string>
+    <string name="humidity">湿度 %1$d%%</string>
+    <string name="wind">风速 %1$d 公里/小时</string>
+    <string name="wind_mph">风速 %1$d 英里/小时</string>
+    <string name="other_unit_c">%1$d°C</string>
+    <string name="other_unit_f">%1$d°F</string>
+    <string name="high_low">%1$d° / %2$d°</string>
+    <string name="aqi_line">空气质量 %1$d · %2$s</string>
+    <string name="updated">更新于 %1$s · Open-Meteo</string>
+    <string name="change_city">切换城市</string>
+    <string name="weather_settings">天气设置</string>
+    <string name="settings_done">完成</string>
+    <string name="setting_units">温度单位</string>
+    <string name="unit_c">摄氏度 (°C)</string>
+    <string name="unit_f">华氏度 (°F)</string>
+    <string name="setting_both_units">同时显示两种单位</string>
+    <string name="setting_days">预报天数</string>
+    <plurals name="day_count">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <string name="setting_humidity">显示湿度</string>
+    <string name="setting_wind">显示风速</string>
+    <string name="setting_reset">重置天气设置</string>
+    <string name="setting_value">%1$s · %2$s</string>
+    <string name="option_on">开启</string>
+    <string name="option_off">关闭</string>
+    <string name="loading">正在加载天气…</string>
+    <string name="offline">无法连接到 Open-Meteo。请检查电视网络连接；5 分钟后自动重试。</string>
+
+    <string name="pick_title">选择城市</string>
+    <string name="pick_hint">输入城市名称，例如：苏州、上海、北京</string>
+    <string name="pick_search">搜索</string>
+    <string name="pick_none">未找到名为“%1$s”的城市</string>
+    <string name="pick_first">请选择一个城市以查看天气。</string>
+
+    <string name="aqi_good">优</string>
+    <string name="aqi_moderate">良</string>
+    <string name="aqi_sensitive">轻度污染</string>
+    <string name="aqi_unhealthy">中度污染</string>
+    <string name="aqi_very_unhealthy">重度污染</string>
+    <string name="aqi_hazardous">严重污染</string>
+
+    <string name="sky_clear">晴</string>
+    <string name="sky_sunny">晴</string>
+    <string name="sky_mostly_clear">晴间多云</string>
+    <string name="sky_mostly_sunny">晴间多云</string>
+    <string name="sky_partly_cloudy">多云</string>
+    <string name="sky_cloudy">阴</string>
+    <string name="sky_fog">雾</string>
+    <string name="sky_drizzle">毛毛雨</string>
+    <string name="sky_freezing_drizzle">冻毛毛雨</string>
+    <string name="sky_light_rain">小雨</string>
+    <string name="sky_rain">中雨</string>
+    <string name="sky_heavy_rain">大雨</string>
+    <string name="sky_freezing_rain">冻雨</string>
+    <string name="sky_light_snow">小雪</string>
+    <string name="sky_snow">中雪</string>
+    <string name="sky_heavy_snow">大雪</string>
+    <string name="sky_snow_grains">米雪</string>
+    <string name="sky_showers">阵雨</string>
+    <string name="sky_snow_showers">阵雪</string>
+    <string name="sky_thunderstorm">雷阵雨</string>
+</resources>

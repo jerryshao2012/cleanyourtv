@@ -71,8 +71,12 @@ public final class WeatherActivity extends Activity {
         findViewById(R.id.weatherSettings).setOnClickListener(v -> settings());
         changeCity.requestFocus();
         if (!place.contains("name")) {
-            message.setText(R.string.pick_first);
-            pickCity();
+            // Default to Suzhou (Suzhou, Jiangsu, China: 31.2990° N, 120.5853° E)
+            place.edit()
+                    .putString("name", "苏州")
+                    .putLong("lat", Double.doubleToRawLongBits(31.2990))
+                    .putLong("lon", Double.doubleToRawLongBits(120.5853))
+                    .apply();
         }
     }
 
