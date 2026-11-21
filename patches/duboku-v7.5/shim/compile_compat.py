@@ -19,7 +19,7 @@ def build():
         write_src("okhttp3", "i", "public interface i {}")
         write_src("okhttp3", "j0", "public class j0 { public void close() {} }")
         write_src("okhttp3", "i0", "public class i0 { public int d; public j0 i; public String g(String n) { return null; } public boolean i() { return false; } }")
-        write_src("okhttp3", "b0", "public class b0 { public b0 f(String s) { return this; } public c0 b() { return null; } }")
+        write_src("okhttp3", "b0", "public class b0 { public void f(String s) {} public c0 b() { return null; } }")
         write_src("okhttp3", "c0", "public class c0 { public b0 b() { return null; } }")
         write_src("okhttp3.internal.connection", "i", "public class i implements okhttp3.i {}")
         write_src("okhttp3", "z", "public class z { public okhttp3.internal.connection.i a(c0 c) { return null; } }")

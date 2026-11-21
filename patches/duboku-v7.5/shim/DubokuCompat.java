@@ -254,8 +254,8 @@ public final class DubokuCompat {
     public static String rewriteChinaImageUrl(String url) {
         if (url != null && isChinaEnvironment()) {
             String host = extractHost(url);
-            if (isProxyHost(host) && !url.contains("wsrv.nl") && !url.contains("weserv.nl")) {
-                return "https://wsrv.nl/?url=" + url;
+            if (isProxyHost(host) && !url.contains("cleanyourtv-img-proxy.netlify.app") && !url.contains("wsrv.nl") && !url.contains("weserv.nl")) {
+                return "https://cleanyourtv-img-proxy.netlify.app/img?url=" + url;
             }
         }
         return url;
@@ -295,7 +295,9 @@ public final class DubokuCompat {
         for (int hop = 0; hop < 3; hop++) {
             okhttp3.c0 curReq = request;
             if (!curUrl.equals(url)) {
-                curReq = request.b().f(curUrl).b();
+                okhttp3.b0 b = request.b();
+                b.f(curUrl);
+                curReq = b.b();
             }
             try {
                 okhttp3.i0 resp = com.google.firebase.perf.network.FirebasePerfOkHttpClient.execute(client.a(curReq));
@@ -335,14 +337,15 @@ public final class DubokuCompat {
             }
         }
 
-        // Retry via proxy fallbacks if in China
-        if (isChinaEnvironment() && url != null) {
+        // Retry via proxy fallbacks on any direct failure
+        if (url != null) {
             String rawUrl = url;
             int idx = url.indexOf("?url=");
             if (idx > 0) {
                 rawUrl = url.substring(idx + 5);
             }
             String[] proxies = new String[] {
+                "https://cleanyourtv-img-proxy.netlify.app/img?url=" + rawUrl,
                 "https://wsrv.nl/?url=" + rawUrl,
                 "https://images.weserv.nl/?url=" + rawUrl
             };
@@ -363,6 +366,10 @@ public final class DubokuCompat {
                     b.f(target);
                     okhttp3.i0 retryResp = com.google.firebase.perf.network.FirebasePerfOkHttpClient.execute(client.a(b.b()));
                     if (retryResp.i() || retryResp.d == 304) {
+                        String rawHost = extractHost(rawUrl);
+                        if (rawHost != null) {
+                            markProxyHost(rawHost);
+                        }
                         android.util.Log.e("DubokuImg", "RETRY_OK " + target);
                         return retryResp;
                     }

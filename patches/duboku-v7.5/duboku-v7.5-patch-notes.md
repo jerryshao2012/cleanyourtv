@@ -630,3 +630,14 @@ Sony 与 Hisense 真机验证：同集暂停约 16:40，收到约 16:57 后按 O
      4. **失败自动双镜像回退重试（`executeImageRequest` + `coil/fetch/k.smali`）**：在 Coil 网络执行层注入标准浏览器 `User-Agent` 与 `Referer`，并由 `DubokuCompat.executeImageRequest` 接管请求执行；当任意封面直连发生 `IOException`（超时/重置/握手失败）或非 200/304 状态码时，自动依次回退重试 `https://wsrv.nl/?url=` 与 `https://images.weserv.nl/?url=`，同时通过 `Log.e("DubokuImg", ...)` 记录诊断日志。
 
 - **实机验证与最新产物**：已在苏州海信电视（`192.168.10.5:5555`）实机验证开屏 3 秒直达首页、首页《玫瑰战争》与动漫列表《盗妖行》等全站封面均秒速完整加载。三份通用 APK 最新 SHA-256：`a40c0b8d58c0a3d9609c543834803c604c996a3fe4b8503665a749c83ad4dbbd`。
+
+### 2026-11-21：Netlify 通用图片反代 + `b0.f(String)` 签名修复 + 失败域名自动记忆
+
+- **根因**：
+  1. 部分剧集（如“宝珠”）封面指向 `https://image.tmdb.org`，大陆直连触发 `SSLHandshakeException: Connection reset by peer`；原有公共回退代理 `wsrv.nl` 与 `images.weserv.nl` 在大陆同样被阻断。
+  2. `shim/compile_compat.py` 中 `okhttp3.b0.f(String)` stub 返回类型误写为 `b0`（真实 APK 为 `void`），导致 `executeImageRequest` 每次代理重试触发 `NoSuchMethodError` 被 Coil 静默吞掉，封面回退为 D logo。
+- **改动**：
+  1. 在 `netlify-img-proxy/` 新增 Netlify Edge Function（生产地址 `https://cleanyourtv-img-proxy.netlify.app/img?url=`），校验 `http/https`、拦截内网地址、仅转发 `image/*` 并附带 7 天 `Cache-Control`。
+  2. 修复 `shim/compile_compat.py` 中 `okhttp3.b0.f(String)` 为 `void` 并更新 `DubokuCompat.java` 调用方式。
+  3. `DubokuCompat.java` 将 `https://cleanyourtv-img-proxy.netlify.app/img?url=` 设为首选回退代理；任意域名直连失败后均触发代理重试，重试成功（`RETRY_OK`）时自动调用 `markProxyHost(rawHost)` 持久化缓存 14 天，对 `image.tmdb.org` 及未来所有被阻断图床域名自动生效。
+- **验证**：全套单元测试通过，通用包 SHA-256 `1e4757132c940fadbf08c8737cb8e7bf31bde25b0dbd0a26e79df4d458c658cc`，海信电视实机日志确认 `DubokuImg: RETRY_OK https://cleanyourtv-img-proxy.netlify.app/img?url=https://image.tmdb.org/...`，封面正常显示。
